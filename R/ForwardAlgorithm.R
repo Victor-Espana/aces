@@ -1,6 +1,6 @@
 #' @title Mean Squared Error
 #'
-#' @description This function computes the mean squared error between two numeric vectors. 777
+#' @description This function computes the mean squared error between two numeric vectors.
 #'
 #' @param y Vector of actual data.
 #' @param y_pred Vector of predicted values.
