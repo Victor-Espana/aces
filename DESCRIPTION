@@ -12,3 +12,5 @@ LazyData: true
 RoxygenNote: 7.1.1
 Imports: Rdpack
 RdMacros: Rdpack
+URL: https://github.com/Victor-Espana/mafs
+BugReports: https://github.com/Victor-Espana/mafs/issues
