@@ -15,11 +15,12 @@ PruningMAFS <- function(data, y, ForwardModel, d) {
 
   # set of MAFS models with p terms
   models <- list(list(
-       id = NA,
-        B = NA,
-      LOF = NA,
-        t = NA,
-    alpha = NA))
+    id    = NA,
+    B     = NA,
+    LOF   = NA,
+    t     = NA,
+    alpha = NA
+    ))
 
   # ==
   # id
@@ -27,16 +28,19 @@ PruningMAFS <- function(data, y, ForwardModel, d) {
   models[[1]][["id"]] <- length(ForwardModel[["BF"]])
 
   # ==
-  # B matrix
+  # B
   # ==
   models[[1]][["B"]] <- ForwardModel[["B"]]
 
   # ==
   # knots
   # ==
-  knots <- lapply(ForwardModel[["BF"]][- 1], function(x) list(xi = x[["xi"]],
-                                                               t = x[["t"]],
-                                                            side = x[["side"]]))
+  knots <- lapply(ForwardModel[["BF"]][- 1], function(x) list(
+    xi   = x[["xi"]],
+    t    = x[["t"]],
+    side = x[["side"]]
+  ))
+
   models[[1]][["t"]] <- knots
 
   # ==
@@ -46,23 +50,22 @@ PruningMAFS <- function(data, y, ForwardModel, d) {
   y_hat <- ForwardModel[["B"]] %*% ForwardModel[["alpha"]]
 
   # mse
-  num <- mse(data[, y], y_hat)
+  num <- mse(data[, y, drop = F], y_hat[drop = F])
 
   if (d != - 1) {
+    len.knots <- length(unique(lapply(knots, function(x) list(
+      xi = x[["xi"]],
+      t = x[["t"]])
+    )))
 
-    lgt_knots <- length(unique(lapply(knots, function(x) list(xi = x[["xi"]],
-                                                              t = x[["t"]]))))
-
-    CM <- ncol(ForwardModel[["B"]]) + d * lgt_knots
+    CM  <- ncol(ForwardModel[["B"]]) + d * len.knots
     den <- (1 - (CM / nrow(data))) ^ 2
 
   } else {
     den <- 1
   }
 
-  LOF <- num / den
-
-  models[[1]][["LOF"]] <- LOF
+  models[[1]][["LOF"]] <- num / den
 
   # ==
   # alpha
@@ -86,72 +89,87 @@ PruningMAFS <- function(data, y, ForwardModel, d) {
     # - Right-side hinge functions when appearing unpaired
     # - Left-side hinge function from reflected pairs
     NBFs <- unlist(lapply(SetBF, function(x) if((x["status"] == "paired" && x[["side"]] == "R") ||
-                                                (x["status"] == "not paired" && x[["side"]] == "L"))
+                                                (x["status"] == "unpaired" && x[["side"]] == "L"))
                                                  x[['id']]))
 
     for (bf in NBFs) {
       # Update SetBF
-      New_SetBF <- SetBF
+      New.SetBF <- SetBF
 
       # Drop element
-      dropTerm <- sapply(New_SetBF, function(x) x[["id"]] == bf)
+      dropTerm <- sapply(New.SetBF, function(x) x[["id"]] == bf)
 
       # Update B
       # Ensure matrix format when B is just a vector
-      New_B <- B[, !dropTerm]
+      New.B <- B[, !dropTerm]
 
       # After Forward Algorithm: paired | R --> Always even number
       if (!bf %% 2){
-        New_SetBF[lapply(New_SetBF, "[[", "id") == bf + 1][[1]][["status"]] <- "not paired"
+        New.SetBF[lapply(New.SetBF, "[[", "id") == bf + 1][[1]][["status"]] <- "unpaired"
       }
 
       # Drop Basis Function
-      New_SetBF[dropTerm] <- NULL
+      New.SetBF[dropTerm] <- NULL
 
-      # Count pair of basis functions
-      h <- length(unlist(lapply(New_SetBF, function(x) if((x["status"] == "paired"))
+      # Number of paired basis functions
+      h <- length(unlist(lapply(New.SetBF, function(x) if((x["status"] == "paired"))
                                                            x[['id']])))
 
-      # Count left-side basis functions
-      r <- length(unlist(lapply(New_SetBF, function(x) if((x["status"] == "not paired"))
+      # Number of left-side unpaired basis functions
+      r <- length(unlist(lapply(New.SetBF, function(x) if((x["status"] == "unpaired"))
                                                            x[['id']])))
+
       # Estimate coefficients
       # Predict y_hat
       if (terms > 1){
 
-        not_paired <- (1:terms)[sapply(New_SetBF, function(x) x[["status"]] == "not paired")]
-            paired <- (1:terms)[sapply(New_SetBF, function(x) x[["status"]] != "not paired")]
-         colsOrder <- c(paired, not_paired)
+        not.paired <- (1:terms)[sapply(New.SetBF, function(x) x[["status"]] == "unpaired")]
+        paired     <- (1:terms)[sapply(New.SetBF, function(x) x[["status"]] != "unpaired")]
+        colsOrder  <- c(paired, not.paired)
 
-             coefs <- EstimCoeffsBackward(New_B[, colsOrder], data[, y], h, r)
-             y_hat <- New_B[, colsOrder] %*% coefs
+        coefs <- EstimCoeffsBackward(New.B[, colsOrder], data[, y, drop = F], h, r)
+
+        y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
+
+        for (out in 1:length(y)) {
+          y_hat[, out] <- New.B[, colsOrder] %*% coefs[, out]
+        }
 
       } else {
-
         colsOrder <- 1
 
-        # Last iteration. Need to transform New_B from vector to matrix
-        coefs <- max(data[, y])
-        New_B <- matrix(New_B)
-        y_hat <- New_B %*% coefs
+        # Last iteration. Need to transform New.B from vector to matrix
+        coefs <- matrix(apply(data[, y, drop = FALSE], 2, max), ncol = length(y))
+        New.B <- matrix(New.B)
+
+        y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
+
+        for (out in 1:length(y)) {
+          y_hat[, out] <- New.B %*% coefs[, out, drop = F]
+        }
       }
 
       # mse
-      num <- mse(data[, y], y_hat)
+      num <- mse(data[, y, drop = F], y_hat[drop = F])
 
       # Knots
-      knots <- lapply(New_SetBF[colsOrder][- 1],
-                      function(x) if(all(x[["xi"]] != - 1)) list(xi = x[['xi']],
-                                                                  t = x[['t']],
-                                                               side = x[["side"]]))
+      knots <- lapply(New.SetBF[colsOrder][- 1],
+                      function(x) if(all(x[["xi"]] != - 1)) list(
+                        xi     = x[['xi']],
+                        t      = x[['t']],
+                        side   = x[["side"]],
+                        status = x[["status"]]
+                      ))
       # LOF
       if (d != - 1) {
 
-        lgt_knots <- length(unique(lapply(knots, function(x) list(xi = x[["xi"]],
-                                                                   t = x[["t"]]))))
+        len.knots <- length(unique(lapply(knots, function(x) list(
+          xi = x[["xi"]],
+           t = x[["t"]])
+          )))
 
-               CM <- ncol(New_B) + d * lgt_knots
-              den <- (1 - (CM / nrow(data))) ^ 2
+        CM  <- ncol(New.B) + d * len.knots
+        den <- (1 - (CM / nrow(data))) ^ 2
 
       } else {
         den <- 1
@@ -160,25 +178,25 @@ PruningMAFS <- function(data, y, ForwardModel, d) {
       LOF <- num / den
 
       if (LOF < err) {
-        Best_SetBF <- New_SetBF[colsOrder]
-            Best_B <- New_B[, colsOrder]
+        Best.SetBF <- New.SetBF[colsOrder]
+            Best.B <- New.B[, colsOrder]
                err <- LOF
-        Best_knots <- knots
-        Best_coefs <- coefs
+        Best.knots <- knots
+        Best.coefs <- coefs
       }
     }
 
     # Update set of basis functions and matrix of basis functions
-    SetBF <- Best_SetBF
-        B <- Best_B
+    SetBF <- Best.SetBF
+        B <- Best.B
 
     # Create P-model
     P_Model <- list(
-              id = ncol(Best_B),
-               B = Best_B,
-             LOF = err,
-               t = Best_knots,
-           alpha = Best_coefs
+      id    = ncol(Best.B),
+      B     = Best.B,
+      LOF   = err,
+      t     = Best.knots,
+      alpha = Best.coefs
       )
 
     # Best model of p terms
@@ -193,14 +211,14 @@ PruningMAFS <- function(data, y, ForwardModel, d) {
 
 #' @title Estimate Coefficients in Multivariate Adaptive Frontier Splines during Backward Procedure.
 #'
-#' @description This function solves a Quadratic Programming Problem to obtain a set of coefficients.
+#' @description This function solves a Linear Programming Problem to obtain a set of coefficients.
 #'
 #' @param B \code{matrix} of basis functions.
 #' @param y Output \code{vector} in data.
-#' @param h Number of coefficients associated with pairs of basis functions.
-#' @param r Number of coefficients associated with left-side basis functions.
+#' @param h Number of coefficients associated with paired basis functions.
+#' @param r Number of coefficients associated with unpaired left-side basis functions.
 #'
-#' @importFrom quadprog solve.QP
+#' @importFrom Rglpk Rglpk_solve_LP
 #'
 #' @return \code{vector} with the coefficients estimated.
 EstimCoeffsBackward <- function(B, y, h, r){
@@ -208,58 +226,141 @@ EstimCoeffsBackward <- function(B, y, h, r){
   n <- nrow(B)
   p <- ncol(B) # (p = 1 + h + r)
 
-  # vars: c(tau_0, alpha_1, beta_2, ... , alpha_(H-1), beta_H, w_1, ..., w_R, e_1, ... , e_n)
+  alpha <- matrix(NA, nrow = p, ncol = ncol(y))
 
-  # ================= #
-  # D: Quadratic part #
-  # ================= #
-  # Identity matrix
-  Dmat <- diag(rep(1, p + n))
-  # Near 0 for alpha
-  Dmat[1:p, 1:p] <- diag(rep(1e-12, p), p)
+  for (out in 1:ncol(y)) {
 
-  # ============== #
-  # d: Linear part #
-  # ============== #
-  dvec = rep(0, p + n)
+    # Select the variable
+    y.ind <- y[, out]
 
-  # = #
-  # A #
-  # = #
-  # Equality constraints: y_hat - e = y
-  Amat1 <- cbind(B, diag(rep(-1, n), n))
+    # vars: c(tau_0, alpha_1, beta_2, ... , alpha_(H-1), beta_H, w_1, ..., w_R, e_1, ... , e_n)
+    objVal <- c(rep(0, p), rep(1, n))
 
-  # e_n >= 0
-  Amat2 <- cbind(matrix(0, n, p), diag(rep(1, n)))
+    # = #
+    # A #
+    # = #
+    # Equality constraints: y_hat - e = y
+    Amat1 <- cbind(B, diag(rep(-1, n), n))
 
-  # Concavity [paired basis functions]
-  Amat3 <- matrix(0, nrow = h / 2, ncol = p + n)
+    # Concavity [paired basis functions]
+    Amat2 <- matrix(0, nrow = h / 2, ncol = p + n)
 
-  if (h > 0) {
-    for (i in seq(2, h, 2)){
-      Amat3[i / 2, c(i, i + 1)] <- - 1
+    if (h > 0) {
+      for (i in seq(2, h, 2)){
+        Amat2[i / 2, c(i, i + 1)] <- - 1
+      }
     }
+
+    # Increasing monotony [paired basis functions]
+    Amat3 <- cbind(rep(0, h), diag(x = c(1, -1), h), matrix(0, h, r), matrix(0, h, n))
+
+    # Concavity & increasing monotony [left-side basis functions]
+    Amat4 <- cbind(matrix(0, r, 1 + h), diag(- 1, r), matrix(0, r, n))
+
+    Amat  <- rbind(Amat1, Amat2, Amat3, Amat4)
+
+    # = #
+    # b #
+    # = #
+    bvec <- c(y.ind, rep(0, h / 2), rep(0, r), rep(0, h))
+
+    # Direction of inequality
+    dir <- c(rep("==", n), rep(">=", nrow(Amat) - n))
+
+    # Bounds
+    bounds <- list(lower = list(ind = 1L:p, val = rep(-Inf, p)))
+
+    # Solve
+    sol <- Rglpk_solve_LP(objVal, Amat, dir, bvec, bounds)
+
+    alpha[, out] <- sol$solution[1:p]
   }
 
-  # Increasing monotony [paired basis functions]
-  Amat4 <- cbind(rep(0, h), diag(x = c(1, -1), h), matrix(0, h, r), matrix(0, h, n))
-
-  # Concavity & increasing monotony [left-side basis functions]
-  Amat5 <- cbind(matrix(0, r, 1 + h), diag(- 1, r), matrix(0, r, n))
-
-  Amat <- rbind(Amat1, Amat2, Amat3, Amat4, Amat5)
-
-  # = #
-  # b #
-  # = #
-  bvec <- c(y,  rep(0, n), rep(0, h / 2), rep(0, r), rep(0, h))
-
-  s <- solve.QP(Dmat = Dmat, dvec = dvec,
-                Amat = t(Amat), bvec = bvec,
-                meq = n)
-
-  alpha <- s$solution[1:p]
-
   return(alpha)
+}
+
+#' @title Add interaction of variables
+#'
+#' @description This function adds interaction of variables in the model.
+#'
+#' @param data \code{Data.frame} or \code{matrix} containing the variables in the model.
+#' @param x Column input indexes in \code{data}.
+#' @param y Column output indexes in \code{data}.
+#' @param model MAFS model from backward algorithm.
+#' @param knots Knots from (backward) MAFS algorithm.
+#' @param err.red Minimum reduced error rate for the addition of two new basis functions. Default is \code{0.01}.
+#' @param Kp Maximum degree of interaction allowed. Default is \code{1}.
+#' @param d Integer. Generalized Cross Validation (GCV) penalty per knot. If set to \code{-1}, \code{GCV = RSS / n}.
+#'
+#' @return \code{vector} with the coefficients estimated.
+InteractionModel <- function(data, x, y, model, knots, err.red, Kp, d){
+
+  # Current B matrix
+  B <- model[["B"]]
+
+  # Current MSE
+  CM  <- ncol(B) + d * length(unique(knots$t))
+  den <- (1 - (CM / nrow(data))) ^ 2
+
+  err <- model[["LOF"]] * den
+
+  # Nº of terms
+  terms <- ncol(B)
+
+  # Paired knots
+  h <- sum(knots[, "status"] == "paired")
+  r <- sum(knots[, "status"] == "unpaired")
+
+  # Unpaired cols
+  ucols <- (terms - r + 1):terms
+
+  # Unpaired knots
+  uknots <- knots[knots[, "status"] == "unpaired", ]
+
+  # NewB to update B
+  NewB <- B
+
+  # New model
+  for (col in ucols) {
+    for (kn in 1:nrow(uknots)) {
+      # knots (based on observed data)
+      knotvar   <- uknots[kn, "xi"]
+      knotval   <- uknots[kn, "t"]
+
+      knotsGrid <- data[data[, knotvar] <= knotval, ]
+
+      for (var in x[x != knotvar]) {
+        for (i in 1:nrow(knotsGrid)) {
+
+          knt <- knotsGrid[i, var]
+
+          NewB[, col] <- B[, col] * ifelse(data[, var] < knt, knt - data[, var], 0)
+
+          # New model
+          coefs <- EstimCoeffsBackward(NewB, data[, y, drop = F], h, r)
+
+          # New predictions
+          y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
+
+          for (out in 1:length(y)) {
+            y_hat[, out] <- NewB %*% coefs[, out, drop = F]
+          }
+
+          # mse
+          new.err <- mse(data[, y, drop = F], y_hat[drop = F])
+
+          if (new.err < err * (1 - err.red)) {
+
+            # Update model
+            model[["B"]] <- NewB
+
+            # Update knot
+            model[["t"]][[col - 1]][["xi"]] <- c(knotvar, var)
+            model[["t"]][[col - 1]][["t"]]  <- c(knotval, knt)
+          }
+        }
+      }
+    }
+  }
 }
 

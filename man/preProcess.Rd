@@ -16,7 +16,7 @@ preProcess(data, x, y, na.rm = TRUE)
 \item{na.rm}{\code{logical} If \code{TRUE}, \code{NA} rows are omitted.}
 }
 \value{
-It returns a \code{data.frame} in the required format.
+It returns a \code{matrix} in the required format.
 }
 \description{
 This function arranges the data in the required format and displays error messages.

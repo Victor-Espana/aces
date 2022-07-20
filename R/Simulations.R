@@ -32,25 +32,25 @@ Y1.sim <- function(N, nX) {
 
   if (nX == 1){
     y <- 3 * log(data[, "x1"])
-    data[, "y"] <- y * exp(-u)
+    data[, "y"]  <- y * exp(-u)
     data[, "yD"] <- y
 
   } else if (nX == 3){
     y <- 3 * (data[, "x1"] ** 0.05) * (data[, "x2"] ** 0.15) * (data[, "x3"] ** 0.3)
-    data[, "y"] <- y * exp(-u)
+    data[, "y"]  <- y * exp(-u)
     data[, "yD"] <- y
 
   } else if (nX == 6){
     y <- 3 * (data[, "x1"] ** 0.05) * (data[, "x2"] ** 0.001) * (data[, "x3"] ** 0.004) *
       (data[, "x4"] ** 0.045) * (data[, "x5"] ** 0.1) * (data[, "x6"] ** 0.3)
-    data[, "y"] <- y * exp(-u)
+    data[, "y"]  <- y * exp(-u)
     data[, "yD"] <- y
 
   } else if (nX == 9){
     y <- 3 * (data[, "x1"] ** 0.005) * (data[, "x2"] ** 0.001) * (data[, "x3"] ** 0.004) *
       (data[, "x4"] ** 0.005) * (data[, "x5"] ** 0.001) * (data[, "x6"] ** 0.004) *
       (data[, "x7"] ** 0.08) * (data[, "x8"] ** 0.1) * (data[, "x9"] ** 0.3)
-    data["y"] <- y * exp(-u)
+    data["y"]  <- y * exp(-u)
     data["yD"] <- y
 
   } else if (nX == 12){
@@ -58,7 +58,7 @@ Y1.sim <- function(N, nX) {
       (data[, "x4"] ** 0.005) * (data[, "x5"] ** 0.001) * (data[, "x6"] ** 0.004) *
       (data[, "x7"] ** 0.08) * (data[, "x8"] ** 0.05) * (data[, "x9"] ** 0.05) *
       (data[, "x10"] ** 0.075) * (data[, "x11"] ** 0.025) * (data[, "x12"] ** 0.2)
-    data["y"] <- y * exp(-u)
+    data["y"]  <- y * exp(-u)
     data["yD"] <- y
 
   } else {
@@ -67,8 +67,8 @@ Y1.sim <- function(N, nX) {
       (data[, "x7"] ** 0.08) * (data[, "x8"] ** 0.05) * (data[, "x9"] ** 0.05) *
       (data[, "x10"] ** 0.05) * (data[, "x11"] ** 0.025) * (data[, "x12"] ** 0.025) *
       (data[, "x13"] ** 0.025) * (data[, "x14"] ** 0.025) * (data[, "x15"] ** 0.15)
-    data["y"] <- y * exp(-u)
-    data["yD"] = y
+    data["y"]  <- y * exp(-u)
+    data["yD"] <- y
   }
 
   return(data)
@@ -79,7 +79,7 @@ Y1.sim <- function(N, nX) {
 #' @description This function is used to simulate the data in a scenario with 2 inputs and 2 outputs.
 #'
 #' @param N Sample size.
-#' @param border Percentage of DMUs in the frontier.
+#' @param border Proportion of DMUs in the frontier.
 #' @param noise Random noise.
 #'
 #' @importFrom dplyr %>%
@@ -100,50 +100,43 @@ X2Y2.sim <- function(N, border, noise = NULL) {
     dimnames = list(NULL, colnames)
   ) %>% as.data.frame()
 
-  data[, 1:nX] <- runif(N, 5, 50)
+  data[, 1] <- runif(N, 5, 50)
+  data[, 2] <- runif(N, 5, 50)
 
   z <- runif(N, -1.5, 1.5)
 
   ln_x1 <- log(data[, "x1"])
   ln_x2 <- log(data[, "x2"])
 
-  op1 <- -1 + 0.5 * z + 0.25 * (z**2) - 1.5 * ln_x1
+  op1 <- - 1 + 0.5 * z + 0.25 * (z ^ 2) - 1.5 * ln_x1
 
-  op2 <- -0.6 * ln_x2 + 0.2 * (ln_x1**2) + 0.05 * (ln_x2**2) - 0.1 * ln_x1 * ln_x2
+  op2 <- - 0.6 * ln_x2 + 0.20 * (ln_x1 ^ 2) + 0.05 * (ln_x2 ^ 2) - 0.1 * ln_x1 * ln_x2
 
-  op3 <- 0.05 * ln_x1 * z - 0.05 * ln_x2 * z
+  op3 <- + 0.05 * ln_x1 * z - 0.05 * ln_x2 * z
 
-  ln_y1_ast <- -(op1 + op2 + op3)
+  ln_y1_ast <- - (op1 + op2 + op3)
 
-  data[, "y1"] <- exp(ln_y1_ast)
+  data[, c("y1", "yD1")] <- exp(ln_y1_ast)
+  data[, c("y2", "yD2")] <- exp(ln_y1_ast + z)
 
-  data[, "y2"] <- exp(ln_y1_ast + z)
+  if (border < 1) {
 
-  if (border > 0) {
-    index <- sample(1:N, N * border)
-
-    N_sample <- length(index)
-
-    half_normal <- rnorm(N_sample, 0, 0.3**(1 / 2)) %>%
-      abs()
-
-    half_normal <- exp(half_normal)
+    index       <- sample(1:N, N * (1 - border))
+    N_sample    <- length(index)
+    half_normal <- rnorm(N_sample, 0, 0.3 ** (1 / 2)) %>% abs() %>% exp()
 
     if (!is.null(noise)) {
-      normal1 <- rnorm(N_sample, 0, 0.01**(1 / 2))
-      normal1 <- exp(normal1)
+      normal1 <- rnorm(N_sample, 0, 0.01 ** (1 / 2)) %>% exp()
+      normal2 <- rnorm(N_sample, 0, 0.01 ** (1 / 2)) %>% exp()
 
-      normal2 <- rnorm(N_sample, 0, 0.01**(1 / 2))
-      normal2 <- exp(normal2)
+      data[index, "y1"] <- data[index, "yD1"] / (half_normal * normal1)
+      data[index, "y2"] <- data[index, "yD2"] / (half_normal * normal2)
 
-      data[index, "y1"] <- data[index, "y1"] / (half_normal * normal1)
-      data[index, "y2"] <- data[index, "y2"] / (half_normal * normal2)
     } else {
-      data[index, "y1"] <- data[index, "y1"] / half_normal
-      data[index, "y2"] <- data[index, "y2"] / half_normal
+      data[index, "y1"] <- data[index, "yD1"] / half_normal
+      data[index, "y2"] <- data[index, "yD2"] / half_normal
     }
   }
-
   return(data)
 }
 
@@ -154,7 +147,7 @@ X2Y2.sim <- function(N, border, noise = NULL) {
 #' @param N Sample size.
 #' @param scenario \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, check Table 2.
 #'
-#' @importFrom dplyr %>%
+#' @importFrom dplyr %>% filter
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
@@ -194,46 +187,92 @@ AddScenario <- function(N, scenario) {
 
   if (scenario == "A"){
     x1 <- data[, "x1"]
-    y <- log(x1) + 3
-    data[, "y"] <- y - u
+    y  <- log(x1) + 3
+    data[, "y"]  <- y - u
     data[, "yD"] <- y
 
   } else if (scenario == "B"){
     x1 <- data[, "x1"]
-    y <- 3 + sqrt(x1) + log(x1)
-    data[, "y"] <- y - u
+    y  <- 3 + sqrt(x1) + log(x1)
+    data[, "y"]  <- y - u
     data[, "yD"] <- y
 
   } else if (scenario == "C"){
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
-    data[, "y"] <- y - u
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
+    data[, "y"]  <- y - u
     data[, "yD"] <- y
 
   } else if (scenario == "D"){
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
     x3 <- data[, "x3"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
-    data["y"] <- y - u
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
+    data["y"]  <- y - u
     data["yD"] <- y
 
   } else if (scenario == "E"){
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
-    data["y"] <- y - u
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
+    data["y"]  <- y - u
     data["yD"] <- y
 
   } else {
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
     x3 <- data[, "x3"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
-    data["y"] <- y - u
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
+    data["y"]  <- y - u
     data["yD"] <- y
   }
+
+  data <- data %>% filter(y >= 0)
+
+  return(data)
+}
+
+#' @title Problematic Additive Scenarios
+#'
+#' @description This function is used to simulate alternative C scenarios.
+#'
+#' @param N Sample size.
+#' @param scenario \code{"1"}, \code{"2"}, \code{"3"}, \code{"4"}, \code{"5"}, \code{"6"}, \code{"7"}, \code{"8"}, \code{"9"}, \code{"10"}
+#'
+#' @importFrom dplyr %>%
+#' @importFrom stats runif rnorm
+#' @importFrom Rdpack reprompt
+#'
+#' @return \code{data.frame} with the simulated data.
+#'
+#' \insertRef{kuosmanen2010}{mafs}
+#'
+#' @export
+Scenario.C <- function(N, slope) {
+  if(!(slope %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"))){
+    stop(paste(slope, "is not allowed"))
+  }
+
+  colnames <- c(paste("x", 1:2, sep = ""), "y")
+
+  data <- matrix(
+    ncol = length(colnames),
+    nrow = N,
+    dimnames = list(NULL, colnames)
+  ) %>% as.data.frame()
+
+  for (x in 1:2){
+    data[, x] <- runif(n = N, min = 1, max = 10)
+  }
+
+  u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
+
+  x1 <- data[, "x1"]
+  x2 <- data[, "x2"]
+  y  <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (slope / 10)
+  data[, "y"]  <- y - u
+  data[, "yD"] <- y
 
   return(data)
 }
@@ -285,44 +324,44 @@ MultScenario <- function(N, scenario) {
 
   if (scenario == "A"){
     x1 <- data[, "x1"]
-    y <- log(x1) + 3
-    data[, "y"] <- y / (1 + u)
+    y  <- log(x1) + 3
+    data[, "y"]  <- y / (1 + u)
     data[, "yD"] <- y
 
   } else if (scenario == "B"){
     x1 <- data[, "x1"]
-    y <- 3 + sqrt(x1) + log(x1)
-    data[, "y"] <- y / (1 + u)
+    y  <- 3 + sqrt(x1) + log(x1)
+    data[, "y"]  <- y / (1 + u)
     data[, "yD"] <- y
 
   } else if (scenario == "C"){
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
-    data[, "y"] <- y / (1 + u)
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
+    data[, "y"]  <- y / (1 + u)
     data[, "yD"] <- y
 
   } else if (scenario == "D"){
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
     x3 <- data[, "x3"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
-    data["y"] <- y / (1 + u)
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
+    data["y"]  <- y / (1 + u)
     data["yD"] <- y
 
   } else if (scenario == "E"){
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
-    data["y"] <- y / (1 + u)
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
+    data["y"]  <- y / (1 + u)
     data["yD"] <- y
 
   } else {
     x1 <- data[, "x1"]
     x2 <- data[, "x2"]
     x3 <- data[, "x3"]
-    y <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
-    data["y"] <- y / (1 + u)
+    y  <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
+    data["y"]  <- y / (1 + u)
     data["yD"] <- y
   }
 

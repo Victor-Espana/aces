@@ -2,9 +2,21 @@
 % Please edit documentation in R/ForwardAlgorithm.R
 \name{AddBF}
 \alias{AddBF}
-\title{Add a new pair of Basis Functions}
+\title{Add a New Pair of Basis Functions}
 \usage{
-AddBF(data, x, y, ForwardModel, knots_list, Kp, minspan, Le, linpreds, err_min)
+AddBF(
+  data,
+  x,
+  y,
+  ForwardModel,
+  knots.list,
+  Kp,
+  L,
+  Le,
+  knotsGrid,
+  linpreds,
+  err.min
+)
 }
 \arguments{
 \item{data}{data \code{data.frame} or \code{matrix} containing the variables in the model.}
@@ -15,20 +27,22 @@ AddBF(data, x, y, ForwardModel, knots_list, Kp, minspan, Le, linpreds, err_min)
 
 \item{ForwardModel}{\code{list} containing the set of basis functions and the B matrix.}
 
-\item{knots_list}{\code{list}. Set of selected knots.}
+\item{knots.list}{\code{list} containing the set of selected knots.}
 
-\item{Kp}{Maximum degree of interaction allowed..}
+\item{Kp}{Maximum degree of interaction allowed.}
 
-\item{minspan}{\code{integer}. Minimum number of observations between knots. When \code{minspan = 0}, it is calculated as in Friedman's MARS paper section 3.8 with alpha = 0.05.}
+\item{L}{Minimum number of observations between two adjacent knots.}
 
-\item{Le}{\code{integer} Minimum number of observations before the first and after the final knot.}
+\item{Le}{Minimum number of observations before the first and after the final knot.}
+
+\item{knotsGrid}{Grid of virtual knots to perform MAFS. Can be set to \code{NULL}.}
 
 \item{linpreds}{\code{logical}. If \code{TRUE}, predictors can enter linearly.}
 
-\item{err_min}{Minimun error in the split.}
+\item{err.min}{Minimun error in the split.}
 }
 \value{
-A \code{list} containing the matrix of basis functions (\code{B}), a \code{list} of basis functions (\code{BF}), a \code{list} of selected knots (\code{knots_list}) and the minimun error (\code{err_min}).
+A \code{list} containing the matrix of basis functions (\code{B}), a \code{list} of basis functions (\code{BF}), a \code{list} of selected knots (\code{knots.list}) and the minimun error (\code{err.min}).
 }
 \description{
 This function adds the best pair of basis functions to the model.

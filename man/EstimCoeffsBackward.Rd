@@ -11,13 +11,13 @@ EstimCoeffsBackward(B, y, h, r)
 
 \item{y}{Output \code{vector} in data.}
 
-\item{h}{Number of coefficients associated with pairs of basis functions.}
+\item{h}{Number of coefficients associated with paired basis functions.}
 
-\item{r}{Number of coefficients associated with left-side basis functions.}
+\item{r}{Number of coefficients associated with unpaired left-side basis functions.}
 }
 \value{
 \code{vector} with the coefficients estimated.
 }
 \description{
-This function solves a Quadratic Programming Problem to obtain a set of coefficients.
+This function solves a Linear Programming Problem to obtain a set of coefficients.
 }

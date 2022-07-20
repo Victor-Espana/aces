@@ -9,7 +9,7 @@
 #'
 #' @importFrom stats na.omit
 #'
-#' @return It returns a \code{data.frame} in the required format.
+#' @return It returns a \code{matrix} in the required format.
 preProcess <- function(data, x, y, na.rm = TRUE) {
 
   # x and y well / bad introduced
@@ -23,10 +23,11 @@ preProcess <- function(data, x, y, na.rm = TRUE) {
     }
   }
 
-  # Dataframe
-  # List with variables
-  # Matrix
+  # data.frame
+  # list with variables
+  # matrix
 
+  # data.frame format to deal with classes
   if (is.list(data) && !is.data.frame(data)){
 
     # Data names?
@@ -35,8 +36,8 @@ preProcess <- function(data, x, y, na.rm = TRUE) {
            nms <- 1:length(data), # if not 1:x
            nms <- names(data))
 
-    data <- data.frame(matrix(unlist(data), ncol = length(nms), byrow = F))
-    names(data) <- nms
+    data <- matrix(unlist(data), ncol = length(nms), byrow = F)
+    colnames(data) <- nms
 
   } else if (is.matrix(data) || is.data.frame(data)) {
 
@@ -86,5 +87,5 @@ preProcess <- function(data, x, y, na.rm = TRUE) {
     }
   }
 
-  return(data)
+  return(as.matrix(data))
 }

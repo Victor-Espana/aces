@@ -13,7 +13,7 @@
 
 \item{x}{Inputs index.}
 
-\item{class}{Model for prediction. \code{1} for MAFS before pruning, \code{2} for MAFS, \code{3} for Smooth MAFS and \code{4} for Smooth Forward MAFS.}
+\item{class}{Model for prediction. \code{1} for MAFS before pruning, \code{2} for MAFS, \code{3} for Smooth MAFS (quintic version) and \code{4} for Smooth MAFS (cubic version).}
 }
 \value{
 \code{data.frame} with the predicted values.

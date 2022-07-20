@@ -8,18 +8,15 @@ MAFS_object(
   data,
   x,
   y,
-  rownames,
   nterms,
   Kp,
   d,
-  err_red,
-  minspan,
-  endspan,
+  err.red,
   na.rm,
-  Depth_MAFS_Model,
-  MAFS_Model,
-  Smooth_Backward_MAFS,
-  Smooth_Forward_MAFS
+  Forward.MAFS,
+  MAFS,
+  QSmooth.MAFS,
+  CSmooth.MAFS
 )
 }
 \arguments{
@@ -29,29 +26,23 @@ MAFS_object(
 
 \item{y}{Column output indexes in \code{data}.}
 
-\item{rownames}{\code{string}. Data rownames.}
-
 \item{nterms}{Maximum number of terms created by the forward algorithm (before pruning).}
 
 \item{Kp}{Maximum degree of interaction allowed. Default is \code{1}.}
 
 \item{d}{Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}. If set to \code{-1}, \code{GCV = RSS / n}.}
 
-\item{err_red}{Minimun reduced error rate for the addition of two new basis functions. Default is \code{0.01}.}
-
-\item{minspan}{Minimum number of observations between knots. When \code{minspan = 0} (default), it is calculated as in Friedman's MARS paper section 3.8 with alpha = 0.05.}
-
-\item{endspan}{Minimum number of observations before the first and after the final knot. When \code{endspan = 0} (default), it is calculated as in Friedman's MARS paper section 3.8 with alpha = 0.05.}
+\item{err.red}{Minimun reduced error rate for the addition of two new basis functions. Default is \code{0.01}.}
 
 \item{na.rm}{\code{logical}. If \code{TRUE}, \code{NA} rows are omitted.}
 
-\item{Depth_MAFS_Model}{\code{list} containing the Multivariate Adaptive Frontier Splines model before pruning.}
+\item{Forward.MAFS}{\code{list} containing the Forward Multivariate Adaptive Frontier Splines.}
 
-\item{MAFS_Model}{\code{list} containing the Multivariate Adaptive Frontier Splines model.}
+\item{MAFS}{\code{list} containing the Multivariate Adaptive Frontier Splines model.}
 
-\item{Smooth_Backward_MAFS}{\code{list} containing the Smooth Multivariate Adaptive Frontier Splines model.}
+\item{QSmooth.MAFS}{\code{list} containing the Smooth Multivariate Adaptive Frontier Splines model (quintic version).}
 
-\item{Smooth_Forward_MAFS}{\code{list} containing the Smooth Multivariate Adaptive Frontier Splines model (from forward).}
+\item{CSmooth.MAFS}{\code{list} containing the Smooth Multivariate Adaptive Frontier Splines model (cubic version).}
 }
 \value{
 A \code{MAFS} object.

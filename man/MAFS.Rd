@@ -11,9 +11,10 @@ MAFS(
   nterms,
   Kp = 1,
   d = 2,
-  err_red = 0.01,
-  minspan = 0,
-  endspan = 0,
+  err.red = 0.01,
+  minspan = -2,
+  endspan = -1,
+  knotsGrid = -1,
   linpreds = FALSE,
   na.rm = TRUE
 )
@@ -31,11 +32,28 @@ MAFS(
 
 \item{d}{Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}. If it is set to \code{-1}, \code{GCV = RSS / n}.}
 
-\item{err_red}{Minimum reduced error rate for the addition of two new basis functions. Default is \code{0.01}.}
+\item{err.red}{Minimum reduced error rate for the addition of two new basis functions. Default is \code{0.01}.}
 
-\item{minspan}{Minimum number of observations between knots. When \code{minspan = 0} (default), it is calculated as in Friedman's MARS paper section 3.8 with alpha = 0.05.}
+\item{minspan}{Minimum number of observations between knots.
+\itemize{
+\item{\code{minspan = -2}} Minspan computed as in Zhang (1994).
+\item{\code{minspan = -1}} Minspan computed as in Friedman's MARS paper section 3.8 with alpha = 0.05.
+\item{\code{minspan =  m}} \code{m} observations between knots.
+}}
 
-\item{endspan}{Minimum number of observations before the first and after the final knot. When \code{endspan = 0} (default), it is calculated as in Friedman's MARS paper section 3.8 with alpha = 0.05.}
+\item{endspan}{Minimum number of observations before the first and after the final knot.
+\itemize{
+\item{\code{endspan = -2}} Endspan computed as in Zhang (1994).
+\item{\code{endspan = -1}} Endspan computed as in Friedman's MARS paper section 3.8 with alpha = 0.05.
+\item{\code{endspan = +m}} \code{m} observations between knots.
+}}
+
+\item{knotsGrid}{Grid of knots to perform MAFS:
+\itemize{
+\item{\code{knotsGrid = -1}} The original approach based on the observed data is used.
+\item{\code{knotsGrid =  0}} A grid of equidistant knots is created from the scattering of the data.
+\item{\code{knotsGrid = +p}} \code{p} percentiles are computed to perform the grid of knots.
+}}
 
 \item{linpreds}{\code{logical}. If \code{TRUE}, predictors can enter linearly.}
 

@@ -9,11 +9,11 @@ EstimCoeffsForward(B, y)
 \arguments{
 \item{B}{\code{matrix} of basis functions.}
 
-\item{y}{Output \code{vector} in data.}
+\item{y}{Output \code{matrix} in data.}
 }
 \value{
 \code{vector} with the coefficients estimated.
 }
 \description{
-This function solves a Quadratic Programming Problem to obtain a set of coefficients.
+This function solves a Linear Programming Problem to obtain a set of coefficients.
 }
