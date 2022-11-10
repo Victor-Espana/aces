@@ -10,24 +10,26 @@ AddBF(
   y,
   ForwardModel,
   knots.list,
+  cand.knots,
   Kp,
   L,
   Le,
   knotsGrid,
-  linpreds,
   err.min
 )
 }
 \arguments{
-\item{data}{data \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{\code{data.frame} or \code{matrix} containing the variables in the model.}
 
 \item{x}{Column input indexes in \code{data}.}
 
 \item{y}{Column output indexes in \code{data}.}
 
-\item{ForwardModel}{\code{list} containing the set of basis functions and the B matrix.}
+\item{ForwardModel}{\code{list} containing the set of basis functions (\code{BF}) and the B matrix (\code{B}).}
 
 \item{knots.list}{\code{list} containing the set of selected knots.}
+
+\item{cand.knots}{\code{list} containing the candidate knots.}
 
 \item{Kp}{Maximum degree of interaction allowed.}
 
@@ -35,15 +37,13 @@ AddBF(
 
 \item{Le}{Minimum number of observations before the first and after the final knot.}
 
-\item{knotsGrid}{Grid of virtual knots to perform MAFS. Can be set to \code{NULL}.}
+\item{knotsGrid}{Grid of virtual knots to perform AAFS.}
 
-\item{linpreds}{\code{logical}. If \code{TRUE}, predictors can enter linearly.}
-
-\item{err.min}{Minimun error in the split.}
+\item{err.min}{Forward algorithm minimum error in the given iteration.}
 }
 \value{
-A \code{list} containing the matrix of basis functions (\code{B}), a \code{list} of basis functions (\code{BF}), a \code{list} of selected knots (\code{knots.list}) and the minimun error (\code{err.min}).
+A \code{list} containing the matrix of basis functions (\code{B}), a \code{list} of basis functions (\code{BF}), a \code{list} of selected knots (\code{knots.list}) and the minimum given error (\code{err.min}).
 }
 \description{
-This function adds the best pair of basis functions to the model.
+This function adds the pair of basis functions that produce the largest reduction in the lack-of-fit.
 }

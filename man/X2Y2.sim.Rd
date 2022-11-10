@@ -4,7 +4,7 @@
 \alias{X2Y2.sim}
 \title{2 Inputs & 2 Outputs Data Generation}
 \usage{
-X2Y2.sim(N, border, noise = NULL)
+X2Y2.sim(N, border, noise = FALSE)
 }
 \arguments{
 \item{N}{Sample size.}

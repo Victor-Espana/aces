@@ -10,7 +10,9 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2
-Imports: Rdpack
-RdMacros: Rdpack
-URL: https://github.com/Victor-Espana/mafs
-BugReports: https://github.com/Victor-Espana/mafs/issues
+Imports: 
+  Rdpack
+RdMacros: 
+  Rdpack
+URL: https://github.com/Victor-Espana/aafs
+BugReports: https://github.com/Victor-Espana/aafs/issues

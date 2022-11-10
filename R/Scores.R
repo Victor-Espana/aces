@@ -1,8 +1,8 @@
-#' @title The output-oriented Banker, Charnes and Cooper Programming Model for Multivariate Adaptive Frontier Splines
+#' @title The output-oriented Banker, Charnes and Cooper Programming Model for Additive Adaptive Frontier Splines
 #'
-#' @description This function computes efficiency scores through a BCC model with output orientation for MAFS.
+#' @description This function computes efficiency scores through a BCC model with output orientation for AAFS.
 #'
-#' @param dmu Number of DMUs in the smample.
+#' @param dmu Number of DMUs in the sample.
 #' @param xmat \code{data.frame} or \code{matrix} containing the inputs in the model.
 #' @param ymat \code{data.frame} or \code{matrix} containing the outputs in the model.
 #' @param aknot Knots coordinates.
@@ -14,7 +14,7 @@
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
 #' @return A numerical vector with the efficiency scores computed.
-MAFS_BCC.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
+AAFS_BCC.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 
   scores <- matrix(nrow = dmu, ncol = 1)
 
@@ -47,11 +47,11 @@ MAFS_BCC.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
   return(scores)
 }
 
-#' @title The input-oriented Banker, Charnes and Cooper Programming Model for Multivariate Adaptive Frontier Splines
+#' @title The input-oriented Banker, Charnes and Cooper Programming Model for Additive Adaptive Frontier Splines
 #'
-#' @description This function computes efficiency scores through a BCC model with input orientation for MAFS.
+#' @description This function computes efficiency scores through a BCC model with input orientation for AAFS.
 #'
-#' @param dmu Number of DMUs in the smample.
+#' @param dmu Number of DMUs in the sample.
 #' @param xmat \code{data.frame} or \code{matrix} containing the inputs in the model.
 #' @param ymat \code{data.frame} or \code{matrix} containing the outputs in the model.
 #' @param aknot Knots coordinates.
@@ -63,7 +63,7 @@ MAFS_BCC.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
 #' @return A numerical vector with the efficiency scores computed.
-MAFS_BCC.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
+AAFS_BCC.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 
   scores <- matrix(nrow = dmu, ncol = 1)
 
@@ -99,11 +99,11 @@ MAFS_BCC.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
   return(scores)
 }
 
-#' @title The Directional Distance Function Programming Model for Multivariate Adaptive Frontier Splines
+#' @title The Directional Distance Function Programming Model for Additive Adaptive Frontier Splines
 #'
-#' @description This function computes efficiency scores through a DDF model for MAFS.
+#' @description This function computes efficiency scores through a DDF model for AAFS.
 #'
-#' @param dmu Number of DMUs in the smample.
+#' @param dmu Number of DMUs in the sample.
 #' @param xmat \code{data.frame} or \code{matrix} containing the inputs in the model.
 #' @param ymat \code{data.frame} or \code{matrix} containing the outputs in the model.
 #' @param aknot Knots coordinates.
@@ -115,7 +115,7 @@ MAFS_BCC.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
 #' @return A numerical vector with the efficiency scores computed.
-MAFS_DDF <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
+AAFS_DDF <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 
   scores <- matrix(nrow = dmu, ncol = 1)
 
@@ -151,11 +151,11 @@ MAFS_DDF <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
   return(scores)
 }
 
-#' @title The input-oriented Russell Model for Multivariate Adaptive Frontier Splines
+#' @title The input-oriented Russell Model for Additive Adaptive Frontier Splines
 #'
-#' @description This function computes efficiency scores through a Russell model with input orientation for MAFS.
+#' @description This function computes efficiency scores through a Russell model with input orientation for AAFS.
 #'
-#' @param dmu Number of DMUs in the smample.
+#' @param dmu Number of DMUs in the sample.
 #' @param xmat \code{data.frame} or \code{matrix} containing the inputs in the model.
 #' @param ymat \code{data.frame} or \code{matrix} containing the outputs in the model.
 #' @param aknot Knots coordinates.
@@ -167,7 +167,7 @@ MAFS_DDF <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
 #' @return A numerical vector with efficiency scores.
-MAFS_RSL.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
+AAFS_RSL.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 
   scores <- matrix(nrow = dmu, ncol = 1)
 
@@ -208,11 +208,11 @@ MAFS_RSL.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
   return(scores)
 }
 
-#' @title The output-oriented Russell Model for Multivariate Adaptive Frontier Splines
+#' @title The output-oriented Russell Model for Additive Adaptive Frontier Splines
 #'
-#' @description This function computes efficiency scores through a Russell model with output orientation for MAFS.
+#' @description This function computes efficiency scores through a Russell model with output orientation for AAFS.
 #'
-#' @param dmu Number of DMUs in the smample.
+#' @param dmu Number of DMUs in the sample.
 #' @param xmat \code{data.frame} or \code{matrix} containing the inputs in the model.
 #' @param ymat \code{data.frame} or \code{matrix} containing the outputs in the model.
 #' @param aknot Knots coordinates.
@@ -224,7 +224,7 @@ MAFS_RSL.INP <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
 #' @return A numerical vector with efficiency scores.
-MAFS_RSL.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
+AAFS_RSL.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 
   scores <- matrix(nrow = dmu, ncol = 1)
 
@@ -265,11 +265,11 @@ MAFS_RSL.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
   return(scores)
 }
 
-#' @title The Weighted Additive Model for Multivariate Adaptive Frontier Splines
+#' @title The Weighted Additive Model for Additive Adaptive Frontier Splines
 #'
-#' @description This function computes efficiency scores through a WAM model for MAFS.
+#' @description This function computes efficiency scores through a WAM model for AAFS.
 #'
-#' @param dmu Number of DMUs in the smample.
+#' @param dmu Number of DMUs in the sample.
 #' @param xmat \code{data.frame} or \code{matrix} containing the inputs in the model.
 #' @param ymat \code{data.frame} or \code{matrix} containing the outputs in the model.
 #' @param aknot Knots coordinates.
@@ -282,7 +282,7 @@ MAFS_RSL.OUT <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk) {
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
 #' @return A numerical vector with efficiency scores.
-MAFS_WAM <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk, weights) {
+AAFS_WAM <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk, weights) {
 
   # Range for RAM measures
   if (weights == "RAM") {
@@ -345,14 +345,16 @@ MAFS_WAM <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk, weights) {
   return(scores)
 }
 
-#' @title Efficiency Scores computed through a Multivariate Adaptive Frontier Splines model.
+#' @title Efficiency Scores computed through a Additive Adaptive Frontier Splines model.
 #'
-#' @description This function computes the efficiency scores for each DMU through a Multivariate Adaptive Frontier Splines model.
+#' @description This function computes the efficiency scores for each DMU through a Additive Adaptive Frontier Splines model.
 #'
 #' @param data \code{data.frame} or \code{matrix} containing the variables in the model.
 #' @param x Column input indexes in \code{data}.
 #' @param y Column output indexes in \code{data}.
-#' @param object A \code{MAFS} object.
+#' @param object An \code{AAFS} object.
+#' @param Gdepth Number of partitions into which the data is divided (in each dimension of \code{x}) to create the data sample to perform DEA.
+#' @param ModelPred Model to predict the virtual data.
 #' @param scores_model Mathematical programming model to calculate scores.
 #' \itemize{
 #' \item{\code{BCC.OUT}} BCC model. Output-oriented. Efficiency level at 1.
@@ -373,21 +375,21 @@ MAFS_WAM <- function(dmu, xmat, ymat, aknot, yknot, nX, nY, nk, weights) {
 #'
 #' @export
 #'
-#' @return A \code{data.frame} with the efficiency scores computed through a Multivariate Adaptive Frontier Splines model.
-MAFS.scores <- function(data, x, y, object,
+#' @return A \code{data.frame} with the efficiency scores computed through a Additive Adaptive Frontier Splines model.
+AAFS.scores <- function(data, x, y, object, Gdepth, ModelPred,
                         scores_model, digits = 3, DEA = TRUE,
                         print.table = FALSE, na.rm = TRUE) {
 
   # Possible errors
-  if (!is(object, "MAFS")) {
-    stop(paste(deparse(substitute(object)), "must be a MAFS object."))
+  if (!is(object, "AAFS")) {
+    stop(paste(deparse(substitute(object)), "must be an AAFS object."))
 
   } else if (digits < 0) {
     stop(paste('digits =', digits, 'must be greater than 0.'))
 
   } else if (!scores_model %in% c("BCC.OUT", "BCC.INP", "DDF", "RSL.OUT", "RSL.INP",
                                   "WAM.MIP","WAM.RAM")) {
-    stop(paste(scores_model, "is not available. Please, check help(\"MAFS.scores\")"))
+    stop(paste(scores_model, "is not available. Please, check help(\"AAFS.scores\")"))
   }
 
   data <- preProcess(data, x, y, na.rm = na.rm)
@@ -408,80 +410,91 @@ MAFS.scores <- function(data, x, y, object,
   nX   <- length(x)
   nY   <- length(y)
 
-  aknots <- object[["Efficiency"]][["aknots"]]
-  yknots <- object[["Efficiency"]][["yknots"]]
-  nk     <- nrow(aknots)
+  # Data for Efficiency Models: from forward model
+  knots.list <- vector("list", length(x))
+
+  for (v in 1:length(x)) {
+    knots.list[[v]] <- seq(min(data[, v]), max(data[, v]), length.out = Gdepth)
+  }
+
+  aknots <- expand.grid(knots.list)
+  names(aknots) <- colnames(data)[x]
+
+  # Model prediction
+  yknots <- predict(object, aknots, x, ModelPred)
+
+  nk <- nrow(aknots)
 
   if (scores_model == "BCC.OUT") {
-    scores <- MAFS_BCC.OUT(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
-    model  <- "MAFS_BCC.OUT"
+    scores <- AAFS_BCC.OUT(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
+    model  <- "AAFS_BCC.OUT"
 
     if (DEA == TRUE) {
-      DEA.scores <- MAFS_BCC.OUT(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
+      DEA.scores <- AAFS_BCC.OUT(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
       DEA.model  <- "DEA_BCC.OUT"
     }
 
   } else if (scores_model == "BCC.INP"){
-    scores <- MAFS_BCC.INP(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
-    model  <- "MAFS_BCC.INP"
+    scores <- AAFS_BCC.INP(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
+    model  <- "AAFS_BCC.INP"
 
     if (DEA == TRUE) {
-      DEA.scores <- MAFS_BCC.INP(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
+      DEA.scores <- AAFS_BCC.INP(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
       DEA.model  <- "DEA_BCC.INP"
     }
 
   } else if (scores_model == "DDF"){
-    scores <- MAFS_DDF(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
-    model  <- "MAFS_DDF"
+    scores <- AAFS_DDF(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
+    model  <- "AAFS_DDF"
 
     if (DEA == TRUE) {
-      DEA.scores <- MAFS_DDF(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
+      DEA.scores <- AAFS_DDF(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
       DEA.model  <- "DEA_DDF"
     }
 
   } else if (scores_model == "RSL.OUT"){
-    scores <- MAFS_RSL.OUT(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
-    model  <- "MAFS_RSL.OUT"
+    scores <- AAFS_RSL.OUT(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
+    model  <- "AAFS_RSL.OUT"
 
     if (DEA == TRUE) {
-      DEA.scores <- MAFS_RSL.OUT(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
+      DEA.scores <- AAFS_RSL.OUT(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
       DEA.model  <- "DEA_RSL.OUT"
     }
 
   } else if (scores_model == "RSL.INP"){
-    scores <- MAFS_RSL.INP(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
-    model  <- "MAFS_RSL.INP"
+    scores <- AAFS_RSL.INP(dmu, xmat, ymat, aknots, yknots, nX, nY, nk)
+    model  <- "AAFS_RSL.INP"
 
     if (DEA == TRUE) {
-      DEA.scores <- MAFS_RSL.INP(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
+      DEA.scores <- AAFS_RSL.INP(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu)
       DEA.model  <- "DEA_RSL.INP"
     }
 
   } else if (scores_model == "WAM.MIP"){
-    scores <- MAFS_WAM(dmu, xmat, ymat, aknots, yknots, nX, nY, nk, "MIP")
-    model  <- "MAFS_WAM.MIP"
+    scores <- AAFS_WAM(dmu, xmat, ymat, aknots, yknots, nX, nY, nk, "MIP")
+    model  <- "AAFS_WAM.MIP"
 
     if (DEA == TRUE) {
-      DEA.scores <- MAFS_WAM(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu, "MIP")
+      DEA.scores <- AAFS_WAM(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu, "MIP")
       DEA.model  <- "DEA_WAM.MIP"
     }
 
   } else if (scores_model == "WAM.RAM") {
-    scores <- MAFS_WAM(dmu, xmat, ymat, aknots, yknots, nX, nY, nk, "RAM")
-    model  <- "MAFS_WAM.RAM"
+    scores <- AAFS_WAM(dmu, xmat, ymat, aknots, yknots, nX, nY, nk, "RAM")
+    model  <- "FAAFS_WAM.RAM"
 
     if (FDH == TRUE){
-      DEA.scores <- MAFS_WAM(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu, "RAM")
+      DEA.scores <- AAFS_WAM(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu, "RAM")
       DEA.model <- "DEA_WAM.RAM"
     }
   }
 
-  scores           <- as.data.frame(scores)
-  names(scores)    <- model
+  scores <- as.data.frame(scores)
+  names(scores) <- model
   rownames(scores) <- row.names(data)
 
   descriptive <- scores %>%
-    summarise("Model"     = "MAFS",
+    summarise("Model"     = "AAFS",
               "Mean"      = mean(scores[, 1]),
               "Std. Dev." = sd(scores[, 1]),
               "Min"       = min(scores[, 1]),

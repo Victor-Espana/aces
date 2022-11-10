@@ -18,7 +18,7 @@ CreateBF(data, xi, knt, B, p)
 \item{p}{\code{integer}. Parent basis function index.}
 }
 \value{
-Matrix of basis function (\code{B}) updated with the new basis functions.
+Matrix of basis functions (\code{B}) updated with the new pair of basis functions.
 }
 \description{
 This function generates two new basis functions from a variable and a knot.

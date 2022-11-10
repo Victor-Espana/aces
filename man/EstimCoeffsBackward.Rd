@@ -2,7 +2,7 @@
 % Please edit documentation in R/BackwardAlgorithm.R
 \name{EstimCoeffsBackward}
 \alias{EstimCoeffsBackward}
-\title{Estimate Coefficients in Multivariate Adaptive Frontier Splines during Backward Procedure.}
+\title{Estimate Coefficients in Additive Adaptive Frontier Splines during Backward Procedure.}
 \usage{
 EstimCoeffsBackward(B, y, h, r)
 }

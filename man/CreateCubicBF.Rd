@@ -4,7 +4,7 @@
 \alias{CreateCubicBF}
 \title{Generate a new pair of Cubic Basis Functions}
 \usage{
-CreateCubicBF(data, xi, knt, B, side)
+CreateCubicBF(data, xi, knt, B, side, wl)
 }
 \arguments{
 \item{data}{\code{data.frame} or \code{matrix} containing the variables in the model.}
@@ -16,10 +16,12 @@ CreateCubicBF(data, xi, knt, B, side)
 \item{B}{Matrix of basis functions.}
 
 \item{side}{Side of the basis function.}
+
+\item{wl}{The distance between the central knot and a side knot is at most \code{wl} times the distance between that central knot and the other side knot. It must be between 1 and 2.}
 }
 \value{
 Matrix of basis functions updated with the new basis functions.
 }
 \description{
-This function generates two new cubic basis functions from a variable and a knot previously created during MAFS algorithm.
+This function generates two new cubic basis functions from a variable and a knot previously created during AAFS algorithm.
 }

@@ -1,16 +1,16 @@
-#' @title Model Prediction for Multivariate Adaptive Frontier Splines.
+#' @title Model Prediction for Additive Adaptive Frontier Splines.
 #'
-#' @description This function predicts the expected output by a \code{MAFS} object.
+#' @description This function predicts the expected output by a \code{AAFS} object.
 #'
-#' @param object A \code{MAFS} object.
+#' @param object A \code{AAFS} object.
 #' @param newdata \code{data.frame}. Set of input variables to predict on.
 #' @param x Inputs index.
-#' @param class Model for prediction. \code{1} for MAFS before pruning, \code{2} for MAFS, \code{3} for Smooth MAFS (quintic version) and \code{4} for Smooth MAFS (cubic version).
+#' @param class Model for prediction. \code{1} for AAFS before pruning, \code{2} for AAFS, \code{3} for CSAAFS (cubic version) and \code{4} for QSAAFS (quintic version) and .
 #'
 #' @return \code{data.frame} with the predicted values.
 #'
 #' @export
-predict.MAFS <- function(object, newdata, x, class = 2) {
+predict.AAFS <- function(object, newdata, x, class = 2) {
 
   train_names <- object[["data"]][["input_names"]]
    test_names <- colnames(newdata)[x]
@@ -28,7 +28,7 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
   B <- matrix(rep(1, N), nrow = N)
 
   if (class == 1) {
-    model <- object[["Forward.MAFS"]]
+    model <- object[["Forward.AAFS"]]
     # Always in pairs
     knots <- model[["knots"]]
 
@@ -46,7 +46,7 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
     }
 
   } else if (class == 2) {
-    model <- object[["MAFS"]]
+    model <- object[["AAFS"]]
     knots <- model[["knots"]]
 
     if (nrow(knots) == 0) {
@@ -73,30 +73,27 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
       }
     }
 
-  } else if (class == 3){
+  } else if (class == 4){
 
-    model <- object[["QSmooth.MAFS"]]
-    knots <- model[["knots"]]
+    model <- object[["QSAAFS"]]
+    knots <- model[["Qknots"]]
 
-    if (nrow(knots) == 0) {
-      # Only possible in Smooth MAFS (from backward)
+    if (is.null(knots)) {
+      # Only possible in Smooth AAFS (from backward)
       B <- B
 
     } else {
-      # Satus
       for (st in c("paired", "unpaired")) {
         # Variable
-        for (i in 1:length(model[["Qknots"]])) {
+        for (i in 1:length(knots)) {
+          # This variables does not expand the data
+          if (is.null(knots[[i]])) next
+          for (j in 1:length(knots[[i]])) {
 
-          # This variables does not split the data
-          if (is.null(model[["Qknots"]][[i]])) next
-
-          for (j in 1:length(model[["Qknots"]][[i]])) {
-
-            if (model[["Qknots"]][[i]][[j]][["status"]] != st) next
+            if (knots[[i]][[j]][["status"]] != st) next
 
             # Quintic Knot
-            Qt <- model[["Qknots"]][[i]][[j]][["t"]]
+            Qt <- knots[[i]][[j]][["t"]]
 
             t0 <- Qt[1] # t-
             t1 <- Qt[2] # t
@@ -114,11 +111,8 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
 
             gamma1 <- gamma2 <- (3 * d1 - 3 * d2) / d ^ 5
 
-            # Sides of that knot
-            side <- knots[knots[, "t"] == t1, "side"]
-
             # Both or right
-            if (length(side) == 2 || side == "R") {
+            if (st == "paired") {
 
               term1 <- alpha1 * (newdata[, i] - t0) ^ 3
               term2 <- beta1  * (newdata[, i] - t0) ^ 4
@@ -130,11 +124,12 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
                            (ifelse((newdata[, i] > t0) & (newdata[, i] < t2),
                                    term1 + term2 + term3,
                                    newdata[, i] - t1)))
+
               B <- cbind(B, Q1)
             }
 
             # Both or left
-            if (length(side) == 2 || side == "L") {
+            if (st == "paired" | st == "unpaired") {
 
               term1 <- alpha2 * (newdata[, i] - t2) ^ 3
               term2 <- beta2  * (newdata[, i] - t2) ^ 4
@@ -154,28 +149,25 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
     }
   } else {
 
-    model <- object[["CSmooth.MAFS"]]
-    knots <- model[["knots"]]
+    model <- object[["CSAAFS"]]
+    knots <- model[["Cknots"]]
 
-    if (nrow(knots) == 0) {
-      # Only possible in Smooth MAFS (from backward)
+    if (is.null(knots)) {
+      # Only possible in Smooth AAFS (from backward)
       B <- B
 
     } else {
-      # Satus
       for (st in c("paired", "unpaired")) {
         # Variable
-        for (i in 1:length(model[["Cknots"]])) {
+        for (i in 1:length(knots)) {
+          # This variables does not expand the data
+          if (is.null(knots[[i]])) next
+          for (j in 1:length(knots[[i]])) {
 
-          # This variables does not split the data
-          if (is.null(model[["Cknots"]][[i]])) next
-
-          for (j in 1:length(model[["Cknots"]][[i]])) {
-
-            if (model[["Cknots"]][[i]][[j]][["status"]] != st) next
+            if (knots[[i]][[j]][["status"]] != st) next
 
             # Cubic Knot
-            Ct <- model[["Cknots"]][[i]][[j]][["t"]]
+            Ct <- knots[[i]][[j]][["t"]]
 
             t0 <- Ct[1] # t-
             t1 <- Ct[2] # t
@@ -190,11 +182,8 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
             p2 <- (2 * d - e) / (- e - d) ^ 2
             r2 <- (e - d) / (- e - d) ^ 3
 
-            # Sides of that knot
-            side <- knots[knots[, "t"] == t1, "side"]
-
             # Both or right
-            if (length(side) == 2 || side == "R") {
+            if (st == "paired") {
 
               term1 <- p1 * (newdata[, i] - t0) ^ 2
               term2 <- r1 * (newdata[, i] - t0) ^ 3
@@ -211,7 +200,7 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
             }
 
             # Both or left
-            if (length(side) == 2 || side == "L") {
+            if (st == "paired" | st == "unpaired") {
 
               term1 <- p2 * (newdata[, i] - t2) ^ 2
               term2 <- r2 * (newdata[, i] - t2) ^ 3
@@ -235,7 +224,7 @@ predict.MAFS <- function(object, newdata, x, class = 2) {
   y_hat <- matrix(NA, nrow = N, ncol = length(y))
 
   for (out in 1:length(y)) {
-    y_hat[, out] <- B %*% model[["alpha"]][, out]
+    y_hat[, out] <- pmax(0, B %*% model[["coefs"]][, out])
   }
 
   predictions <- as.data.frame(y_hat)

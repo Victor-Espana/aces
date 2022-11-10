@@ -88,7 +88,7 @@ Y1.sim <- function(N, nX) {
 #' @return \code{data.frame} with the simulated data.
 #'
 #' @export
-X2Y2.sim <- function(N, border, noise = NULL) {
+X2Y2.sim <- function(N, border, noise = FALSE) {
   nX <- 2
   nY <- 2
 
@@ -125,7 +125,7 @@ X2Y2.sim <- function(N, border, noise = NULL) {
     N_sample    <- length(index)
     half_normal <- rnorm(N_sample, 0, 0.3 ** (1 / 2)) %>% abs() %>% exp()
 
-    if (!is.null(noise)) {
+    if (noise) {
       normal1 <- rnorm(N_sample, 0, 0.01 ** (1 / 2)) %>% exp()
       normal2 <- rnorm(N_sample, 0, 0.01 ** (1 / 2)) %>% exp()
 

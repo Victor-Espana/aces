@@ -2,16 +2,16 @@
 % Please edit documentation in R/ForwardAlgorithm.R
 \name{setKnots}
 \alias{setKnots}
-\title{Create the set of knots}
+\title{Create the set of eligible knots}
 \usage{
-setKnots(data, nX, xi, L, Le, knots.list, bf, knotsGrid, linpreds)
+setKnots(data, nX, xi, L, Le, knots.list, bf, knotsGrid)
 }
 \arguments{
-\item{data}{data \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{\code{data.frame} or \code{matrix} containing the variables in the model.}
 
 \item{nX}{\code{integer}. Number of inputs.}
 
-\item{xi}{\code{integer}. Index of the variable that creates the basis function.}
+\item{xi}{\code{integer}. Index of the variable that creates the new pair of basis functions.}
 
 \item{L}{Minimum number of observations between two adjacent knots.}
 
@@ -21,13 +21,11 @@ setKnots(data, nX, xi, L, Le, knots.list, bf, knotsGrid, linpreds)
 
 \item{bf}{\code{list}. Basis function for the expansion of the model.}
 
-\item{knotsGrid}{Grid of virtual knots to perform MAFS. Can be set to \code{NULL}.}
-
-\item{linpreds}{\code{logical}. If \code{TRUE}, predictors can enter linearly.}
+\item{knotsGrid}{Grid of virtual knots to perform AAFS.}
 }
 \value{
 Numeric vector with the knots values.
 }
 \description{
-This function generates the vector of knots to create a new pair of basis functions.
+This function generates a vector of knots to create a new pair of basis functions.
 }
