@@ -92,6 +92,8 @@ aces <- function (
     d = 2, wc = seq(1, 2, length.out = 5), wq = seq(8 / 7, 1.5, length.out = 5)
     ) {
 
+  print("prueba")
+
   # Possible error messages:
   display_errors (
     data = data,
