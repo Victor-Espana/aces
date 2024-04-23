@@ -2,29 +2,27 @@
 % Please edit documentation in R/ACES.R
 \name{aces}
 \alias{aces}
-\title{Fit Adaptive Constrained Enveloping Splines (ACES) model}
+\title{Fit an Adaptive Constrained Enveloping Splines (ACES) model}
 \usage{
 aces(
   data,
   x,
   y,
-  y_type = "individual",
-  addi_x = NULL,
-  degree = 1,
+  y_type = "ind",
+  model_type = "env",
+  error_type = "add",
+  RF = list(apply = FALSE, sample = nrow(data), models = 100, nvars =
+    ceiling(length(x)/3), oob_red = 0.001),
+  mul_BF = list(degree = 1, hd_cost = 0.05),
   metric = "mse",
-  turbo = Inf,
-  monotonicity = TRUE,
-  concavity = TRUE,
-  x0_y0 = FALSE,
+  shape = list(mon = TRUE, con = TRUE, ori = FALSE),
   nterms = 50,
   err_red = 0.01,
-  hd_cost = 0.5,
-  minspan = 1,
-  endspan = 1,
-  knots_grid = -1,
-  d = 2,
-  wc = seq(1, 2, length.out = 5),
-  wq = seq(8/7, 1.5, length.out = 5)
+  kn_grid = -1,
+  minspan = -1,
+  endspan = -1,
+  kn_penalty = 2,
+  smoothing = list(wc = seq(1, 2, length.out = 5), wq = seq(8/7, 1.5, length.out = 5))
 )
 }
 \arguments{
@@ -34,94 +32,107 @@ aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{y_type}{Determines the prediction approach for \code{y}:
+\item{y_type}{A \code{character} string that determines the prediction approach for \code{y}. It can be either:
 \itemize{
-\item{\code{"individual"}} to predict one output at a time and use the rest of outputs as additional inputs (netputs).
+\item{\code{"ind"}} to predict one output at a time and use the rest of outputs as additional inputs (netputs).
 \item{\code{"all"}} to predict all the outputs at the same time with the original set of inputs.
 }}
 
-\item{addi_x}{Column indexes of additional covariables in \code{data}.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate. It can be either:
+\itemize{
+\item{\code{"env"}}: The model fits an enveloping production frontier.
+\item{\code{"sto"}}: The model fits a stochastic production frontier.
+}}
 
-\item{degree}{A \code{list} with the input indexes for interaction of variables or a \code{numeric} value that determines the maximum degree of interaction between variables. Basis functions products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.}
+\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model. It can be either:
+\itemize{
+\item{\code{"add"}}: The model assumes an additive error structure.
+\item{\code{"mul"}}: The model assumes a multiplicative error structure.
+}}
 
-\item{metric}{The lack-of-fit criterion to evaluate the model performance:
+\item{RF}{A \code{list} indicating if a bootstrap aggregation methodology as in Random Forest must be used with the following items:
+\itemize{
+\item{\code{apply}}: A \code{logical} indicating if a bagging methodology as in Random Forest must be used.
+\item{\code{sample}}: A \code{numeric} indicating the sample size for bagging.
+\item{\code{models}}: A \code{numeric} indicating the number of models for bagging.
+\item{\code{nvars}}: An \code{integer} indicating the number of variables randomly chosen at each split.
+\item{\code{oob_red}}: A \code{numeric} value specifying the minimum improvement ratio in the moving average of the out-of-bag error over a period of 10 compared to the previous period for the addition of a new model to the ensamble. Default is \code{0.001}.
+}}
+
+\item{mul_BF}{A \code{list} specifying the maximum degree of the BFs and the cost of introducing a multivariate BF:
+\itemize{
+\item{\code{degree}}: Either a \code{list} with the input indexes for interaction of variables or a \code{numeric} value that determines the maximum degree of interaction between variables. Basis functions products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
+\item{\code{hd_cost}}: A \code{numeric} value specifying the minimum percentage of improvement over the best 1-degree basis function to incorporate a higher degree basis function. Default is \code{0.20}.
+}}
+
+\item{metric}{A \code{list} specifying the lack-of-fit criterion to evaluate the model performance.
 \itemize{
 \item{\code{"mae"}}: Mean Absolute Error.
 \item{\code{"mape"}}: Mean Absolute Percentage Error.
 \item{\code{"mse"}}: Mean Squared Error.
+\item{\code{"msle"}}: Mean Squared Logarithmic Error.
 \item{\code{"rmse"}}: Root Mean Squared Error.
 \item{\code{"nrmse1"}}: Normalized Root Mean Squared Error (using mean).
 \item{\code{"nrmse2"}}: Normalized Root Mean Squared Error (using range).
-\item{\code{"wape"}}: Weighted Absolute Percentage Error.
 }}
 
-\item{turbo}{Hyperparameter aimed at selecting the DMU near the DEA-VRS frontier.}
-
-\item{monotonicity}{\code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{x0_y0}{\code{logical} indicating if f(0) = 0.}
-
-\item{nterms}{Maximum number of terms created before pruning. Default is \code{50}.}
-
-\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.}
-
-\item{hd_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
-
-\item{minspan}{Minimum number of observations between two adjacent knots.
-\itemize {
-\item{\code{minspan = -2}}: computed as in \insertCite{zhang1994;textual}{aces}.
-\item{\code{minspan = -1}}: computed as in \insertCite{friedman1991;textual}{aces}.
-\item{\code{minspan = +m}}
+\item{shape}{A \code{list} with the following items:
+\itemize{
+\item{\code{mon}}: A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator. If \code{TRUE}, the estimator is constrained to be non-decreasing.
+\item{\code{con}}: A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator. If \code{TRUE}, the estimator is constrained to be concave.
+\item{\code{ori}}: A \code{logical} value indicating whether the estimator should satisfy f(0) = 0. If \code{TRUE}, the estimator is constrained to pass through the origin.
 }}
 
-\item{endspan}{Minimum number of observations before the first and after the final knot.
-\itemize {
-\item{\code{endspan = -2}} Computed as in \insertCite{zhang1994;textual}{aces}.
-\item{\code{endspan = -1}} Computed as in \insertCite{friedman1991;textual}{aces}.
-\item{\code{endspan = +m}}
+\item{nterms}{A positive \code{integer} specifying the maximum number of terms created before pruning. Default is \code{50}.}
+
+\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.}
+
+\item{kn_grid}{Either a \code{-1} (default) the use the original approach of \insertCite{friedman1991;textual}{aces} based on the observed data, or a a \code{list} with the grid of knots to perform ACES. Each element of the \code{list} contains a vector with the knots of one variable (e.g., the second element of the list contains the knot values of the second variable and so on).}
+
+\item{minspan}{A \code{numeric} value specifying the minimum number of observations between two adjacent knots. It can be one of the following:
+\itemize{
+\item{\code{minspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
+\item{\code{minspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
+\item{\code{minspan = +m}}: A user-specified positive integer.
 }}
 
-\item{knots_grid}{Design of the grid of knots. If \code{knotsGrid == -1} (default), the original approach of \insertCite{friedman1991;textual}{aces} based on the observed data is used. Alternatively, a \code{list} with the grid of knots to perform ACES can be entered. Each element of the \code{list} contains a vector with the knots of one variable (e.g., the second element of the list contains the knot values of the second variable and so on).}
+\item{endspan}{A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. It can be one of the following:
+\itemize{
+\item{\code{endspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
+\item{\code{endspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
+\item{\code{endspan = +m}}: A user-specified positive integer.
+}}
 
-\item{d}{Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.}
+\item{kn_penalty}{A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.}
 
-\item{wc}{For the cubic smoothing procedure \insertCite{friedman1991}{aces}. Let `d` be the distance between the central knot and the left side knot, and let be `e` be the distance between the central knot and the right side knot. If the condition `1 < d / e < 2` is not satisfied, then `e = wc * d`. It must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduce the lack-of-fit criterion is selected.}
-
-\item{wq}{For the quintic smoothing procedure \insertCite{chen1999}{aces}. Let `d` be the distance between the central knot and the left side knot, and let be `e` be the distance between the central knot and the right side knot. If the condition `8/7 < e / d < 1.5` is not satisfied, then `d = wq * e`. It must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduce the lack-of-fit criterion is selected.}
+\item{smoothing}{A \code{list} specifying conditions for the smoothing procedure:
+\itemize{
+\item{\code{wc}}:  A \code{numeric} value used for the cubic smoothing procedure \insertCite{friedman1991}{aces}. This parameter adjusts the distance `e` between the central knot and the right side knot based on the distance `d` between the central knot and the left side knot. If the condition `1 < d / e <  2` is nos satisfied, then `e` is adjusted to be `wc * d`. This parameter must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected..
+\item{\code{wq}}: A \code{numeric} value used for the quintic smoothing procedure \insertCite{chen1999}{aces}. This parameter adjusts the distance `d` between the central knot and the left side knot based on the distance `e` between the central knot and the right side knot. If the condition `8/7 < e / d <  1.5` is nos satisfied, then `d` is adjusted to be `wq * e`. This parameter must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
+}}
 }
 \value{
 An \code{aces} object.
 }
 \description{
-This function estimates a production frontier satisfying some classical production theory axioms, such as monotonicity and concavity, which is based upon the adaptation of the machine learning technique known as Multivariate Adaptive Regression Splines (MARS) developed by \insertCite{friedman1991;textual}{aces}.
+This function estimates a production frontier satisfying some classical production theory axioms, such as monotonicity and concavity. Both stochastic (as StoNED) and envelopment (as DEA) versions are available. These estimations are based upon the adaptation of the machine learning technique known as Multivariate Adaptive Regression Splines (MARS) developed by \insertCite{friedman1991;textual}{aces}. An adaptation of Random Forest \insertCite{breiman2001}{aces} is also included. For details, see \insertCite{espana2024;textual}{aces}
 }
 \details{
-Arguments for the forward algorithm:
-\itemize{
-\item{\code{nterms}}
-\item{\code{err_red}}
-\item{\code{minspan}}
-\item{\code{endspan}}
-\item{\code{knotsGrid}}
-}
+This function generates a production frontier satisfying that adheres to certain classical production theory axioms, such as monotonicity and concavity. Users can be choose between enveloping or stochastic versions of the production functions. The algorithm comprises two procedures:
 
-Arguments for the backward algorithm:
-\itemize{
-\item{\code{d}}
-}
+1. A forward selection algorithm that creates a ser of linear basis functions, which may initially overfit the training data.
 
-Arguments for the smoothing procedure:
-\itemize{
-\item{\code{wc}}
-\item{\code{wq}}
-}
+2. A backward elimination algorithm that remove basis that do not significantly contribute to the model's performance.
+
+3. Two smoothing procedures are available: one using cubic functions and another using quintic functions.
+
+If the stochastic version is selected, the frontier's shape is estimated without imposing enveloping constraints on the observations. In the second stage, the expected value of inefficiency is estimated using the residuals obtained from the first stage. This procedure is inspired by \insertCite{kuosmanen2012;textual}{aces}.
 }
 \references{
-\insertRef{zhang1994}{aces} \cr
-\cr
-\insertRef{friedman1991}{aces} \cr
-\cr
-\insertRef{chen1999}{aces}
+\insertRef{espana2024}{aces} \cr \cr
+\insertRef{friedman1991}{aces} \cr \cr
+\insertRef{breiman2001}{aces} \cr \cr
+\insertRef{zhang1994}{aces} \cr \cr
+\insertRef{chen1999}{aces} \cr \cr
+\insertRef{kuosmanen2012}{aces}
 }

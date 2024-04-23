@@ -10,14 +10,16 @@ aces_object(
   y,
   z,
   y_type,
-  addi_x,
+  model_type,
+  error_type,
   degree,
   metric,
   monotonicity,
   concavity,
-  x0_y0,
+  origin,
   nterms,
   err_red,
+  hd_cost,
   minspan,
   endspan,
   kn_grid,
@@ -31,7 +33,7 @@ aces_object(
 )
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
@@ -39,29 +41,33 @@ aces_object(
 
 \item{z}{Column indexes of netput variables in \code{data} (outputs evaluated as inputs).}
 
-\item{y_type}{Determines the prediction approach for \code{y}: whether it should be done all at once or one at a time.}
+\item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
 
-\item{addi_x}{Column indexes of additional covariables in \code{data}.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+
+\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model.}
 
 \item{degree}{Maximum degree of interaction between variables.}
 
-\item{metric}{The lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{monotonicity}{\code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
 
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
 
-\item{x0_y0}{\code{logical} indicating if f(0) = 0.}
+\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
 
-\item{nterms}{Maximum number of terms created by the forward algorithm (before pruning).}
+\item{nterms}{Maximum number of terms created before pruning.}
 
-\item{err_red}{Minimum reduced error rate for the addition of two new basis functions.}
+\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
+
+\item{hd_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
 
 \item{minspan}{Minimum number of observations between two adjacent knots.}
 
 \item{endspan}{Minimum number of observations before the first and after the final knot.}
 
-\item{kn_grid}{Grid of knots to perform ACES.}
+\item{kn_grid}{Design of the grid of knots to perform ACES}
 
 \item{d}{Generalized Cross Validation (GCV) penalty per knot.}
 
@@ -69,7 +75,7 @@ aces_object(
 
 \item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure \insertCite{chen1999}{aces}.}
 
-\item{aces_forward}{A \code{list} containing the forward Adaptive Constrained Enveloping Splines model.}
+\item{aces_forward}{A \code{list} containing the forward step of the Adaptive Constrained Enveloping Splines model.}
 
 \item{aces}{A \code{list} containing the Adaptive Constrained Enveloping Splines model.}
 
@@ -84,7 +90,6 @@ An \code{aces} object.
 This function saves information about the Adaptive Constrained Enveloping Splines (ACES) model.
 }
 \references{
-\insertRef{friedman1991}{aces} \cr
-\cr
+\insertRef{friedman1991}{aces} \cr \cr
 \insertRef{chen1999}{aces}
 }

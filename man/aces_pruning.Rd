@@ -6,35 +6,41 @@
 \usage{
 aces_pruning(
   data,
-  xi_degree,
   y,
+  xi_degree,
+  dea_eff,
+  model_type,
   metric,
-  monotonicity,
-  concavity,
-  x0_y0,
   forward_model,
   Bp_list,
+  monotonicity,
+  concavity,
+  origin,
   d
 )
 }
 \arguments{
 \item{data}{A \code{matrix} containing the variables in the model.}
 
-\item{xi_degree}{Matrix indicating the degree of each input variable.}
-
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{metric}{Lack-of-fit criterion to evaluate the model performance.}
+\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
-\item{monotonicity}{\code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+\item{dea_eff}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
 
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
 
-\item{x0_y0}{\code{logical} indicating if f(0) = 0.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{forward_model}{\code{list} containing the Forward ACES model.}
+\item{forward_model}{A \code{list} containing the information relative to the forward step of the ACES model.}
 
-\item{Bp_list}{A \code{list} containing the set of basis functions by input.}
+\item{Bp_list}{A \code{list} containing the current set of basis functions for each input variable.}
+
+\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+
+\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
+
+\item{origin}{A \code{list} containing the current set of selected knots for each input variable.}
 
 \item{d}{An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.}
 }
@@ -42,5 +48,5 @@ aces_pruning(
 A \code{list} containing a portfolio of Adaptive Constrained Enveloping Splines sub-models.
 }
 \description{
-This function implements the Backward Algorithm in Adaptive Constrained Enveloping Splines to create a portfolio of sub-models by iteratively removing basis functions one by one.
+This function implements the Backward Algorithm in Adaptive Constrained Enveloping Splines. It creates a portfolio of sub-models by iteratively removing basis functions one by one.
 }

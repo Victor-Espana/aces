@@ -2,7 +2,7 @@
 % Please edit documentation in R/ACES.R
 \name{aces_algorithm}
 \alias{aces_algorithm}
-\title{Algorithm of Adaptive Constrained Enveloping Splines (ACES)}
+\title{Algorithm of Adaptive Constrained Enveloping Splines (ACES).}
 \usage{
 aces_algorithm(
   data,
@@ -10,18 +10,17 @@ aces_algorithm(
   y,
   z,
   y_type,
-  addi_x,
+  model_type,
+  error_type,
   degree,
   metric,
-  monotonicity,
-  concavity,
-  x0_y0,
+  shape,
   nterms,
   err_red,
   hd_cost,
   minspan,
   endspan,
-  knots_grid,
+  kn_grid,
   d,
   wc,
   wq
@@ -36,33 +35,31 @@ aces_algorithm(
 
 \item{z}{Column indexes of netput variables in \code{data} (outputs evaluated as inputs). These variables must be considered as output when computing predictions or efficiency scores.}
 
-\item{y_type}{Output prediction strategy: whether it should be done all at once or one at a time.}
+\item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
 
-\item{addi_x}{Column indexes of additional covariables in \code{data}.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+
+\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model.}
 
 \item{degree}{Maximum degree of interaction between variables.}
 
-\item{metric}{The lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{monotonicity}{\code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{nterms}{Maximum number of terms created before pruning.}
 
-\item{x0_y0}{\code{logical} indicating if f(0) = 0.}
-
-\item{nterms}{For the Forward algorithm. Maximum number of terms created before pruning.}
-
-\item{err_red}{For the Forward algorithm. Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
+\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
 
 \item{hd_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
 
-\item{minspan}{For the Forward algorithm. Minimum number of observations between two adjacent knots.}
+\item{minspan}{Minimum number of observations between two adjacent knots.}
 
-\item{endspan}{For the Forward algorithm. Minimum number of observations before the first and after the final knot.}
+\item{endspan}{Minimum number of observations before the first and after the final knot.}
 
-\item{knots_grid}{For the Forward algorithm. Design of the grid of knots.}
+\item{kn_grid}{Design of the grid of knots to perform ACES}
 
-\item{d}{For the Backward algorithm. Generalized Cross Validation (GCV) penalty per knot.}
+\item{d}{Generalized Cross Validation (GCV) penalty per knot.}
 
 \item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure \insertCite{friedman1991}{aces}.}
 
@@ -72,12 +69,10 @@ aces_algorithm(
 An \code{aces} object.
 }
 \description{
-This function estimates a production frontier satisfying some classical production theory axioms, such as monotonicity and concavity, which is based upon the adaptation of the machine learning technique known as Multivariate Adaptive Regression Splines (MARS) developed by \insertCite{friedman1991;textual}{aces}.
+This function estimates a production frontier satisfying some classical production theory axioms, such as monotonicity and concavity. Both stochastic (as StoNED) and envelopment (as DEA) versions are available. These estimations are based upon the adaptation of the machine learning technique known as Multivariate Adaptive Regression Splines (MARS) developed by \insertCite{friedman1991;textual}{aces}.
 }
 \references{
-\insertRef{zhang1994}{aces} \cr
-\cr
-\insertRef{friedman1991}{aces} \cr
-\cr
+\insertRef{zhang1994}{aces} \cr \cr
+\insertRef{friedman1991}{aces} \cr \cr
 \insertRef{chen1999}{aces}
 }

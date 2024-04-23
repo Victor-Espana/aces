@@ -9,7 +9,6 @@ aces_scores(
   eval_data,
   x,
   y,
-  addi_x,
   object,
   method,
   proximity = ifelse(length(y) == 1, Inf, 0.05),
@@ -30,11 +29,9 @@ aces_scores(
 
 \item{y}{Column indexes of output and netput variables in \code{tech_data} and \code{eval_data}.}
 
-\item{addi_x}{Column indexes of additional covariables in \code{data}.}
-
 \item{object}{An \code{aces} object.}
 
-\item{method}{Model prediction used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data} .
+\item{method}{Model prediction used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
 \itemize{
 \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
 \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
