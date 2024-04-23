@@ -4,25 +4,25 @@
 \alias{compute_gcv}
 \title{Compute Generalized Cross-Validation (GCV)}
 \usage{
-compute_gcv(y_obs, y_hat, metric, B, d, knots, xi_degree)
+compute_gcv(y_obs, y_hat, metric, n_bf, d, knots, xi_degree)
 }
 \arguments{
-\item{y_obs}{Vector of observed data.}
+\item{y_obs}{A \code{numeric} vector of observed data.}
 
-\item{y_hat}{Vector of predicted values.}
+\item{y_hat}{A \code{numeric} vector of predicted values.}
 
-\item{metric}{Lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{B}{Matrix of basis functions.}
+\item{n_bf}{A \code{integer} specifying the number of basis functions in the model.}
 
-\item{d}{Generalized Cross Validation (GCV) penalty per knot.}
+\item{d}{A \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot.}
 
-\item{knots}{\code{list} with the set of knots.}
+\item{knots}{A \code{list} specifying the set of knots.}
 
-\item{xi_degree}{Matrix indicating the degree of each input variable.}
+\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 }
 \value{
-The Generalized Cross-Validation value.
+The Generalized Cross-Validation (GCV) value.
 }
 \description{
 This function computes the generalized cross-validation for the Backward Algorithm in Adaptive Constrained Enveloping Splines.

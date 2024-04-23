@@ -7,18 +7,20 @@
 add_basis_function(
   data,
   x,
-  xi_degree,
   y,
+  xi_degree,
+  dea_eff,
+  model_type,
   metric,
+  forward_model,
+  Bp_list,
   monotonicity,
   concavity,
-  x0_y0,
-  forward_model,
+  origin,
   kn_list,
-  Bp_list,
+  kn_grid,
   L,
   Le,
-  kn_grid,
   err_min,
   hd_cost
 )
@@ -28,36 +30,40 @@ add_basis_function(
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
-\item{xi_degree}{Matrix indicating the degree of each input variable.}
-
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{metric}{Lack-of-fit criterion to evaluate the model performance.}
+\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
-\item{monotonicity}{\code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+\item{dea_eff}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
 
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
 
-\item{x0_y0}{\code{logical} indicating if f(0) = 0.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
 \item{forward_model}{A \code{list} containing the current set of basis functions (\code{BF_set}) and the B matrix (\code{B}).}
 
-\item{kn_list}{A \code{list} containing the current set of selected knots for each input variable.}
-
 \item{Bp_list}{A \code{list} containing the current set of basis functions for each input variable.}
 
-\item{L}{Minimum number of observations between two adjacent knots.}
+\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
 
-\item{Le}{Minimum number of observations before the first and after the final knot.}
+\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
 
-\item{kn_grid}{Grid of knots to perform ACES.}
+\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
 
-\item{err_min}{Minimum error obtained by the forward algorithm in the current iteration.}
+\item{kn_list}{A \code{list} containing the current set of selected knots for each input variable.}
 
-\item{hd_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
+\item{kn_grid}{A \code{list} with the grid of knots to perform ACES.}
+
+\item{L}{A \code{integer} value specifying the minimum number of observations between two adjacent knots.}
+
+\item{Le}{A \code{integer} value specifying the minimum number of observations before the first and after the final knot.}
+
+\item{err_min}{A \code{numeric} value specifying the minimum error obtained by the forward algorithm in the current iteration.}
+
+\item{hd_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
 }
 \value{
-An undated \code{list} containing the matrix of basis functions (\code{B}), an undated \code{list} with information of the basis functions (\code{BF_set}), an updated \code{list} of selected knots (\code{knots_list}) and the minimum error obtained (\code{err_min}).
+An updated \code{list} containing the matrix of basis functions (\code{B}), an updated \code{list} with information of the basis functions (\code{BF_set}), an updated \code{list} of selected knots (\code{knots_list}) and the minimum error obtained (\code{err_min}).
 }
 \description{
 This function adds the pair of basis functions that results in the largest reduction of the lack-of-fit criterion.

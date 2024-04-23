@@ -12,7 +12,7 @@ add_scenario_XnY1(N, scenario)
 \item{scenario}{\code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, check Table 2 of \insertCite{kuosmanen2010;textual}{aces}.}
 }
 \value{
-\code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
+A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
 }
 \description{
 This function is used to simulate a 1 output ~ nX inputs \code{data.frame} with an Additive Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
