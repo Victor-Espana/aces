@@ -1,53 +1,110 @@
 #' @title Add a New Pair of Basis Functions in Adaptive Constrained Enveloping Splines
 #'
-#' @description This function adds the pair of basis functions that results in the largest reduction of the lack-of-fit criterion.
+#' @description
 #'
-#' @param data A \code{matrix} containing the variables in the model.
-#' @param x Column indexes of input variables in \code{data}.
-#' @param xi_degree Matrix indicating the degree of each input variable.
-#' @param y Column indexes of output variables in \code{data}.
-#' @param metric Lack-of-fit criterion to evaluate the model performance.
-#' @param monotonicity \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#' @param concavity \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
-#' @param x0_y0 \code{logical} indicating if f(0) = 0.
-#' @param forward_model A \code{list} containing the current set of basis functions (\code{BF_set}) and the B matrix (\code{B}).
-#' @param kn_list A \code{list} containing the current set of selected knots for each input variable.
-#' @param Bp_list A \code{list} containing the current set of basis functions for each input variable.
-#' @param L Minimum number of observations between two adjacent knots.
-#' @param Le Minimum number of observations before the first and after the final knot.
-#' @param kn_grid Grid of knots to perform ACES.
-#' @param err_min Minimum error obtained by the forward algorithm in the current iteration.
-#' @param hd_cost Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.
+#' This function adds the pair of basis functions that results in the largest reduction of the lack-of-fit criterion.
 #'
-#' @return An undated \code{list} containing the matrix of basis functions (\code{B}), an undated \code{list} with information of the basis functions (\code{BF_set}), an updated \code{list} of selected knots (\code{knots_list}) and the minimum error obtained (\code{err_min}).
+#' @param data
+#' A \code{matrix} containing the variables in the model.
+#'
+#' @param x
+#' Column indexes of input variables in \code{data}.
+#'
+#' @param y
+#' Column indexes of output variables in \code{data}.
+#'
+#' @param xi_degree
+#' A \code{matrix} indicating the degree of each input variable.
+#'
+#' @param dea_eff
+#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#'
+#' @param model_type
+#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
+#'
+#' @param metric
+#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#'
+#' @param forward_model
+#' A \code{list} containing the current set of basis functions (\code{BF_set}) and the B matrix (\code{B}).
+#'
+#' @param Bp_list
+#' A \code{list} containing the current set of basis functions for each input variable.
+#'
+#' @param monotonicity
+#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
+#'
+#' @param concavity
+#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
+#'
+#' @param origin
+#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#'
+#' @param kn_list
+#' A \code{list} containing the current set of selected knots for each input variable.
+#'
+#' @param kn_grid
+#' A \code{list} with the grid of knots to perform ACES.
+#'
+#' @param L
+#' A \code{integer} value specifying the minimum number of observations between two adjacent knots.
+#'
+#' @param Le
+#' A \code{integer} value specifying the minimum number of observations before the first and after the final knot.
+#'
+#' @param err_min
+#' A \code{numeric} value specifying the minimum error obtained by the forward algorithm in the current iteration.
+#'
+#' @param hd_cost
+#' A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.
+#'
+#' @return
+#'
+#' An updated \code{list} containing the matrix of basis functions (\code{B}), an updated \code{list} with information of the basis functions (\code{BF_set}), an updated \code{list} of selected knots (\code{knots_list}) and the minimum error obtained (\code{err_min}).
 
 add_basis_function <- function (
-    data, x, xi_degree, y, metric, monotonicity, concavity, x0_y0, forward_model,
-    kn_list, Bp_list, L, Le, kn_grid, err_min, hd_cost
+    data,
+    x,
+    y,
+    xi_degree,
+    dea_eff,
+    model_type,
+    metric,
+    forward_model,
+    Bp_list,
+    monotonicity,
+    concavity,
+    origin,
+    kn_list,
+    kn_grid,
+    L,
+    Le,
+    err_min,
+    hd_cost
     ) {
 
-  # Samples in data
+  # sample size
   N <- nrow(data)
 
-  # Number of inputs / outputs as inputs
-  nX <- length(x)
+  # number of inputs / outputs as inputs
+  nX <- ncol(data) - length(y)
 
-  # Set of basis functions
+  # set of basis functions
   bf_set <- forward_model[["bf_set"]]
 
-  # Number of basis functions
+  # number of basis functions
   nbf <- length(bf_set)
 
-  # Matrix of basis functions
+  # matrix of basis functions
   B <- forward_model[["B"]]
 
-  # Signal of improvement
+  # signal to indicate improvement in the fitting
   improvement <- FALSE
 
-  # Basis function for the expansion: additive model (always 1)
+  # basis function for the expansion: it is always 1 in the additive model
   bf <- bf_set[[1]]
 
-  for (xi in 1:nX) {
+  for (xi in x) {
 
     # ================================ #
     # Create the set of eligible knots #
@@ -64,7 +121,7 @@ add_basis_function <- function (
       kn_grid = kn_grid
       )
 
-    # skip to the next step if there are no knots
+    # skip to the next step if there are not eligible knots
     if (is.null(knots)) next
 
     # shuffle the knots randomly
@@ -89,7 +146,7 @@ add_basis_function <- function (
       # Update Bp_list #
       # ============== #
 
-      # Number of paired basis functions for the input "xi"
+      # number of paired basis functions for the input "xi"
       nbf_xi <- length(Bp_list_aux[[xi]][["paired"]])
 
       # Add the 2 new basis functions to the Bp_list
@@ -101,7 +158,7 @@ add_basis_function <- function (
 
       Bp_list_aux[[xi]][["paired"]][[nbf_xi + 1]] <- new_bf
 
-      # Sort basis function by variable | side | knot
+      # sort basis function by variable | side | knot
       for (v in 1:nX) {
         for (side in c("paired", "right", "left")) {
           if (!is.null(Bp_list_aux[[v]][[side]])) {
@@ -111,7 +168,8 @@ add_basis_function <- function (
         }
       }
 
-      # Column indexes of the basis function in B matrix by variable (The intercept column is not considered)
+      # column indexes of the BF in B matrix by variable
+      # (intercept column is not considered)
       for (v in 1:nX) {
         Bp_xi <- 1
         for (side in c("paired", "right", "left")) {
@@ -158,16 +216,18 @@ add_basis_function <- function (
       # ===================== #
 
       coefs <- estimate_coefficients (
+        model_type = model_type,
         B = new_B,
-        y = data[, y, drop = F],
+        y_obs = data[, y, drop = F],
+        dea_eff = dea_eff,
         it_list = it_list,
         Bp_list = Bp_list_aux,
         monotonicity = monotonicity,
         concavity = concavity,
-        x0_y0 = x0_y0
+        origin = origin
         )
 
-      # Predictions
+      # predictions
       y_hat <- matrix(NA, nrow = N, ncol = length(y))
 
       for (out in 1:length(y)) {
@@ -188,8 +248,10 @@ add_basis_function <- function (
       nknots_xi <- sapply(kn_list, function(x) {
         if (is.null(x)) {
           return(0)
+
         } else {
           return(length(x))
+
           }
         }
       )
@@ -198,9 +260,9 @@ add_basis_function <- function (
         y_obs = data[, y, drop = F],
         y_hat = y_hat,
         metric = metric,
-        B = new_B,
+        n_bf = ncol(new_B),
         d = 1,
-        knots = sum(nknots_xi),
+        knots = sum(nknots_xi) + 1,
         xi_degree = NULL
       )
 
@@ -211,14 +273,19 @@ add_basis_function <- function (
       if (is.na(err_min[2]) || err_min[2] == 1) {
         if (xi_degree[2, xi] == 1 && err[1] < err_min[1]) {
           add <- TRUE
+
         } else if (xi_degree[2, xi] > 1 && (err[1] - err_min[1]) / err_min[1] < - hd_cost) {
           add <- TRUE
+
         } else {
           add <- FALSE
+
         }
+
       } else {
         if (err[1] < err_min[1]) {
           add <- TRUE
+
         } else {
           add <- FALSE
         }
@@ -226,19 +293,22 @@ add_basis_function <- function (
 
       if (add) {
 
-        # Model has improved
+        # model has improved
         improvement <- TRUE
-        # Minimum error
+
+        # minimum error
         err_min <- err
-        # Best B matrix
+
+        # best B matrix
         best_B <- new_B
-        # Best Bp_list
+
+        # best Bp_list
         best_Bp_list <- Bp_list_aux
 
         # index
         tindex <- which(kn_grid[[xi]] == knots[i])
 
-        # New pair of basis functions
+        # new pair of basis functions
         bf1 <- bf2 <-  bf
 
         # id
@@ -259,11 +329,12 @@ add_basis_function <- function (
         # xi
         if (all(bf[['xi']] == - 1)) {
           bf1[['xi']] <- bf2[['xi']] <- c(xi)
+
         } else {
           bf1[['xi']] <- bf2[['xi']] <- c(bf[['xi']], xi)
         }
 
-        # t
+        # knot
         bf1[["t"]] <- bf2[["t"]] <- knots[i]
 
         # R
@@ -438,85 +509,4 @@ create_linear_basis <- function (
   bf2 <- B[, 1] * hinge2
 
   return(list(bf1, bf2))
-}
-
-
-#' @title Generate the Set of Intervals
-#'
-#' @description This function determines the boundaries for the intervals and identifies what basis functions activates on each interval.
-#'
-#' @param Bp_list A \code{list} containing the set of basis functions by input.
-#'
-#' @return A \code{list} with the boundaries of the intervals and the IDs of the activated basis functions within each interval.
-
-set_intervals <- function (
-    Bp_list
-    ) {
-
-  # Number of inputs
-  nX <- length(Bp_list)
-
-  # Set of intervals by variable.
-  it_list <- vector("list", nX)
-
-  for (v in 1:nX) {
-
-    t_vector <- c(0, Inf)
-    for (side in c("paired", "right", "left")) {
-      if (!is.null(Bp_list[[v]][[side]])) {
-        t_vector <- c(t_vector, sapply(Bp_list[[v]][[side]], "[[", "t"))
-      }
-    }
-
-    # Sort knots vector in ascending order
-    t_vector <- sort(t_vector)
-
-    for (j in 1:(length(t_vector) - 1)) {
-      # Lower bound in the interval
-      lb <- t_vector[[j]]
-      # Upper bound in the interval
-      ub <- t_vector[[j + 1]]
-
-      # Add lower and upper bounds
-      it_list[[v]][[j]] <- list("Lb" = lb, "Ub" = ub)
-
-      # Columns index of the basis function by variable
-      Bp_xi <- c(); status <- c()
-      for (side in c("paired", "right", "left")) {
-        if (!is.null(Bp_list[[v]][[side]])) {
-          for (l in 1:length(Bp_list[[v]][[side]])) {
-            if (side == "paired") {
-              if (Bp_list[[v]][[side]][[l]][["t"]] <= lb) {
-                Bp_xi <- c(Bp_xi, Bp_list[[v]][[side]][[l]][["Bp_xi"]][[1]])
-                status  <- c(status, "right")
-
-              } else if (Bp_list[[v]][[side]][[l]][["t"]] >= ub) {
-                Bp_xi <- c(Bp_xi, Bp_list[[v]][[side]][[l]][["Bp_xi"]][[2]])
-                status  <- c(status, "left")
-              }
-
-            } else if (side == "right") {
-              if (Bp_list[[v]][[side]][[l]][["t"]] <= lb) {
-                Bp_xi <- c(Bp_xi, Bp_list[[v]][[side]][[l]][["Bp_xi"]])
-                status  <- c(status, "right")
-              }
-
-            } else {
-              if (Bp_list[[v]][[side]][[l]][["t"]] >= ub) {
-                Bp_xi <- c(Bp_xi, Bp_list[[v]][[side]][[l]][["Bp_xi"]])
-                status  <- c(status, "left")
-              }
-            }
-          }
-        }
-      }
-      if (is.null(Bp_xi)) {
-        it_list[[v]][[j]] <- NULL
-      } else {
-        it_list[[v]][[j]][["Bp"]] <- data.frame(Bp_xi, status)
-      }
-    }
-  }
-
-  return(it_list)
 }
