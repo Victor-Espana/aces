@@ -9,25 +9,41 @@ reffcy(DGP, parms)
 \arguments{
 \item{DGP}{Data Generation Process:
 \itemize{
-   \item{\code{"cobb_douglas_XnY1"}}: Cobb-Douglas Data Generation Process for a XnY1 scenario. Check \code{help("cobb_douglas_XnY1")}.
-   \item{\code{"translog_X2Y2"}}: Translog Data Generation Process for a X2Y2 scenario. Check \code{help("translog_X2Y2")}.
-   \item{\code{"add_scenario_XnY1"}}: Additive Data Generation Process for a XnY1 scenario. Check \code{help("add_scenario_XnY1")}.
-   \item{\code{"mult_scenario_XnY1"}}: Multiplicative Data Generation Process for a XnY1 scenario. Check \code{help("mult_scenario_XnY1")}.
-   \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario. Check \code{help("cobb_douglas_X3Y3")}.
+   \item{\code{"cobb_douglas_XnY1"}}: Cobb-Douglas Data Generation Process for a XnY1 scenario.
+   Check \code{help("cobb_douglas_XnY1")}.
+   \item{\code{"cobb_douglas_X1Y1_noise"}}: Cobb-Douglas Data Generation Process for a X1Y1 scenario with noise.
+   Check \code{help("cobb_douglas_X1Y1")}.
+   \item{\code{"translog_X2Y2"}}: Translog Data Generation Process for a X2Y2 scenario.
+   Check \code{help("translog_X2Y2")}.
+   \item{\code{"add_scenario_XnY1"}}: Additive Data Generation Process for a XnY1 scenario.
+   Check \code{help("add_scenario_XnY1")}.
+   \item{\code{"mult_scenario_XnY1"}}: Multiplicative Data Generation Process for a XnY1 scenario.
+   Check \code{help("mult_scenario_XnY1")}.
+   \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario.
+   Check \code{help("cobb_douglas_X3Y3")}.
+   \item{\code{homothetic_s_shaped}}: Homothetic S-shaped Data Generation Process.
+   Check \code{help("homothetic_s_shaped")}.
  }}
 
-\item{parms}{\code{list} with the parameters of the simulation functions.
+\item{parms}{A \code{list} with the parameters of the simulation functions.
 \itemize{
    \item{\code{"N"}}: Sample size.
-   \item{\code{"nX"}}: Number of inputs. Available for the \code{cobb_douglas_XnY1(N, nX)} function.
-   \item{\code{"border"}}: Proportion of DMUs in the frontier. Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
-   \item{\code{"noise"}}: \code{logical} indicating presence of random noise. Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
-   \item{\code{"scenario"}}: Determine the type of Data Generation Process. Available for the \code{add_scenario_XnY1(N, scenario)} and the \code{mult_scenario_XnY1(N, scenario)} functions.
-   \item{\code{"returns"}}: Returns to scale. Available for the \code{cobb_douglas_X3Y3(N, border, noise, returns)} function.
+   \item{\code{"nX"}}: Number of inputs.
+   Available for the \code{cobb_douglas_XnY1(N, nX)} function.
+   \item{\code{"border"}}: Proportion of DMUs in the frontier.
+   Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
+   \item{\code{"noise"}}: \code{logical} indicating presence of random noise.
+   Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
+   \item{\code{"scenario"}}: Determine the type of Data Generation Process.
+   Available for the \code{add_scenario_XnY1(N, scenario)} and the \code{mult_scenario_XnY1(N, scenario)} functions.
+   \item{\code{"returns"}}: Returns to scale.
+   Available for the \code{cobb_douglas_X3Y3(N, border, noise, returns)} function.
+   \item{\code{"p"}}: Signal-to-noise ratio.
+   Available for the \code{cobb_douglas_X1Y1_noise(N, p)} function.
  }}
 }
 \value{
-\code{data.frame} simulated with the selected Data Generation Process.
+A \code{data.frame} simulated with the selected Data Generation Process.
 }
 \description{
 This function is used to simulate a \code{data.frame} with some given Data Generation Process.

@@ -2,17 +2,25 @@
 % Please edit documentation in R/ACES.R
 \name{display_errors}
 \alias{display_errors}
-\title{Error Messaging in ACES functions.}
+\title{Error Messaging in aces functions.}
 \usage{
 display_errors(
+  caller,
   data,
   x,
   y,
   y_type,
-  addi_x,
+  model_type,
+  error_type,
+  nvars,
   degree,
   metric,
-  knots_grid,
+  nterms,
+  err_red,
+  hd_cost,
+  minspan,
+  endspan,
+  kn_grid,
   d,
   wc,
   wq,
@@ -24,27 +32,43 @@ display_errors(
 )
 }
 \arguments{
+\item{caller}{A \code{character} string specifying the function that calls \code{display_errors}.}
+
 \item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{y_type}{The mode of predicting the output: whether it should be done all at once or one at a time.}
+\item{y_type}{A \code{character} string that determines the prediction approach for \code{y}. It can be either: \code{"ind"} or \code{"all"}.}
 
-\item{addi_x}{Column indexes of additional covariables in \code{data}.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate. It can be either: \code{"env"} or \code{"sto"}.}
 
-\item{degree}{Maximum degree of interaction between variables.}
+\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model. It can be either: \code{"add"} or \code{"mul"}.}
 
-\item{metric}{The lack-of-fit criterion to evaluate the model performance.}
+\item{nvars}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
 
-\item{knots_grid}{Grid of knots to perform ACES.}
+\item{degree}{Either a \code{list} with the input indexes for interaction of variables or a \code{numeric} value that determines the maximum degree of interaction between variables.}
 
-\item{d}{Generalized Cross Validation (GCV) penalty per knot.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance. It can be: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.}
 
-\item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure \insertCite{friedman1991}{aces}.}
+\item{nterms}{A positive \code{integer} specifying the maximum number of terms created before pruning}
 
-\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure \insertCite{chen1999}{aces}.}
+\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
+
+\item{hd_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1-degree basis function to incorporate a higher degree basis function.}
+
+\item{minspan}{A \code{numeric} value specifying the minimum number of observations between two adjacent knots. It can be: \code{"-2"}, \code{"-1"} or \code{"m"}.}
+
+\item{endspan}{A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. It can be: \code{"-2"}, \code{"-1"} or \code{"m"}.}
+
+\item{kn_grid}{Grid of knots to perform ACES. It can be: \code{-1} or a \code{list}.}
+
+\item{d}{A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot.}
+
+\item{wc}{A numeric value used for the cubic smoothing procedure.}
+
+\item{wq}{A numeric value used for the quintic smoothing procedure.}
 
 \item{object}{An \code{aces} object.}
 
@@ -57,13 +81,8 @@ display_errors(
 \item{digits}{Number of digits to round efficiency scores.}
 }
 \value{
-Possible error messages.
+This function return error messages if hyperparameters are incorrectly specified.
 }
 \description{
-This function displays error messages if hyperparameters or data are bad introduced.
-}
-\references{
-\insertRef{friedman1991}{aces} \cr
-\cr
-\insertRef{chen1999}{aces}
+This function displays error messages if hyperparameters are bad introduced.
 }

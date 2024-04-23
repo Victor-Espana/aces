@@ -19,7 +19,6 @@ err_metric(y_obs, y_hat, metric)
 \item{\code{rmse}}: Root Mean Squared Error
 \item{\code{nrmse1}}: Normalized Root Mean Squared Error (using mean)
 \item{\code{nrmse2}}: Normalized Root Mean Squared Error (using range)
-\item{\code{wape}}: Weighted Absolute Percentage Error
 }}
 }
 \value{

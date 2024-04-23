@@ -4,7 +4,7 @@
 \alias{predict.aces}
 \title{Model Prediction for Adaptive Constrained Enveloping Splines (ACES).}
 \usage{
-\method{predict}{aces}(object, newdata, x, method = "aces")
+\method{predict}{aces}(object, newdata, x, method = "aces", stochastic_pred = FALSE)
 }
 \arguments{
 \item{object}{An \code{aces} object.}
@@ -13,12 +13,19 @@
 
 \item{x}{Input indexes in \code{newdata}.}
 
-\item{method}{Model for prediction.
+\item{method}{Model for prediction:
 \itemize{
 \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
 \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
 \item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines model.
 \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+}}
+
+\item{stochastic_pred}{This parameter should be kept as \code{FALSE} (default) if an additive model is estimated. If a stochastic model is estimated, one of the following elements should be specified:
+\itemize{
+  \item{"avg"}: average-practice production function.
+  \item{"mom"}: moments-estimation production function.
+  \item{"pse"}: pseudolikelihood-estimation production function.
 }}
 }
 \value{

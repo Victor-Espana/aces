@@ -9,13 +9,13 @@ create_quintic_basis(data, xi, knots, B, side)
 \arguments{
 \item{data}{A \code{matrix} containing the variables in the model.}
 
-\item{xi}{Variable index of the variable that creates the new basis function(s).}
+\item{xi}{Index of the variable that creates the new basis function(s).}
 
 \item{knots}{Triplet of knots for creating the new basis function(s).}
 
 \item{B}{A \code{matrix} of basis functions.}
 
-\item{side}{Side of the new basis function.}
+\item{side}{Side of the new basis function inherited from the linar basis function.}
 }
 \value{
 A \code{matrix} of basis functions updated with the new quintic basis functions.
