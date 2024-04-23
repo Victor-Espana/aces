@@ -1,22 +1,62 @@
 #' @title Backward Algorithm for Adaptive Constrained Enveloping Splines
 #'
-#' @description This function implements the Backward Algorithm in Adaptive Constrained Enveloping Splines to create a portfolio of sub-models by iteratively removing basis functions one by one.
+#' @description
 #'
-#' @param data A \code{matrix} containing the variables in the model.
-#' @param xi_degree Matrix indicating the degree of each input variable.
-#' @param y Column indexes of output variables in \code{data}.
-#' @param metric Lack-of-fit criterion to evaluate the model performance.
-#' @param monotonicity \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#' @param concavity \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
-#' @param x0_y0 \code{logical} indicating if f(0) = 0.
-#' @param forward_model \code{list} containing the Forward ACES model.
-#' @param Bp_list A \code{list} containing the set of basis functions by input.
-#' @param d An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.
+#' This function implements the Backward Algorithm in Adaptive Constrained Enveloping Splines. It creates a portfolio of sub-models by iteratively removing basis functions one by one.
 #'
-#' @return A \code{list} containing a portfolio of Adaptive Constrained Enveloping Splines sub-models.
+#' @param data
+#' A \code{matrix} containing the variables in the model.
+#'
+#' @param y
+#' Column indexes of output variables in \code{data}.
+#'
+#' @param xi_degree
+#' A \code{matrix} indicating the degree of each input variable.
+#'
+#' @param dea_eff
+#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#'
+#' @param model_type
+#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
+#'
+#' @param metric
+#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#'
+#' @param forward_model
+#' A \code{list} containing the information relative to the forward step of the ACES model.
+#'
+#' @param Bp_list
+#' A \code{list} containing the current set of basis functions for each input variable.
+#'
+#' @param monotonicity
+#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
+#'
+#' @param concavity
+#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
+#'
+#' @param origin
+#' A \code{list} containing the current set of selected knots for each input variable.
+#'
+#' @param d
+#' An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.
+#'
+#' @return
+#'
+#' A \code{list} containing a portfolio of Adaptive Constrained Enveloping Splines sub-models.
 
-aces_pruning <- function(
-    data, xi_degree, y, metric, monotonicity, concavity, x0_y0, forward_model, Bp_list, d
+aces_pruning <- function (
+    data,
+    y,
+    xi_degree,
+    dea_eff,
+    model_type,
+    metric,
+    forward_model,
+    Bp_list,
+    monotonicity,
+    concavity,
+    origin,
+    d
     ) {
 
   # number of inputs
@@ -33,16 +73,17 @@ aces_pruning <- function(
   # B matrix
   B_mat <- forward_model[["Bmatx"]]
 
-  # vector of coefficients from the forward ACES
+  # vector of coefficients from the forward step of ACES
   coefs <- forward_model[["basis"]][[terms + 1]][["coefs"]]
 
   # measures of performance
   LOF <- forward_model[["basis"]][[terms + 1]][["err"]]
+
   GCV <- compute_gcv (
     y_obs = data[, y, drop = F],
     y_hat = B_mat %*% coefs,
     metric = metric,
-    B = B_mat,
+    n_bf = ncol(B_mat),
     d = d,
     knots = knots,
     xi_degree = xi_degree
@@ -51,11 +92,11 @@ aces_pruning <- function(
   # set of ACES sub-models with p terms
   models <- list (
     list (
-      "id"  = length(forward_model[["basis"]]),
-      "B"   = B_mat,
+      "id" = length(forward_model[["basis"]]),
+      "B" = B_mat,
       "LOF" = LOF,
       "GCV" = GCV,
-      "t"   = knots,
+      "t" = knots,
       "coefs" = coefs,
       "Bp_list" = Bp_list
       )
@@ -67,6 +108,7 @@ aces_pruning <- function(
 
   # B matrix
   B <- forward_model[["Bmatx"]]
+
   # set of basis functions
   basis <- forward_model[["basis"]]
 
@@ -75,28 +117,28 @@ aces_pruning <- function(
     # error
     err <- Inf
 
-    # Basis functions to be removed excluding:
+    # basis functions to be removed excluding:
     # - B1(X) = 1
-    # - Basis function when appearing alone in an interval: excepting right-hand extreme interval
+    # - basis function when appearing alone in an interval: excepting right-hand extreme interval
     bf_to_drop <- basis_to_drop (
       Bp_list = Bp_list,
       concavity = concavity,
       nX = nX
       )
 
-    # Mapping between Basis Function ID and Matrix Column Index by Variable
+    if (nrow(bf_to_drop) == 0) break
+
+    # mapping between basis function ID and matrix column index by variable
     id_Bpxi <- mapping_basis (
       Bp_list = Bp_list,
       nX = nX
       )
 
-    # Add id column to basis function to drop
+    # add id column to basis function to drop
     bf_to_drop <- merge(bf_to_drop, id_Bpxi, by = c("xi", "Bp_xi"))
 
-    # Shuffle rows
+    # shuffle rows
     bf_to_drop <- bf_to_drop[sample(1:nrow(bf_to_drop)), ]
-
-    if (nrow(bf_to_drop) == 0) break
 
     for (bf in 1:nrow(bf_to_drop)) {
 
@@ -112,13 +154,13 @@ aces_pruning <- function(
       # select the basis function to be dropped
       dropTerm <- sapply(new_basis, function(x) x[["id"]] == id)
 
-      # Number of 0's in the basis function to be dropped (in case of same GCV)
+      # number of 0's in the basis function to be dropped (in case of same GCV)
       basis_0s <- sum(new_basis[dropTerm][[1]][["Bp"]] == 0)
 
-      # If a basis function is paired -> the sibling basis function is set as unpaired
+      # if a basis function is paired -> the sibling basis function is set as unpaired
       if (new_basis[dropTerm][[1]][["status"]] == "paired") {
 
-        # Knot (t) and variable (v)
+        # knot (t) and variable (v)
         check1 <- sapply(new_basis, "[[", "t") == new_basis[dropTerm][[1]][["t"]]
         check2 <- sapply(new_basis, "[[", "xi") == new_basis[dropTerm][[1]][["xi"]]
 
@@ -131,19 +173,25 @@ aces_pruning <- function(
         # ID of the sibling basis function
         sibling_id <- paired_id[!(id == paired_id)]
 
-        # Update new_basis
+        # update new_basis
         new_basis[lapply(new_basis, "[[", "id") == sibling_id][[1]][["status"]] <- "unpaired"
       }
 
-      # Drop the selected basis function
+      # drop the selected basis function
       new_basis[dropTerm] <- NULL
 
       if (length(new_basis) == 1) {
 
+        # bp_list
         new_Bp_list <- vector("list", nX)
+
+        # B matrix
         new_B <- matrix(1, nrow = nrow(data))
+
+        # vector of coefficients
         coefs <- unname(apply(data[, y, drop = FALSE], 2, max))
 
+        # set of knots
         knots <- NULL
 
         # prediction
@@ -163,7 +211,7 @@ aces_pruning <- function(
           y_obs = data[, y, drop = F],
           y_hat = y_hat,
           metric = metric,
-          B = new_B,
+          n_bf = ncol(new_B),
           d = d,
           knots = 0,
           xi_degree = NULL
@@ -206,15 +254,26 @@ aces_pruning <- function(
         # Estimate coefficients #
         # ===================== #
 
-        coefs <- estimate_coefficients (
-          B = new_B,
-          y = data[, y, drop = F],
-          it_list = new_it_list,
-          Bp_list = new_Bp_list,
-          monotonicity = monotonicity,
-          concavity = concavity,
-          x0_y0 = x0_y0
-          )
+        try_estimation <- tryCatch (
+          {
+            coefs <- estimate_coefficients (
+              model_type = model_type,
+              B = new_B,
+              y_obs = data[, y, drop = F],
+              dea_eff = dea_eff,
+              it_list = new_it_list,
+              Bp_list = new_Bp_list,
+              monotonicity = monotonicity,
+              concavity = concavity,
+              origin = origin
+            )
+          },
+          error = function(e) {
+            return("error")
+          }
+        )
+
+        if (class(try_estimation[[1]]) == "character") next
 
         # ================ #
         # Update the knots #
@@ -245,7 +304,7 @@ aces_pruning <- function(
           y_obs = data[, y, drop = F],
           y_hat = y_hat,
           metric = metric,
-          B = new_B,
+          n_bf = ncol(new_B),
           d = d,
           knots = knots,
           xi_degree = xi_degree
@@ -263,24 +322,27 @@ aces_pruning <- function(
       }
     }
 
+    # selected basis after removing
     basis <- best_basis
+
+    # selected Bp_list after removing
     Bp_list <- best_Bp_list
 
-    # Create P-model
+    # Create p-th sub model
     p_model <- list (
-      "id"  = ncol(best_B),
-      "B"   = best_B,
+      "id" = ncol(best_B),
+      "B" = best_B,
       "LOF" = err,
       "GCV" = best_gcv,
-      "t"   = best_knots,
+      "t" = best_knots,
       "coefs" = best_coefs,
       "Bp_list" = best_Bp_list
     )
 
-    # Best model of p terms
+    # best model of p terms
     models <- append(models, list(p_model))
 
-    # Update number of terms
+    # update number of terms
     terms <- terms - 1
   }
 
@@ -289,24 +351,48 @@ aces_pruning <- function(
 
 #' @title Compute Generalized Cross-Validation (GCV)
 #'
-#' @description This function computes the generalized cross-validation for the Backward Algorithm in Adaptive Constrained Enveloping Splines.
+#' @description
 #'
-#' @param y_obs Vector of observed data.
-#' @param y_hat Vector of predicted values.
-#' @param metric Lack-of-fit criterion to evaluate the model performance.
-#' @param B Matrix of basis functions.
-#' @param d Generalized Cross Validation (GCV) penalty per knot.
-#' @param knots \code{list} with the set of knots.
-#' @param xi_degree Matrix indicating the degree of each input variable.
+#' This function computes the generalized cross-validation for the Backward Algorithm in Adaptive Constrained Enveloping Splines.
 #'
-#' @return The Generalized Cross-Validation value.
+#' @param y_obs
+#' A \code{numeric} vector of observed data.
+#'
+#' @param y_hat
+#' A \code{numeric} vector of predicted values.
+#'
+#' @param metric
+#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#'
+#' @param n_bf
+#' A \code{integer} specifying the number of basis functions in the model.
+#'
+#' @param d
+#' A \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot.
+#'
+#' @param knots
+#' A \code{list} specifying the set of knots.
+#'
+#' @param xi_degree
+#' A \code{matrix} indicating the degree of each input variable.
+#'
+#' @return
+#'
+#' The Generalized Cross-Validation (GCV) value.
 
 compute_gcv <- function (
-    y_obs, y_hat, metric, B, d, knots, xi_degree
+    y_obs,
+    y_hat,
+    metric,
+    n_bf,
+    d,
+    knots,
+    xi_degree
     ) {
 
   # number of outputs
   nY <- ncol(y_obs)
+
   # number of observations
   N <- nrow(y_obs)
 
@@ -321,14 +407,17 @@ compute_gcv <- function (
   if (is.list(knots)) {
     # knot list to data.frame
     knots_df <- do.call(rbind.data.frame, knots)
+
     # knot dimension
     knots_df$dimknot <- xi_degree[2, match(knots_df$xi, xi_degree[1, ])]
 
     if (nrow(knots_df) == 0) {
       nknots <- 0
+
     } else {
       # drop duplicated
       knots_df_drop_duplicated <- knots_df[!duplicated(knots_df[c("xi", "t")]), ]
+
       # number of knots
       nknots <- nrow(knots_df_drop_duplicated)
     }
@@ -337,15 +426,17 @@ compute_gcv <- function (
     nknots <- knots
   }
 
-  # Cost-complexity measure + penalization of 0 coefficients
-  ccm_val <- ncol(B) + d * nknots
+  # cost-complexity measure + penalization of 0 coefficients
+  ccm_val <- n_bf + d * nknots
   lof_den <- (1 - (ccm_val / (nY * N))) ^ 2
 
   # GCV
   if (ccm_val > nY * N) {
     GCV <- Inf
+
   } else {
     GCV <- lof_num / lof_den
+
   }
 
   return(GCV)
@@ -379,7 +470,7 @@ basis_to_drop <- function (
         if (concavity) {
           # notice that concavity is lost in absence of a basis for a middle interval.
           # then, empty intervals are only available in the top right-side (last interval)
-          # for example, if in the first interval there is only one basis function,
+          # for example, if there is only one basis function in the first interval,
           # it can't be dropped.
 
           # it != length(It.list[[v]]):
@@ -406,10 +497,12 @@ basis_to_drop <- function (
     }
   }
 
-  names(bf_to_drop) <- c("xi", "Bp_xi")
+  if (nrow(bf_to_drop) != 0) {
+    names(bf_to_drop) <- c("xi", "Bp_xi")
 
-  # Drop duplicated values
-  bf_to_drop <- unique(bf_to_drop[order(bf_to_drop$xi, bf_to_drop$Bp_xi), ])
+    # Drop duplicated values
+    bf_to_drop <- unique(bf_to_drop[order(bf_to_drop$xi, bf_to_drop$Bp_xi), ])
+  }
 
   return(bf_to_drop)
 }
