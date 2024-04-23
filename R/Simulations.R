@@ -1,33 +1,60 @@
 #' @title Random Sample for Efficiency Analysis
 #'
-#' @description This function is used to simulate a \code{data.frame} with some given Data Generation Process.
+#' @description
 #'
-#' @param DGP Data Generation Process:
+#' This function is used to simulate a \code{data.frame} with some given Data Generation Process.
+#'
+#' @param DGP
+#' Data Generation Process:
 #' \itemize{
-#'    \item{\code{"cobb_douglas_XnY1"}}: Cobb-Douglas Data Generation Process for a XnY1 scenario. Check \code{help("cobb_douglas_XnY1")}.
-#'    \item{\code{"translog_X2Y2"}}: Translog Data Generation Process for a X2Y2 scenario. Check \code{help("translog_X2Y2")}.
-#'    \item{\code{"add_scenario_XnY1"}}: Additive Data Generation Process for a XnY1 scenario. Check \code{help("add_scenario_XnY1")}.
-#'    \item{\code{"mult_scenario_XnY1"}}: Multiplicative Data Generation Process for a XnY1 scenario. Check \code{help("mult_scenario_XnY1")}.
-#'    \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario. Check \code{help("cobb_douglas_X3Y3")}.
+#'    \item{\code{"cobb_douglas_XnY1"}}: Cobb-Douglas Data Generation Process for a XnY1 scenario.
+#'    Check \code{help("cobb_douglas_XnY1")}.
+#'    \item{\code{"cobb_douglas_X1Y1_noise"}}: Cobb-Douglas Data Generation Process for a X1Y1 scenario with noise.
+#'    Check \code{help("cobb_douglas_X1Y1")}.
+#'    \item{\code{"translog_X2Y2"}}: Translog Data Generation Process for a X2Y2 scenario.
+#'    Check \code{help("translog_X2Y2")}.
+#'    \item{\code{"add_scenario_XnY1"}}: Additive Data Generation Process for a XnY1 scenario.
+#'    Check \code{help("add_scenario_XnY1")}.
+#'    \item{\code{"mult_scenario_XnY1"}}: Multiplicative Data Generation Process for a XnY1 scenario.
+#'    Check \code{help("mult_scenario_XnY1")}.
+#'    \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario.
+#'    Check \code{help("cobb_douglas_X3Y3")}.
+#'    \item{\code{homothetic_s_shaped}}: Homothetic S-shaped Data Generation Process.
+#'    Check \code{help("homothetic_s_shaped")}.
 #'  }
-#' @param parms \code{list} with the parameters of the simulation functions.
+#'
+#' @param parms
+#' A \code{list} with the parameters of the simulation functions.
 #' \itemize{
 #'    \item{\code{"N"}}: Sample size.
-#'    \item{\code{"nX"}}: Number of inputs. Available for the \code{cobb_douglas_XnY1(N, nX)} function.
-#'    \item{\code{"border"}}: Proportion of DMUs in the frontier. Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
-#'    \item{\code{"noise"}}: \code{logical} indicating presence of random noise. Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
-#'    \item{\code{"scenario"}}: Determine the type of Data Generation Process. Available for the \code{add_scenario_XnY1(N, scenario)} and the \code{mult_scenario_XnY1(N, scenario)} functions.
-#'    \item{\code{"returns"}}: Returns to scale. Available for the \code{cobb_douglas_X3Y3(N, border, noise, returns)} function.
+#'    \item{\code{"nX"}}: Number of inputs.
+#'    Available for the \code{cobb_douglas_XnY1(N, nX)} function.
+#'    \item{\code{"border"}}: Proportion of DMUs in the frontier.
+#'    Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
+#'    \item{\code{"noise"}}: \code{logical} indicating presence of random noise.
+#'    Available for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
+#'    \item{\code{"scenario"}}: Determine the type of Data Generation Process.
+#'    Available for the \code{add_scenario_XnY1(N, scenario)} and the \code{mult_scenario_XnY1(N, scenario)} functions.
+#'    \item{\code{"returns"}}: Returns to scale.
+#'    Available for the \code{cobb_douglas_X3Y3(N, border, noise, returns)} function.
+#'    \item{\code{"p"}}: Signal-to-noise ratio.
+#'    Available for the \code{cobb_douglas_X1Y1_noise(N, p)} function.
 #'  }
 #'
 #' @details
+#'
 #' Please refer to the help manuals of the mentioned functions for usage examples and more detailed information on the parameters.
 #'
 #'
-#' @return \code{data.frame} simulated with the selected Data Generation Process.
+#' @return
+#'
+#' A \code{data.frame} simulated with the selected Data Generation Process.
 #'
 #' @export
-reffcy <- function(DGP, parms) {
+
+reffcy <- function (
+    DGP, parms
+    ) {
 
   if (DGP == "cobb_douglas_XnY1") {
 
@@ -35,6 +62,23 @@ reffcy <- function(DGP, parms) {
       N = parms[["N"]],
       nX = parms[["nX"]]
       )
+
+  } else if (DGP == "cobb_douglas_XnY1_noise") {
+
+    data <- cobb_douglas_XnY1_noise (
+      N = parms[["N"]],
+      nX = parms[["nX"]],
+      p = parms[["p"]]
+    )
+
+  } else if (DGP == "cobb_douglas_X3Y3") {
+
+    data <- cobb_douglas_X3Y3 (
+      N = parms[["N"]],
+      border = parms[["border"]],
+      noise = parms[["noise"]],
+      returns = parms[["returns"]]
+    )
 
   } else if (DGP == "translog_X2Y2") {
 
@@ -60,13 +104,12 @@ reffcy <- function(DGP, parms) {
 
   } else {
 
-    data <- cobb_douglas_X3Y3 (
+    data <- homothetic_s_shaped (
       N = parms[["N"]],
-      border = parms[["border"]],
-      noise = parms[["noise"]],
-      returns = parms[["returns"]]
+      noise = parms[["noise"]]
     )
   }
+
   return(data)
 }
 
@@ -80,10 +123,13 @@ reffcy <- function(DGP, parms) {
 #' @importFrom dplyr %>%
 #' @importFrom stats runif rnorm
 #'
-#' @return \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yD).
+#' @return A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yD).
 #'
 #' @keywords internal
-cobb_douglas_XnY1 <- function(N, nX) {
+
+cobb_douglas_XnY1 <- function (
+    N, nX
+    ) {
 
   if(!(nX %in% c(1, 3, 6, 9, 12, 15))){
     stop(paste(nX, "is not allowed"))
@@ -97,12 +143,12 @@ cobb_douglas_XnY1 <- function(N, nX) {
     dimnames = list(NULL, colnames)
   ) %>% as.data.frame()
 
-  # Input generation
+  # input generation
   for (x in 1:nX){
-    data[, x] <- runif(n = N, min = 1, max = 10)
+    data[, x] <- runif(n = N, min = 0, max = 10)
   }
 
-  # Inefficiency generation
+  # inefficiency generation
   u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
 
   if (nX == 1) {
@@ -157,6 +203,103 @@ cobb_douglas_XnY1 <- function(N, nX) {
     # Output generation
     data["y"]  <- data["yD"] * exp(- u)
   }
+
+  return(data)
+}
+
+#' @title 1 output ~ nX input Cobb-Douglas Data Generation Process with Noise
+#'
+#' @description
+#'
+#' This function is used to simulate a 1 output ~ nX input \code{data.frame} with a Cobb-Douglas Data Generation Process including statistical noise as in \insertCite{simar2011;textual}{aces}.
+#'
+#' @param N
+#' Sample size.
+#'
+#' @param nX
+#' Number of inputs.
+#'
+#' @param p
+#' Noise-to-signal ratio.
+#'
+#' @param heteroskedasticity
+#' A \code{"logical"} value indicating if heteroskedasticity should be introduced in the inefficiency term. Only available for 3 inputs (\code{nX = 3}).
+#'
+#' @importFrom dplyr %>%
+#' @importFrom stats runif rnorm
+#'
+#' @return
+#'
+#' A \code{data.frame} with the simulated data: 1 inputs (x1), 1 output (y) and the theoretical frontier (yD).
+#'
+#' @references
+#'
+#' \insertRef{simar2011}{aces}
+#'
+#' @keywords internal
+
+cobb_douglas_XnY1_noise <- function (
+    N,
+    nX,
+    p,
+    heteroskedasticity = FALSE
+    ) {
+
+  if(!(nX %in% c(1, 3))){
+    stop(paste(nX, "is not allowed"))
+  }
+
+  if (nX == 1 && heteroskedasticity == TRUE) {
+    stop("heteroskedasticity is only availble for 3 inputs")
+  }
+
+  colnames <- c(paste("x", 1:nX, sep = ""), "y")
+
+  data <- matrix(
+    ncol = length(colnames),
+    nrow = N,
+    dimnames = list(NULL, colnames)
+  ) %>% as.data.frame()
+
+  # input generation
+  for (x in 1:nX){
+    data[, x] <- runif(n = N, min = 0, max = 1)
+  }
+
+  # inefficiency generation
+  if (heteroskedasticity) {
+    # standard deviations
+    sds <- 0.3 * (data[, 1] + data[, 2]) / 2
+
+    # inefficiency term
+    u <- sapply(sds, function(sd) abs(rnorm(1, mean = 0, sd = sd)))
+
+  } else {
+    u <- rexp(n = N, rate = 6)
+
+  }
+
+  # error generation
+  if (heteroskedasticity) {
+    v <- rnorm(n = N, mean = 0, sd = p * 0.3 * sqrt((pi - 2) / pi))
+
+  } else {
+    v <- rnorm(n = N, mean = 0, sd = p * (1 / 6))
+
+  }
+
+  # theoretical frontier
+  if (nX == 1) {
+    data[, "yD"] <- data[, "x1"] ^ 0.5
+
+  } else {
+    data[, "yD"] <- data[, "x1"] ^ 0.4 * data[, "x2"] ^ 0.3 * data[, "x3"] ^ 0.2
+
+  }
+
+  # output generation
+  data[, "y"]  <- data[, "yD"] * exp(- u) * exp(v)
+
   return(data)
 }
 
@@ -172,13 +315,17 @@ cobb_douglas_XnY1 <- function(N, nX) {
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
-#' @return \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).
+#' @return A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).
 #'
 #' @references
 #' \insertRef{santin2009}{aces}
 #'
 #' @keywords internal
-translog_X2Y2 <- function(N, border, noise) {
+
+translog_X2Y2 <- function (
+    N, border, noise
+    ) {
+
   nX <- 2
   nY <- 2
 
@@ -194,7 +341,7 @@ translog_X2Y2 <- function(N, border, noise) {
   data[, 1] <- runif(N, 5, 50)
   data[, 2] <- runif(N, 5, 50)
 
-  z <- runif(N, -1.5, 1.5)
+  z <- runif(N, - 1.5, 1.5)
 
   ln_x1 <- log(data[, "x1"])
   ln_x2 <- log(data[, "x2"])
@@ -230,6 +377,7 @@ translog_X2Y2 <- function(N, border, noise) {
       data[index, "y2"] <- data[index, "yD2"] / half_normal
     }
   }
+
   return(data)
 }
 
@@ -245,13 +393,16 @@ translog_X2Y2 <- function(N, border, noise) {
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
-#' @return \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
+#' @return A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
 #'
 #' @references
 #' \insertRef{kuosmanen2010}{aces}
 #'
 #' @keywords internal
-add_scenario_XnY1 <- function(N, scenario) {
+
+add_scenario_XnY1 <- function (
+    N, scenario
+    ) {
 
   if(!(scenario %in% c("A", "B", "C", "D", "E", "F"))){
     stop(paste(scenario, "is not allowed"))
@@ -358,13 +509,16 @@ add_scenario_XnY1 <- function(N, scenario) {
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
-#' @return \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
+#' @return A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
 #'
 #' @references
 #' \insertRef{kuosmanen2010}{aces}
 #'
 #' @keywords internal
-mult_scenario_XnY1 <- function(N, scenario) {
+
+mult_scenario_XnY1 <- function (
+    N, scenario
+    ) {
 
   if(!(scenario %in% c("A", "B", "C", "D", "E", "F"))){
     stop(paste(scenario, "is not allowed"))
@@ -454,13 +608,14 @@ mult_scenario_XnY1 <- function(N, scenario) {
     # Output
     data["y"]  <- y / (1 + u)
   }
+
   return(data)
 }
 
 
 #' @title 3 outputs ~ 3 inputs Cobb-Douglas Data Generation Process
 #'
-#' @description This function is used to simulate data a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Douglas Data Generation Process as in \insertCite{ahn2023;textual}{aces}.
+#' @description This function is used to simulate a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Douglas Data Generation Process as in \insertCite{ahn2023;textual}{aces}.
 #'
 #' @param N Sample size.
 #' @param border Proportion of DMUs in the frontier: \code{0.1}, \code{0.2} or \code{0.3}.
@@ -471,13 +626,17 @@ mult_scenario_XnY1 <- function(N, scenario) {
 #' @importFrom truncnorm rtruncnorm
 #' @importFrom dplyr %>%
 #'
-#' @return \code{data.frame} with the simulated data: 3 inputs (x1, x2, x3), 3 outputs (y1, y2, y3) and the theoretical frontier (yD1, yD2, yD3)
+#' @return A \code{data.frame} with the simulated data: 3 inputs (x1, x2, x3), 3 outputs (y1, y2, y3) and the theoretical frontier (yD1, yD2, yD3)
 #'
 #' @references
 #' \insertRef{ahn2023}{aces}
 #'
 #' @keywords internal
-cobb_douglas_X3Y3 <- function(N, border, noise, returns) {
+
+cobb_douglas_X3Y3 <- function (
+    N, border, noise, returns
+    ) {
+
   nX <- 3
   nY <- 3
 
@@ -534,7 +693,64 @@ cobb_douglas_X3Y3 <- function(N, border, noise, returns) {
 
     # Output generation
     data[, nY + i] <- sqrt(a) * Yobs_aux
-
   }
+
+  return(data)
+}
+
+#' @title 1 output ~ 2 inputs S-shaped homothetic production function
+#'
+#' @description This function is used to simulate a 1 output ~ 2 inputs \code{data.frame} with a homothetic S-shaped Data Generation Process as in \insertCite{olesen2022;textual}{aces}.
+#'
+#' @param N Sample size.
+#' @param noise Random noise. 4 possible levels: \code{0.01}, \code{0.05}, \code{0.1} or \code{0.15}.
+#'
+#' @importFrom stats runif rnorm
+#' @importFrom dplyr %>%
+#'
+#' @return A \code{data.frame} with the simulated data: 2 inputs (x1, x2, x3), 1 output (y1) and the theoretical frontier (yD)
+#'
+#' @references
+#' \insertRef{olesen2022}{aces}
+#'
+#' @keywords internal
+
+homothetic_s_shaped <- function (
+    N, noise
+    ) {
+
+  nX <- 2
+  nY <- 1
+
+  colnames <- c(
+    paste("x", 1:nX, sep = ""),
+    paste("y", 1:nY, sep = ""),
+    paste("yD", 1:nY, sep = "")
+  )
+
+  data <- matrix (
+    ncol = length(colnames),
+    nrow = N,
+    dimnames = list(NULL, colnames)
+  ) %>% as.data.frame()
+
+  # input generation: polar coordinates (angle & distance)
+  ang <- (runif(n = N, min = 0.1, max = 90 - 0.1) * pi) / 180
+  dis <- runif(n = N, min = 0.01, max = 3)
+
+  x1 <- dis * cos(ang)
+  x2 <- dis * sin(ang)
+
+  # theoretical output
+  yD <- (16 * sqrt(x1) * sqrt(x2) * (2 + 14 * sqrt(x1) * sqrt(x2))) /
+    (16 * sqrt(x1) * sqrt(x2) + 257)
+
+  # observed output
+  noise <- rnorm(n = N, mean = 0, sd = noise)
+  y1 <- yD * exp(noise)
+
+  # data.frame
+  data[, 1:4] <- cbind(x1, x2, y1, yD)
+
   return(data)
 }
