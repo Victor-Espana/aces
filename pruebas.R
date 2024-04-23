@@ -1,170 +1,203 @@
 library("plotly")
 library("latex2exp")
 library("ggplot2")
+library("tictoc")
+library("Benchmarking")
 
 devtools::document()
 devtools::load_all()
 
-# ===================== #
-# Evaluación escenarios #
-# ===================== #
+# ============================================================================ #
+#                           Evaluación escenarios                              #
+# ============================================================================ #
 
-set.seed(314)     # error: 0.019
+set.seed(123)
 
-data <- reffcy (
-  DGP = "translog_X2Y2",
-  parms = list (
-    border = 0.20,
-    N = 100,
-    noise = FALSE
+for (i in 1:20) {
+
+  print(i)
+
+  data <- reffcy (
+    DGP = "cobb_douglas_XnY1_noise",
+    parms = list (
+      N = 100,
+      nX = 1,
+      p = 1,
+      heteroskedasticity = FALSE
+    )
   )
-)
 
-data[, "x1x2"] <- data[, 1] * data[, 2]
+  data$eff <- data[, "y"] / data[, "yD"]
 
-# data <- reffcy (
-#   DGP = "add_scenario_XnY1",
-#   parms = list (
-#     scenario = "F",
-#     N = 100
-#   )
-# )
+  x <- 1
+  y <- 2
 
-library("psych")
+  # modelo
+  ACES1 <- aces (
+    data = data,
+    x = x,
+    y = y,
+    y_type = "individual",
+    model_type = "stochastic",
+    error_type = "mul",
+    bagging = list (
+      apply = FALSE,
+      sample = nrow(data),
+      models = 10,
+      nvars = ceiling(length(x) / 3)
+      ),
+    degree = 1,
+    hd_cost = 0.05,
+    metric = "mse",
+    shape = list (
+      monotonicity = T,
+      concavity = T,
+      origin = F
+    ),
+    nterms = 100,
+    err_red = 0,
+    minspan = 1,
+    endspan = 1,
+    kn_grid = - 1,
+    d = 1,
+    wc = seq(1, 2, length.out = 5),
+    wq = seq(8 / 7, 1.5, length.out = 5)
+  )
 
-pairs.panels(data)
+  data$f_aces_moments <- predict (
+    object = ACES1,
+    newdata = data,
+    x = x,
+    method = "aces_forward",
+    stochastic_pred = "moments"
+  )$y_pred
 
-x <- 1:2
-y <- 3:4
+  data$f_aces_pse <- predict (
+    object = ACES1,
+    newdata = data,
+    x = x,
+    method = "aces_forward",
+    stochastic_pred = "pseudolikelihood"
+  )$y_pred
 
-# modelo
-ACES <- aces (
-  data = data,
-  x = x,
-  y = y,
-  y_type = "individual",
-  addi_x = NULL,
-  degree = 2,
-  metric = "mse",
-  turbo = Inf,
-  monotonicity = T,
-  concavity = T,
-  x0_y0 = T,
-  nterms = 50,
-  err_red = 0.01,
-  minspan = - 1,
-  endspan = - 1,
-  knots_grid = - 1,
-  d = 2,
-  wc = seq(1, 2, length.out = 5),
-  wq = seq(8 / 7, 1.5, length.out = 5)
-)
+  mean_aces <- predict (
+    object = ACES1,
+    newdata = data,
+    x = x,
+    method = "aces_forward",
+    stochastic_pred = "mean"
+  )$y_pred
 
-y_hat <- predict (
-  object = ACES,
+  data$aces_moments <- predict (
+    object = ACES1,
+    newdata = data,
+    x = x,
+    method = "aces",
+    stochastic_pred = "moments"
+  )$y_pred
+
+  data$aces_pse <- predict (
+    object = ACES1,
+    newdata = data,
+    x = x,
+    method = "aces",
+    stochastic_pred = "pseudolikelihood"
+  )$y_pred
+
+  stoned_fitting_mom <- stoned (
+    X = as.matrix(data[, x]),
+    Y = as.matrix(data[, y]),
+    RTS = "vrs",
+    MULT = 1,
+    METHOD = "MM"
+  )
+
+  mean_stoned <- stoned_fitting_mom[["yhat"]]
+
+  stoned_fitting_pse <- stoned (
+    X = as.matrix(data[, x]),
+    Y = as.matrix(data[, y]),
+    RTS = "vrs",
+    MULT = 1,
+    METHOD = "PSL"
+  )
+
+  data$stoned_mom <- stoned_fitting_mom[["front"]][, 1]
+  data$stoned_pse <- stoned_fitting_pse[["front"]][, 1]
+
+  # mean error aces
+  print(paste("Mean err ACES:", mean((mean_aces - data[, y]) ^ 2)))
+
+  # mean error stoned
+  print(paste("Mean err StoNED:", mean((mean_stoned - data[, y]) ^ 2)))
+
+  err_f_aces_mom <- mean((data[, 3] - data[, 5]) ^ 2)
+  err_f_aces_pse <- mean((data[, 3] - data[, 6]) ^ 2)
+  err_b_aces_mom <- mean((data[, 3] - data[, 7]) ^ 2)
+  err_b_aces_pse <- mean((data[, 3] - data[, 8]) ^ 2)
+  err_stoned_mom <- mean((data[, 3] - data[, 9]) ^ 2)
+  err_stoned_pse <- mean((data[, 3] - data[, 10]) ^ 2)
+
+  print (
+    paste (
+      "aces_f_mom:", round(err_f_aces_mom, 4),
+      "aces_f_pse:", round(err_f_aces_pse, 4),
+      "aces_mom:", round(err_b_aces_mom, 4),
+      "aces_pse:", round(err_b_aces_pse, 4),
+      "stoned_mom:", round(err_stoned_mom, 4),
+      "stoned_pse:", round(err_stoned_pse, 4)
+    )
+  )
+}
+
+data$aces_mean <- predict (
+  object = ACES1,
   newdata = data,
-  x = c(x),
-  method = "aces_forward"
-)[, c("y1_pred", "y2_pred")]
+  x = x,
+  method = "aces",
+  stochastic_pred = "moments"
+)$y_pred
 
-pruebas <- data.frame (
-  y_hat1 = y_hat[, 1],
-  y_hat2 = y_hat[, 2],
-  y1 = data[, 3],
-  y2 = data[, 4],
-  yD1 = data[, 5],
-  yD2 = data[, 6],
-  esti_dif1 = round(y_hat[, 1] - data[, 3], 3),
-  estm_dif2 = round(y_hat[, 2] - data[, 4], 3),
-  real_dif1 = round(y_hat[, 1] - data[, 5], 3),
-  real_dif2 = round(y_hat[, 2] - data[, 6], 3)
-)
+ggplot(data) +
+  # geom_point(aes(x = x1, y = y)) +
+  geom_line(aes(x = 1:100, y = aces_mean), color = "red") +
+  geom_point(aes(x = 1:100, y = aces_mean), color = "red") +
+  # geom_line(aes(x = 1:100, y = stoned_mom), color = "blue") +
+  # geom_point(aes(x = 1:100, y = stoned_mom), color = "blue") +
+  geom_line(aes(x = 1:100, y = yD), color = "green") +
+  geom_point(aes(x = 1:100, y = yD), color = "green") +
+  theme_bw()
 
-ratio_data <- data.frame (
-  r_yhat1_x1 = y_hat[, 1] / data[, 1],
-  r_yhat1_x2 = y_hat[, 1] / data[, 2],
-  r_yhat2_x1 = y_hat[, 2] / data[, 1],
-  r_yhat2_x2 = y_hat[, 2] / data[, 2],
-  r_y1_x1 = data[, 3] / data[, 1],
-  r_y1_x2 = data[, 3] / data[, 2],
-  r_y2_x1 = data[, 4] / data[, 1],
-  r_y2_x2 = data[, 4] / data[, 2]
-)
-
-library("MASS")
-library("ggdist")
-
-mds1 <- data.frame(cmdscale(dist(ratio_data)))
-
-ggplot(mds1, aes(x = mds1[, 1], y = mds1[, 2])) +
-  geom_point() +
-  geom_text(aes(label = row.names(mds1)), vjust = -0.5) +
-  labs(title = "Co-plot - Datos 1", x = "Dimensión 1", y = "Dimensión 2")
-
-
-
-# predicción
-devtools::load_all()
+ggplot(data) +
+  geom_point(aes(x = x1, y = y)) +
+  geom_line(aes(x = x1, y = yD, color = "DGP"), linewidth = 1) +
+  geom_line(aes(x = x1, y = aces_mean, color = "aces_mom"), linewidth = 1) +
+  # geom_line(aes(x = x1, y = stoned, color = "stoned"), linewidth = 1) +
+  theme_bw() +
+  guides(color = guide_legend(title = "model")) +
+  theme(legend.position = c(0.8, 0.2))
 
 scores <- aces_scores (
   tech_data = data,
   eval_data = data,
   x = x,
   y = y,
-  addi_x = 7,
-  object = ACES,
+  object = ACES1,
   method = "aces",
-  proximity = Inf,
+  proximity = ifelse(length(y) == 1, Inf, 0.05),
   measure = "rad_out",
   convexity = TRUE,
   returns = "variable",
   direction = NULL,
   weights = NULL,
-  digits = 10
+  digits = 3
 )
 
+data$y_hat1 <- scores$dea_vrt_rad_out * data[, 2]
 
-
-
-
-
-
-ggplot(data) +
-  geom_point(aes(x = x1, y = y)) +
-  geom_line(aes(x = x1, y = yD, color = "Data Generation Process")) +
-  geom_line(aes(x = x1, y = y_hat, color = "aces")) +
-  theme_bw() +
-  guides(color = guide_legend(title = "model")) +
-  theme(legend.position = c(0.8, 0.2)) +
-  expand_limits(x = 0, y = 0)
-
-# ============================= #
-# Unidades cerca de la frontera #
-# ============================= #
-
-x <- 1:2
-y <- 3:4
-
-data$scores <- ddf (
-  tech_xmat = as.matrix(data[, x]),
-  tech_ymat = as.matrix(data[, y]),
-  eval_xmat = as.matrix(data[, x]),
-  eval_ymat = as.matrix(data[, y]),
-  direction = "briec",
-  convexity = TRUE,
-  returns = "variable"
-)[, 1]
-
-data$eff <- factor(ifelse(data$scores < 0.05, 1, 0))
-
-ggplot(data) +
-  geom_line(aes(x = x1, y = yD)) +
-  geom_point(aes(x = x1, y = y, color = eff)) +
-  theme_bw()
-
-# ========== #
-# Concavidad #
-# ========== #
+# ============================================================================ #
+#                                 Concavidad                                   #
+# ============================================================================ #
 
 # la concavidad se rompe si queda un intervalo vacío distinto al último por la derecha
 
@@ -222,96 +255,170 @@ ggplot(data) +
   geom_vline(xintercept = k2) +
   theme_bw()
 
+# ============================================================================ #
+#                                   X2 ~ Y2                                    #
+# ============================================================================ #
 
+data <- reffcy (
+  DGP = "translog_X2Y2",
+  parms = list (
+    N = 100,
+    border = 0.1,
+    noise = FALSE
+  ))
 
+x <- 1:2
+y <- 3:4
 
+# modelo
+ACES <- aces (
+  data = data,
+  x = x,
+  y = y,
+  y_type = "all",
+  model_type = "env",
+  error_type = "add",
+  bagging = list (
+    apply = FALSE,
+    sample = nrow(data),
+    models = 50,
+    nvars = ceiling(length(x) / 3),
+    oob_red = 0.01,
+  ),
+  degree = 2,
+  hd_cost = 0,
+  metric = "mse",
+  shape = list (
+    monotonicity = T,
+    concavity = T,
+    origin = F
+  ),
+  nterms = nrow(data),
+  err_red = 0,
+  minspan = - 1,
+  endspan = - 1,
+  kn_grid = - 1,
+  d = 1,
+  wc = seq(1, 2, length.out = 5),
+  wq = seq(8 / 7, 1.5, length.out = 5)
+)
 
+data[, c("y1_pred2", "y2_pred2")] <- predict (
+  object = ACES,
+  newdata = data,
+  x = x,
+  method = "aces_forward"
+)
 
+plot_ly() %>%
+  add_trace (
+    data = data, x = data$x1, y = data$x2, z = data$y1,
+    type = "mesh3d"
+  ) %>%
+  add_trace (
+    data = data, x = data$x1, y = data$x2, z = data$y1_pred,
+    type = "mesh3d"
+  ) %>%
+  add_markers (
+    data = data, x = data$x1, y = data$x2, z = data$y1,
+    marker = list(size = 5, color = "red", opacity = 0.8)
+  )
 
-  geom_line(aes(x = x1, y = DEA.OUT, color = "Best Practices Frontier")) +
-  # geom_point(aes(x = x1, y = DEA.OUT, color = "Output projection")) +
-  # geom_point(aes(x = DEA.INP, y = y, color = "Input projection")) +
-  geom_segment(aes(x = 3.678058, y = 5.615856 + 0.05, xend = 3.678058, yend = 5.615856 * 1.094396 - 0.05),
-               color = "#c77cff", size = 1,
-               arrow = arrow(length = unit(0.3, "cm"))) +
-  geom_text(aes(x = 3.678058 + 0.35, y = 5.615856 + 0.25, label = TeX("$\\phi = 1.09$", output = "character")),
-            parse = TRUE, size = 4) +
-  geom_segment(aes(x = 3.678058 - 0.05, y = 5.615856, xend = 3.678058 * 0.7936781 + 0.05, yend = 5.615856),
-               color = "#00bfc4", size = 1,
-               arrow = arrow(length = unit(0.3, "cm"))) +
-  geom_text(aes(x = 3.678058 - 0.35, y = 5.615856 - 0.15, label = TeX("$\\theta = 0.79$", output = "character")),
-            parse = TRUE, size = 4) +
+# ============================================================================ #
+#                                 RandomForest                                 #
+# ============================================================================ #
 
+devtools::load_all()
 
+data <- reffcy (
+  DGP = "translog_X2Y2",
+  parms = list (
+    N = 25,
+    border = 0.1,
+    noise = FALSE
+  ))
 
+x <- 1:2
+y <- 3:4
 
+ACES <- aces (
+  data = data,
+  x = x,
+  y = y,
+  y_type = "all",
+  model_type = "env",
+  error_type = "add",
+  RF = list (
+    "apply" = TRUE,
+    "sample" = nrow(data),
+    "models" = 200,
+    "nvars" = 1,
+    "oob_red" = 0.001
+  ),
+  mul_BF = list (
+    "degree" = 1,
+    "hd_cost" = 0
+  ),
+  metric = "mse",
+  shape = list (
+    "mon" = T,
+    "con" = T,
+    "ori" = F
+  ),
+  nterms = nrow(data),
+  err_red = 0.005,
+  kn_grid = - 1,
+  minspan = - 1,
+  endspan = 0,
+  kn_penalty = 1,
+  smoothing = list (
+    "wc" = seq(1, 2, length.out = 5),
+    "wq" = seq(8 / 7, 1.5, length.out = 5)
+  )
+)
 
+data[, c("y1_pred2RF", "y2_pred2RF")] <- predict (
+  object = ACES,
+  newdata = data,
+  x = x,
+  method = "aces_forward"
+)
 
+compute_variable_importance (
+  data = data,
+  x = x,
+  y = y,
+  object = ACES,
+  repeats = 1
+)
 
-
-pred <- predict(model[[1]], data, x, y1, 4)
-
-dmu  <- nrow(data)
-xmat <- as.matrix(data[, x])
-ymat <- as.matrix(data[, y2])
-nX   <- length(x)
-nY   <- length(y2)
-
-data$BCC.OUT <- (AAFS_BCC.OUT(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu))[, 1]
-data$BCC.INP <- (AAFS_BCC.INP(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu))[, 1]
-data$DEA.OUT <- (AAFS_BCC.OUT(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu) * data[, y2])[, 1]
-data$DEA.INP <- (AAFS_BCC.INP(dmu, xmat, ymat, xmat, ymat, nX, nY, dmu) * data[, x])[, 1]
-
-ggplot(data) +
-  geom_line(aes(x = x1, y = yD, color = "Data Generation Process")) +
-  geom_point(aes(x = x1, y = y)) +
-  geom_line(aes(x = x1, y = DEA.OUT, color = "Best Practices Frontier")) +
-  # geom_point(aes(x = x1, y = DEA.OUT, color = "Output projection")) +
-  # geom_point(aes(x = DEA.INP, y = y, color = "Input projection")) +
-  geom_segment(aes(x = 3.678058, y = 5.615856 + 0.05, xend = 3.678058, yend = 5.615856 * 1.094396 - 0.05),
-               color = "#c77cff", size = 1,
-               arrow = arrow(length = unit(0.3, "cm"))) +
-  geom_text(aes(x = 3.678058 + 0.35, y = 5.615856 + 0.25, label = TeX("$\\phi = 1.09$", output = "character")),
-            parse = TRUE, size = 4) +
-  geom_segment(aes(x = 3.678058 - 0.05, y = 5.615856, xend = 3.678058 * 0.7936781 + 0.05, yend = 5.615856),
-               color = "#00bfc4", size = 1,
-               arrow = arrow(length = unit(0.3, "cm"))) +
-  geom_text(aes(x = 3.678058 - 0.35, y = 5.615856 - 0.15, label = TeX("$\\theta = 0.79$", output = "character")),
-            parse = TRUE, size = 4) +
-  theme_bw()
-
-
-data[, c("By1", "By2")] <- predict(model, data, x, NULL, 2)[, c("y1_pred", "y2_pred")]
-data[, c("Cy1", "Cy2")] <- predict(model, data, x, NULL, 3)[, c("y1_pred", "y2_pred")]
-data[, c("Qy1", "Qy2")] <- predict(model, data, x, NULL, 4)[, c("y1_pred", "y2_pred")]
-
-# Hinge function + logarithm
-set.seed(314)
-data <- X2Y2.sim(1000, 1)
-
-t1 <- 37
-data$BF1 <- pmax(0, t1 - data$x1)
-data$BF2 <- log(pmax(1, data$x1 - t1 + 1))
-
-t2 <- 21
-data$BF3 <- pmax(0, t2 - data$x1)
-data$BF4 <- log(pmax(1, data$x1 - t2 + 1))
-
-t3 <- 16
-data$BF5 <- pmax(0, t3 - data$x1)
-data$BF6 <- log(pmax(1, data$x1 - t3 + 1))
-
-data$ypred <- 0.8 - 2 * data$BF1 + 1 * data$BF2 - 3 * data$BF3 + 2 * data$BF4 - 1.8 * data$BF5 + 1.2 * data$BF6
-
-ggplot(data) +
-  geom_line(aes(x = x1, y = ypred, color = "Prediction"))
-
-for (nx in 1:3) {
-  for (N in c(25, 50, 75, 100, 150)) {
-    print("Minimum span")
-    print(paste("nX: ", nx, "N: ", N, "log: ", - log2((- 1 / (nx * N)) * log(1 - 0.05)) / 2.5))
-
-    print("End span")
-    print(paste("nX: ", nx, "N: ", N, "log: ", 3 - log2(0.05 / nx)))
-  }
+# OOB
+oob <- c()
+for (j in 1:60) {
+  oob <- c(oob, ACES[[1]][[j]][[1]][["OOB"]])
 }
+
+oob_data <- data.frame (
+  model = 1:60,
+  oob_err = oob
+)
+
+ggplot(oob_data) +
+  geom_point(aes(x = model, y = oob_err), color = "#FFABAB") +
+  geom_line(aes(x = model, y = oob_err), color = "#85E3FF") +
+  theme_bw() +
+  theme (
+    axis.title.x = element_text(
+      size = 12, face = "bold", color = "#921F30",
+      margin = margin(t = 10)),
+    axis.title.y = element_text(
+      size = 12, face = "bold", color = "#921F30",
+      margin = margin(r = 10)),
+    axis.text = element_text(
+      size = 12, color = "black"),
+    plot.margin = unit(c(1.25, 1.25, 1.25, 1.25), "lines"),
+    plot.title = element_text(
+      size = 12, face = "bold", color = "#921F30",
+      margin = margin(b = 10)
+    )
+  )
