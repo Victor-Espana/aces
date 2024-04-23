@@ -14,7 +14,7 @@ translog_X2Y2(N, border, noise)
 \item{noise}{\code{logical}. Random noise.}
 }
 \value{
-\code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).
+A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).
 }
 \description{
 This function is used to simulate a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
