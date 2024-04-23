@@ -245,6 +245,8 @@ cobb_douglas_XnY1_noise <- function (
     heteroskedasticity = FALSE
     ) {
 
+  # hola
+
   if(!(nX %in% c(1, 3))){
     stop(paste(nX, "is not allowed"))
   }
