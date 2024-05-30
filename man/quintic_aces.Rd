@@ -2,7 +2,7 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{quintic_aces}
 \alias{quintic_aces}
-\title{Fit a Smoothing Adaptive Constrained Enveloping Splines using Quintic Functions}
+\title{Fit a Smooth Adaptive Constrained Enveloping Splines using Quintic Functions}
 \usage{
 quintic_aces(
   data,
@@ -11,9 +11,7 @@ quintic_aces(
   dea_eff,
   model_type,
   metric,
-  monotonicity,
-  concavity,
-  origin,
+  shape,
   kn_grid,
   kn_side_loc,
   d,
@@ -33,11 +31,7 @@ quintic_aces(
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
 \item{kn_grid}{A \code{data.frame} containing the set of knots from the backward step for smoothing.}
 
@@ -45,10 +39,10 @@ quintic_aces(
 
 \item{d}{Generalized Cross Validation (GCV) penalty per knot.}
 
-\item{wq}{A \code{numeric} value used for the quintic smoothing procedure \insertCite{chen1999}{aces}. This parameter adjusts the distance `d` between the central knot and the left side knot based on the distance `e` between the central knot and the right side knot. If the condition `8/7 < e / d <  1.5` is nos satisfied, then `d` is adjusted to be `wq * e`. This parameter must be set between 8/7 and 1.5.}
+\item{wq}{Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.}
 }
 \value{
-A \code{list} containing information relative to the Smoothing Adaptive Constrained Enveloping Splines through quintic functions.
+A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through quintic functions.
 }
 \description{
 This function performs smoothing on the Adaptive Constrained Enveloping Splines predictor while enforcing continuous second derivatives.

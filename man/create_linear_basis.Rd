@@ -2,7 +2,7 @@
 % Please edit documentation in R/forward_algorithm.R
 \name{create_linear_basis}
 \alias{create_linear_basis}
-\title{Generate a new pair of Linear Basis Functions}
+\title{Generate a New Pair of Linear Basis Functions}
 \usage{
 create_linear_basis(data, var_idx, knot, B)
 }

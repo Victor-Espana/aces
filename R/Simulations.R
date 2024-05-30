@@ -19,8 +19,6 @@
 #'    Check \code{help("mult_scenario_XnY1")}.
 #'    \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario.
 #'    Check \code{help("cobb_douglas_X3Y3")}.
-#'    \item{\code{homothetic_s_shaped}}: Homothetic S-shaped Data Generation Process.
-#'    Check \code{help("homothetic_s_shaped")}.
 #'  }
 #'
 #' @param parms
@@ -102,15 +100,10 @@ reffcy <- function (
       scenario = parms[["scenario"]]
     )
 
-  } else {
-
-    data <- homothetic_s_shaped (
-      N = parms[["N"]],
-      noise = parms[["noise"]]
-    )
   }
 
   return(data)
+
 }
 
 #' @title 1 output ~ nX inputs Cobb-Douglas Data Generation Process
@@ -305,17 +298,24 @@ cobb_douglas_XnY1_noise <- function (
 
 #' @title 2 outputs ~ 2 inputs Translog Data Generation Process
 #'
-#' @description This function is used to simulate a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
+#' @description
+#' This function is used to simulate a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
 #'
 #'
-#' @param N Sample size.
-#' @param border Proportion of DMUs in the frontier.
-#' @param noise \code{logical}. Random noise.
+#' @param N
+#' Sample size.
+#'
+#' @param border
+#' Proportion of DMUs in the frontier.
+#'
+#' @param noise
+#' A \code{logical} indicating whether to add random noise.
 #'
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
-#' @return A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).
+#' @return
+#' A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).
 #'
 #' @references
 #' \insertRef{santin2009}{aces}
@@ -323,7 +323,9 @@ cobb_douglas_XnY1_noise <- function (
 #' @keywords internal
 
 translog_X2Y2 <- function (
-    N, border, noise
+    N,
+    border,
+    noise
     ) {
 
   nX <- 2
@@ -694,63 +696,6 @@ cobb_douglas_X3Y3 <- function (
     # Output generation
     data[, nY + i] <- sqrt(a) * Yobs_aux
   }
-
-  return(data)
-}
-
-#' @title 1 output ~ 2 inputs S-shaped homothetic production function
-#'
-#' @description This function is used to simulate a 1 output ~ 2 inputs \code{data.frame} with a homothetic S-shaped Data Generation Process as in \insertCite{olesen2022;textual}{aces}.
-#'
-#' @param N Sample size.
-#' @param noise Random noise. 4 possible levels: \code{0.01}, \code{0.05}, \code{0.1} or \code{0.15}.
-#'
-#' @importFrom stats runif rnorm
-#' @importFrom dplyr %>%
-#'
-#' @return A \code{data.frame} with the simulated data: 2 inputs (x1, x2, x3), 1 output (y1) and the theoretical frontier (yD)
-#'
-#' @references
-#' \insertRef{olesen2022}{aces}
-#'
-#' @keywords internal
-
-homothetic_s_shaped <- function (
-    N, noise
-    ) {
-
-  nX <- 2
-  nY <- 1
-
-  colnames <- c(
-    paste("x", 1:nX, sep = ""),
-    paste("y", 1:nY, sep = ""),
-    paste("yD", 1:nY, sep = "")
-  )
-
-  data <- matrix (
-    ncol = length(colnames),
-    nrow = N,
-    dimnames = list(NULL, colnames)
-  ) %>% as.data.frame()
-
-  # input generation: polar coordinates (angle & distance)
-  ang <- (runif(n = N, min = 0.1, max = 90 - 0.1) * pi) / 180
-  dis <- runif(n = N, min = 0.01, max = 3)
-
-  x1 <- dis * cos(ang)
-  x2 <- dis * sin(ang)
-
-  # theoretical output
-  yD <- (16 * sqrt(x1) * sqrt(x2) * (2 + 14 * sqrt(x1) * sqrt(x2))) /
-    (16 * sqrt(x1) * sqrt(x2) + 257)
-
-  # observed output
-  noise <- rnorm(n = N, mean = 0, sd = noise)
-  y1 <- yD * exp(noise)
-
-  # data.frame
-  data[, 1:4] <- cbind(x1, x2, y1, yD)
 
   return(data)
 }

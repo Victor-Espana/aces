@@ -17,10 +17,10 @@
 #' A \code{matrix} indicating the degree of each input variable.
 #'
 #' @param dea_eff
-#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
 #'
 #' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
+#' A \code{character} string specifying the nature of the production frontier that the function estimates.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
@@ -31,14 +31,8 @@
 #' @param Bp_list
 #' A \code{list} containing the current set of basis functions for each input variable.
 #'
-#' @param monotonicity
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param concavity
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param origin
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
 #' @param kn_list
 #' A \code{list} containing the current set of selected knots for each input variable.
@@ -72,9 +66,7 @@ add_basis_function <- function (
     metric,
     forward_model,
     Bp_list,
-    monotonicity,
-    concavity,
-    origin,
+    shape,
     kn_list,
     kn_grid,
     L,
@@ -101,7 +93,7 @@ add_basis_function <- function (
   # signal to indicate improvement in the fitting
   improvement <- FALSE
 
-  # basis function for the expansion: it is always 1 in the additive model
+  # basis function for the expansion: it is always the first in the additive model
   bf <- bf_set[[1]]
 
   for (xi in x) {
@@ -149,7 +141,7 @@ add_basis_function <- function (
       # number of paired basis functions for the input "xi"
       nbf_xi <- length(Bp_list_aux[[xi]][["paired"]])
 
-      # Add the 2 new basis functions to the Bp_list
+      # add the 2 new basis functions to the Bp_list
       new_bf <- list (
         "id" = c(nbf + 1, nbf + 2),
         "Bp" = cbind(new_pair[[1]], new_pair[[2]]),
@@ -158,7 +150,7 @@ add_basis_function <- function (
 
       Bp_list_aux[[xi]][["paired"]][[nbf_xi + 1]] <- new_bf
 
-      # sort basis function by variable | side | knot
+      # sort basis function by variable, side and knot
       for (v in 1:nX) {
         for (side in c("paired", "right", "left")) {
           if (!is.null(Bp_list_aux[[v]][[side]])) {
@@ -168,7 +160,7 @@ add_basis_function <- function (
         }
       }
 
-      # column indexes of the BF in B matrix by variable
+      # column indexes of the BFs in the B matrix by variable
       # (intercept column is not considered)
       for (v in 1:nX) {
         Bp_xi <- 1
@@ -222,9 +214,7 @@ add_basis_function <- function (
         dea_eff = dea_eff,
         it_list = it_list,
         Bp_list = Bp_list_aux,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin
+        shape = shape
         )
 
       # predictions
@@ -266,29 +256,28 @@ add_basis_function <- function (
         xi_degree = NULL
       )
 
-      # compute GRSq
+      # compute GRSq: Milborrow (2014)
       GRSq <- 1 - GCV / bf_set[[1]][["GCV"]]
 
-      # add the new basis function
+      # check if the best basis function should be checked
+      add <- FALSE
+
       if (is.na(err_min[2]) || err_min[2] == 1) {
-        if (xi_degree[2, xi] == 1 && err[1] < err_min[1]) {
-          add <- TRUE
 
-        } else if (xi_degree[2, xi] > 1 && (err[1] - err_min[1]) / err_min[1] < - hd_cost) {
-          add <- TRUE
+        if (xi_degree[2, xi] == 1) {
 
-        } else {
-          add <- FALSE
+          add <- err[1] < err_min[1]
+
+        } else if (xi_degree[2, xi] > 1) {
+
+          add <- (err[1] - err_min[1]) / err_min[1] < - hd_cost
 
         }
 
       } else {
-        if (err[1] < err_min[1]) {
-          add <- TRUE
 
-        } else {
-          add <- FALSE
-        }
+        add <- err[1] < err_min[1]
+
       }
 
       if (add) {
@@ -348,6 +337,7 @@ add_basis_function <- function (
 
         # coefficients
         bf1[['coefs']] <- bf2[['coefs']] <- coefs
+
       }
     }
   }
@@ -370,75 +360,98 @@ add_basis_function <- function (
     return(list(best_B, bf_set, kn_list, best_Bp_list, err_min))
 
   } else {
+
     return(improvement)
+
   }
+
 }
 
 #' @title Generate the Set of Eligible Knots
 #'
-#' @description This function generates a vector of knots that can be used to create a new pair of basis functions.
+#' @description
+#' This function generates a vector of knots that can be used to create a new pair of basis functions during the forward algorithm.
 #'
-#' @param data A \code{matrix} containing the variables in the model.
-#' @param nX Number of inputs.
-#' @param var_idx Index of the input variable that creates the new pair of basis functions.
-#' @param minspan Minimum number of observations between two adjacent knots.
-#' @param endspan Minimum number of observations before the first and after the final knot.
-#' @param kn_list A \code{list} containing the set of selected knots.
-#' @param bf A \code{list} with the basis function for the expansion of the model.
-#' @param kn_grid Grid of virtual knots to perform ACES.
+#' @param data
+#' A \code{matrix} containing the variables in the model.
+#'
+#' @param nX
+#' Number of inputs.
+#'
+#' @param var_idx
+#' Index of the input variable that creates the new pair of basis functions.
+#'
+#' @param minspan
+#' Minimum number of observations between two adjacent knots.
+#'
+#' @param endspan
+#' Minimum number of observations before the first and after the final knot.
+#'
+#' @param kn_list
+#' A \code{list} containing the set of selected knots.
+#'
+#' @param bf
+#' A \code{list} with the basis function for the expansion of the model.
+#'
+#' @param kn_grid
+#' Grid of virtual knots to perform ACES.
 #'
 #' @importFrom dplyr %>%
 #'
-#' @return Numeric vector with the knots values for the variable.
+#' @return
+#' Numeric vector with the knots values for the variable.
 
 set_knots <- function (
-    data, nX, var_idx, minspan, endspan, kn_list, bf, kn_grid
+    data,
+    nX,
+    var_idx,
+    minspan,
+    endspan,
+    kn_list,
+    bf,
+    kn_grid
     ) {
 
-  # Sample size
+  # sample size
   N <- nrow(data)
 
-  # Minimum number of observations between two adjacent knots
-  if (length(minspan) > 1) {
-    sp1 <- minspan[var_idx]
-  } else {
-    sp1 <- minspan
-  }
+  # minimum number of observations between two adjacent knots
+  sp1 <- ifelse(length(minspan) > 1, minspan[var_idx], minspan)
 
-  # Minimum number of observations before the first and after the final knot.
-  if (length(endspan) > 1) {
-    sp2 <- endspan[var_idx]
-  } else {
-    sp2 <- endspan
-  }
+  # minimum number of observations before the first and after the final knot.
+  sp2 <- ifelse(length(endspan) > 1, endspan[var_idx], endspan)
 
-  # Observations in the space of the basis function.
+  # observations in the space of the basis function.
   nobs_bf <- bf[['Bp']] != 0
 
-  # Minimum span for Friedman's approach
+  # minimum span for Friedman's approach
   if (sp1 == - 1) {
     sp1 <- floor(min(N * 0.1, - log2(- (1 / (nX * sum(nobs_bf))) * log(1 - 0.05)) / 2.5))
   }
 
-  # Boolean: possible knots
+  # boolean: possible knots
   kn_idx <- rep(TRUE, length(kn_grid[[var_idx]]))
 
   # Set to FALSE the first and last "Le" observations
   if (sp2 != 0) {
     set_sp2_idx <- c(1:sp2, (length(kn_idx) - sp2 + 1):length(kn_idx))
+
   } else {
     set_sp2_idx <- c()
+
   }
 
   # Set to FALSE adjacent "L" observations
   if (!is.null(kn_list[[var_idx]])) {
-    # Used knots values
+
+    # used knots values
     used_kn_val <- sapply(kn_list[[var_idx]], "[[", "t")
-    # Used knots indexes
+
+    # used knots indexes
     used_kn_idx <- c()
 
     for (kn in 1:length(used_kn_val)) {
-      used_kn_idx <- c(
+      used_kn_idx <- c (
         used_kn_idx,
         which(kn_grid[[var_idx]][order(kn_grid[[var_idx]])] == used_kn_val[kn])
       )
@@ -447,60 +460,79 @@ set_knots <- function (
     set_sp1_idx <- c()
 
     for (idx in 1:length(used_kn_idx)) {
-      set_sp1_idx <- append(
+      set_sp1_idx <- append (
         set_sp1_idx,
         (used_kn_idx[idx] - sp1):(used_kn_idx[idx] + sp1)
         )
     }
 
-    # Indexes must be greater than 0 and lower than N
+    # indexes must be greater than 0 and lower than N
     set_sp1_idx <- unique(sort(set_sp1_idx[set_sp1_idx > 0 & set_sp1_idx <= sum(nobs_bf)]))
 
   } else {
+
     set_sp1_idx <- c()
+
   }
 
-  # Set of observations to FALSE based on minspand and endspan
+  # set of observations to FALSE based on minspan and endspan
   kn_idx[sort(unique(c(set_sp1_idx, set_sp2_idx)))] <- FALSE
 
-  # Knots
+  # define knots
   if (all(kn_idx == FALSE)) {
+
     knots <- NULL
 
   } else {
-    # Minimum value of observations in BF
+
+    # minimum value of observations in the basis function
     minimum <- min(data[nobs_bf, var_idx])
-    # Maximum value of observations in BF
+
+    # maximum value of observations in the basis function
     maximum <- max(data[nobs_bf, var_idx])
 
-    # Exclude observations according to minspan and endspan
+    # exclude observations according to the minspan and the endspan
     varknots <- kn_grid[[var_idx]][order(kn_grid[[var_idx]])][kn_idx]
 
-    # Knots between minimum and maximum
+    # knots between minimum and maximum
     knots <- varknots[varknots >= minimum & varknots <= maximum]
+
   }
 
   if (length(knots) <= 1) knots <- NULL
 
   return(knots)
+
 }
 
-#' @title Generate a new pair of Linear Basis Functions
+#' @title Generate a New Pair of Linear Basis Functions
 #'
-#' @description This function generates two new linear basis functions from a variable and a knot.
+#' @description
+#' This function generates two new linear basis functions from a variable and a knot.
 #'
-#' @param data A \code{matrix} containing the variables in the model.
-#' @param var_idx Index of the input variable that creates the new pair of basis functions.
-#' @param knot Knot for creating the new pair of basis functions.
-#' @param B A \code{matrix} of basis functions on which the new pair of functions is added.
+#' @param data
+#' A \code{matrix} containing the variables in the model.
 #'
-#' @return A \code{list} with the new pair of basis functions.
+#' @param var_idx
+#' Index of the input variable that creates the new pair of basis functions.
+#'
+#' @param knot
+#' Knot for creating the new pair of basis functions.
+#'
+#' @param B
+#' A \code{matrix} of basis functions on which the new pair of functions is added.
+#'
+#' @return
+#' A \code{list} with the new pair of basis functions.
 
 create_linear_basis <- function (
-    data, var_idx, knot, B
+    data,
+    var_idx,
+    knot,
+    B
     ) {
 
-  # Create (xi-t)+ and (t-xi)+
+  # create (xi-t)+ and (t-xi)+
   hinge1 <- pmax(0, data[, var_idx] - knot)
   hinge2 <- pmax(0, knot - data[, var_idx])
 
@@ -509,4 +541,5 @@ create_linear_basis <- function (
   bf2 <- B[, 1] * hinge2
 
   return(list(bf1, bf2))
+
 }

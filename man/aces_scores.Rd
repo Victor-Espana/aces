@@ -11,7 +11,6 @@ aces_scores(
   y,
   object,
   method,
-  proximity = ifelse(length(y) == 1, Inf, 0.05),
   measure = "rad_out",
   convexity = TRUE,
   returns = "variable",
@@ -39,8 +38,6 @@ aces_scores(
 \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
 }}
 
-\item{proximity}{A value indicating the proximity of the DMUs to the DEA-VRS frontier.}
-
 \item{measure}{Mathematical programming model to calculate scores:
 \itemize{
 \item{\code{rad_out}} The output-oriented radial measure. Efficiency level at 1. (default)
@@ -52,7 +49,7 @@ aces_scores(
 \item{\code{wam_ram}} The weighted additive model: range adjusted measure of inefficiency. Efficiency level at 0.
 }}
 
-\item{convexity}{A \code{logical} value indicating if a convex technology is assumed. Default is \code{TRUE}.}
+\item{convexity}{A \code{logical} value indicating if a convex technology is assumed. Only \code{TRUE} is available.}
 
 \item{returns}{Type of returns to scale:
 \itemize{

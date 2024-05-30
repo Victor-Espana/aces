@@ -1,11 +1,11 @@
-#' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines Fitting
+#' @title Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES) Fitting
 #'
 #' @description
 #'
 #' This function solves a Mathematical Programming problem to obtain a vector of coefficients that impose the required shaped on the Adaptive Constrained Enveloping Splines estimator.
 #'
 #' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
+#' A \code{character} string specifying the nature of the production frontier that the function estimates.
 #'
 #' @param B
 #' A \code{matrix} of linear basis functions.
@@ -14,7 +14,7 @@
 #' A \code{matrix} of the observed output data.
 #'
 #' @param dea_eff
-#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
 #'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
@@ -22,14 +22,8 @@
 #' @param Bp_list
 #' A \code{list} containing the set of basis functions by input.
 #'
-#' @param monotonicity
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param concavity
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param origin
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
 #' @return
 #'
@@ -42,33 +36,30 @@ estimate_coefficients <- function (
     dea_eff,
     it_list,
     Bp_list,
-    monotonicity,
-    concavity,
-    origin
+    shape
     ) {
 
   if (model_type == "env") {
-    coefs <- ec_envelopment (
+
+    coefs <- estim_coefs_env (
       B = B,
       y_obs = y_obs,
       dea_eff = dea_eff,
       it_list = it_list,
       Bp_list = Bp_list,
-      monotonicity = monotonicity,
-      concavity = concavity,
-      origin = origin
+      shape = shape
     )
 
   } else {
-    coefs <- ec_stochastic (
+
+    coefs <- estim_coefs_sto (
       B = B,
       y_obs = y_obs,
       it_list = it_list,
       Bp_list = Bp_list,
-      monotonicity = monotonicity,
-      concavity = concavity,
-      origin = origin
+      shape = shape
     )
+
   }
 
   return(coefs)
@@ -87,7 +78,7 @@ estimate_coefficients <- function (
 #' A \code{matrix} of the observed output data.
 #'
 #' @param dea_eff
-#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
 #'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
@@ -95,41 +86,46 @@ estimate_coefficients <- function (
 #' @param Bp_list
 #' A \code{list} containing the set of basis functions by input.
 #'
-#' @param monotonicity
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param concavity
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param origin
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
 #' @return
 #'
 #' A \code{vector} of estimated coefficients.
 
-ec_envelopment <- function (
+estim_coefs_env <- function (
     B,
     y_obs,
     dea_eff,
     it_list,
     Bp_list,
-    monotonicity,
-    concavity,
-    origin
+    shape
     ) {
 
-  # called from smoothing
-  if (origin != "FALSE" && (is.null(it_list) && is.null(Bp_list))) {
+  # monotonicity
+  mono = shape[["mono"]]
+
+  # concavity
+  conc = shape[["conc"]]
+
+  # pass through the origin
+  ptto = shape[["ptto"]]
+
+  # ===================== #
+  # called from smoothing #
+  # ===================== #
+
+  if (ptto != FALSE && (is.null(it_list) && is.null(Bp_list))) {
 
     # f(0) = 0 vector of coefficients
-    Ovec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
+    origin_vec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
 
     # B matrix
     B <- B[1:(nrow(B) - 1), ]
 
     # y_obs
     y_obs <- as.matrix(y_obs[1:(length(y_obs) - 1)])
+
   }
 
   # sample size
@@ -172,8 +168,9 @@ ec_envelopment <- function (
     # matrix of coefficients
     Amat <- rbind(EMat)
 
-    # non-decreasing monotonicity
-    if (monotonicity) {
+    # generate non-decreasing monotonicity matrix
+    if (mono) {
+
       MMat <- monotonocity_matrix (
         it_list = it_list,
         Bp_list = Bp_list,
@@ -182,10 +179,12 @@ ec_envelopment <- function (
 
       # add MMat to Amat
       Amat <- rbind(Amat, MMat)
+
     }
 
-    # concavity
-    if (concavity) {
+    # generate concavity matrix
+    if (conc) {
+
       CMat <- concavity_matrix(
         Bp_list = Bp_list,
         N = N
@@ -193,6 +192,7 @@ ec_envelopment <- function (
 
       # add CMat to Amat
       Amat <- rbind(Amat, CMat)
+
     }
 
     # ==================================================== #
@@ -211,27 +211,23 @@ ec_envelopment <- function (
     # Prediction: f(0) = 0                                 #
     # ==================================================== #
 
-    if (origin != "FALSE") {
+    if (ptto != FALSE) {
 
       # f(0) = 0
       if (!is.null(it_list) && !is.null(Bp_list)) {
-        Ovec <- predict_origin (
+
+        origin_vec <- predict_origin (
           it_list = it_list,
           Bp_list = Bp_list,
           n_bf = p,
           N = N
         )
 
-        # add Ovec to Amat
-        Amat <- rbind(Amat, Ovec)
+        # add origin_vec to Amat
+        Amat <- rbind(Amat, origin_vec)
 
         # update right-hand terms
-        if (origin == "0") {
-          bvec <- c(bvec, 0)
-
-        } else {
-          bvec <- c(bvec, 1)
-        }
+        bvec <- c(bvec, if (ptto == "0") 0 else 1)
 
         # update vector of directions
         dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff - 1), "==")
@@ -239,20 +235,15 @@ ec_envelopment <- function (
       } else {
 
         # add f(0) = 0 to Amat
-        Amat <- rbind(Amat, Ovec)
+        Amat <- rbind(Amat, origin_vec)
 
         # update right-hand terms
-        if (origin == "0") {
-          bvec <- c(bvec, 0)
-
-        } else {
-          bvec <- c(bvec, 1)
-
-        }
+        bvec <- c(bvec, if (ptto == "0") 0 else 1)
 
         # add f(0) = 0 to dirs
         dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff - 1), "==")
       }
+
     }
 
     # ==================================================== #
@@ -274,6 +265,7 @@ ec_envelopment <- function (
     )
 
     coefs[, out] <- sols$solution[1:p]
+
   }
 
   return(coefs)
@@ -297,13 +289,13 @@ ec_envelopment <- function (
 #' @param Bp_list
 #' A \code{list} containing the set of basis functions by input.
 #'
-#' @param monotonicity
+#' @param mono
 #' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
 #'
-#' @param concavity
+#' @param conc
 #' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
 #'
-#' @param origin
+#' @param ptto
 #' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
 #'
 #' @importFrom quadprog solve.QP
@@ -312,27 +304,28 @@ ec_envelopment <- function (
 #'
 #' A \code{vector} of estimated coefficients.
 
-ec_stochastic <- function (
+estim_coefs_sto <- function (
     B,
     y_obs,
     it_list,
     Bp_list,
-    monotonicity,
-    concavity,
-    origin
+    mono,
+    conc,
+    ptto
     ) {
 
   # called from smoothing
-  if (origin != "FALSE" && (is.null(it_list) && is.null(Bp_list))) {
+  if (ptto != FALSE && (is.null(it_list) && is.null(Bp_list))) {
 
     # f(0) = 0 vector of coefficients
-    Ovec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
+    origin_vec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
 
     # B matrix
     B <- B[1:(nrow(B) - 1), ]
 
     # y_obs
     y_obs <- as.matrix(y_obs[1:(length(y_obs) - 1)])
+
   }
 
   # sample size
@@ -388,29 +381,32 @@ ec_stochastic <- function (
     # Prediction: f(0) = 0                                 #
     # ==================================================== #
 
-    if (origin != "FALSE") {
+    if (ptto != FALSE) {
 
       # f(0) = 0
       if (!is.null(it_list) && !is.null(Bp_list)) {
-        Ovec <- predict_origin (
+
+        origin_vec <- predict_origin (
           it_list = it_list,
           Bp_list = Bp_list,
           n_bf = p,
           N = N
         )
 
-        # add Ovec to Amat
-        Amat <- rbind(Amat, Ovec)
+        # add origin_vec to Amat
+        Amat <- rbind(Amat, origin_vec)
 
       } else {
+
         # add f(0) = 0 to Amat
-        Amat <- rbind(Amat, Ovec)
+        Amat <- rbind(Amat, origin_vec)
 
       }
     }
 
-    # monotonicity matrix
-    if (monotonicity) {
+    # generate monotonicity matrix
+    if (mono) {
+
       MMat <- monotonocity_matrix (
         it_list = it_list,
         Bp_list = Bp_list,
@@ -418,23 +414,26 @@ ec_stochastic <- function (
       )
 
       Amat <- rbind(Amat, MMat)
+
     }
 
-    # concavity matrix
-    if (concavity) {
+    # generate concavity matrix
+    if (conc) {
+
       CMat <- concavity_matrix (
         Bp_list = Bp_list,
         N = N
       )
 
       Amat <- rbind(Amat, CMat)
+
     }
 
     # ==================================================== #
     # b: fitting + concavity + monotonicity                #
     # ==================================================== #
 
-    if (origin == "1") {
+    if (ptto == "1") {
       bvec <- c(y_ind, 1, rep(0, nrow(Amat) - N - 1))
 
     } else {
@@ -446,7 +445,8 @@ ec_stochastic <- function (
     # solution of the optimization problem                 #
     # ==================================================== #
 
-    if (origin != "FALSE") {
+    if (ptto != FALSE) {
+
       sols <- solve.QP (
         Dmat = Dmat, dvec = dvec,
         Amat = t(Amat), bvec = bvec,
@@ -454,11 +454,13 @@ ec_stochastic <- function (
       )
 
     } else {
+
       sols <- solve.QP (
         Dmat = Dmat, dvec = dvec,
         Amat = t(Amat), bvec = bvec,
         meq = N
       )
+
     }
 
     coefs[, out] <- sols$solution[1:p]

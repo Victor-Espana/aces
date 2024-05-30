@@ -13,9 +13,7 @@ aces_pruning(
   metric,
   forward_model,
   Bp_list,
-  monotonicity,
-  concavity,
-  origin,
+  shape,
   d
 )
 }
@@ -36,11 +34,7 @@ aces_pruning(
 
 \item{Bp_list}{A \code{list} containing the current set of basis functions for each input variable.}
 
-\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{origin}{A \code{list} containing the current set of selected knots for each input variable.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
 \item{d}{An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.}
 }

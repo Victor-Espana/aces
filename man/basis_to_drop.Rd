@@ -4,12 +4,12 @@
 \alias{basis_to_drop}
 \title{Basis Functions to be Dropped}
 \usage{
-basis_to_drop(Bp_list, concavity, nX)
+basis_to_drop(Bp_list, conc, nX)
 }
 \arguments{
 \item{Bp_list}{A \code{list} containing the set of basis functions by input.}
 
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{conc}{A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
 
 \item{nX}{Number of inputs.}
 }

@@ -4,7 +4,7 @@
 \alias{predict.rf_aces}
 \title{Model Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES)}
 \usage{
-\method{predict}{rf_aces}(object, newdata, x, method = "aces")
+\method{predict}{rf_aces}(object, newdata, x, method = "rf_aces")
 }
 \arguments{
 \item{object}{A \code{rf_aces} object.}
@@ -15,9 +15,9 @@
 
 \item{method}{Model for prediction:
 \itemize{
-\item{\code{"aces_forward"}}: Random Forest Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+\item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines model.
+\item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
+\item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
 }}
 }
 \value{

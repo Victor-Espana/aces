@@ -196,6 +196,205 @@ scores <- aces_scores (
 data$y_hat1 <- scores$dea_vrt_rad_out * data[, 2]
 
 # ============================================================================ #
+#                                   X2 ~ Y2                                    #
+# ============================================================================ #
+
+data <- reffcy(
+  DGP = "translog_X2Y2",
+  parms = list(
+    N = 100,
+    border = 0.1,
+    noise = FALSE
+  )
+)
+
+x <- 1:2
+y <- 3:4
+
+# bootstrap iterations
+n_bootstrap <- 10
+
+# matrix to save predictions
+bootstrap_predictions_y1 <- matrix(NA, nrow = nrow(data), ncol = n_bootstrap)
+bootstrap_predictions_y2 <- matrix(NA, nrow = nrow(data), ncol = n_bootstrap)
+
+# crear barra de progreso
+library(progress)
+pb <- progress_bar$new(
+  format = "Bootstrap [:bar] :percent en :elapsed",
+  total = n_bootstrap,
+  clear = FALSE,
+  width = 60
+)
+
+# bootstrap loop
+for (i in 1:n_bootstrap) {
+
+  # make bootstrap sample
+  bootstrap_sample <- data[sample(1:nrow(data), replace = TRUE), ]
+
+  # ACES model
+  ACES <- aces (
+    data = bootstrap_sample,
+    x = x,
+    y = y,
+    y_type = "ind",
+    model_type = "env",
+    error_type = "mul",
+    RF = list(
+      "apply" = FALSE,
+      "sample" = nrow(bootstrap_sample),
+      "models" = 50,
+      "nvars" = 1,
+      "oob_red" = 0.001
+    ),
+    mul_BF = list (
+      "degree" = 2,
+      "hd_cost" = 0.05
+    ),
+    metric = "mse",
+    shape = list (
+      "mon" = TRUE,
+      "con" = TRUE,
+      "pto" = FALSE
+    ),
+    nterms = nrow(bootstrap_sample),
+    err_red = 0.005,
+    kn_grid = - 1,
+    minspan = - 1,
+    endspan = 0,
+    kn_penalty = 1,
+    smoothing = list(
+      "wc" = seq(1, 2, length.out = 5),
+      "wq" = seq(8 / 7, 1.5, length.out = 5)
+    )
+  )
+
+  # Predecir con el modelo ajustado en la muestra original
+  predictions <- predict (
+    object = ACES,
+    newdata = data,
+    x = x,
+    method = "aces"
+  )
+
+  # save predictions
+  bootstrap_predictions_y1[, i] <- predictions[, "y1_pred"]
+  bootstrap_predictions_y2[, i] <- predictions[, "y2_pred"]
+
+  # update progress bar
+  pb$tick()
+}
+
+
+# Calcular estadísticos de las predicciones (por ejemplo, promedio y desviación estándar)
+pred_summary <- data %>%
+  mutate(
+    y1_pred_mean = apply(bootstrap_predictions_y1, 1, mean),
+    y2_pred_mean = apply(bootstrap_predictions_y2, 1, mean),
+  )
+
+
+# ============================================================================ #
+#                                 RandomForest                                 #
+# ============================================================================ #
+
+devtools::load_all()
+
+data <- reffcy (
+  DGP = "translog_X2Y2",
+  parms = list (
+    N = 25,
+    border = 0.1,
+    noise = FALSE
+  ))
+
+x <- 1:2
+y <- 3:4
+
+ACES <- aces (
+  data = data,
+  x = x,
+  y = y,
+  y_type = "ind",
+  model_type = "env",
+  error_type = "add",
+  RF = list (
+    "apply" = FALSE,
+    "sample" = nrow(data),
+    "models" = 200,
+    "nvars" = 1,
+    "oob_red" = 0.001
+  ),
+  mul_BF = list (
+    "degree" = 2,
+    "hd_cost" = 0
+  ),
+  metric = "mse",
+  shape = list (
+    "mon" = T,
+    "con" = T,
+    "pto" = F
+  ),
+  nterms = nrow(data),
+  err_red = 0.005,
+  kn_grid = - 1,
+  minspan = - 1,
+  endspan = 0,
+  kn_penalty = 1,
+  smoothing = list (
+    "wc" = seq(1, 2, length.out = 5),
+    "wq" = seq(8 / 7, 1.5, length.out = 5)
+  )
+)
+
+data[, c("y1_pred2RF", "y2_pred2RF")] <- predict (
+  object = ACES,
+  newdata = data,
+  x = x,
+  method = "aces_forward"
+)
+
+compute_variable_importance (
+  data = data,
+  x = x,
+  y = y,
+  object = ACES,
+  repeats = 1
+)
+
+# OOB
+oob <- c()
+for (j in 1:60) {
+  oob <- c(oob, ACES[[1]][[j]][[1]][["OOB"]])
+}
+
+oob_data <- data.frame (
+  model = 1:60,
+  oob_err = oob
+)
+
+ggplot(oob_data) +
+  geom_point(aes(x = model, y = oob_err), color = "#FFABAB") +
+  geom_line(aes(x = model, y = oob_err), color = "#85E3FF") +
+  theme_bw() +
+  theme (
+    axis.title.x = element_text(
+      size = 12, face = "bold", color = "#921F30",
+      margin = margin(t = 10)),
+    axis.title.y = element_text(
+      size = 12, face = "bold", color = "#921F30",
+      margin = margin(r = 10)),
+    axis.text = element_text(
+      size = 12, color = "black"),
+    plot.margin = unit(c(1.25, 1.25, 1.25, 1.25), "lines"),
+    plot.title = element_text(
+      size = 12, face = "bold", color = "#921F30",
+      margin = margin(b = 10)
+    )
+  )
+
+# ============================================================================ #
 #                                 Concavidad                                   #
 # ============================================================================ #
 
@@ -255,170 +454,3 @@ ggplot(data) +
   geom_vline(xintercept = k2) +
   theme_bw()
 
-# ============================================================================ #
-#                                   X2 ~ Y2                                    #
-# ============================================================================ #
-
-data <- reffcy (
-  DGP = "translog_X2Y2",
-  parms = list (
-    N = 100,
-    border = 0.1,
-    noise = FALSE
-  ))
-
-x <- 1:2
-y <- 3:4
-
-# modelo
-ACES <- aces (
-  data = data,
-  x = x,
-  y = y,
-  y_type = "all",
-  model_type = "env",
-  error_type = "add",
-  bagging = list (
-    apply = FALSE,
-    sample = nrow(data),
-    models = 50,
-    nvars = ceiling(length(x) / 3),
-    oob_red = 0.01,
-  ),
-  degree = 2,
-  hd_cost = 0,
-  metric = "mse",
-  shape = list (
-    monotonicity = T,
-    concavity = T,
-    origin = F
-  ),
-  nterms = nrow(data),
-  err_red = 0,
-  minspan = - 1,
-  endspan = - 1,
-  kn_grid = - 1,
-  d = 1,
-  wc = seq(1, 2, length.out = 5),
-  wq = seq(8 / 7, 1.5, length.out = 5)
-)
-
-data[, c("y1_pred2", "y2_pred2")] <- predict (
-  object = ACES,
-  newdata = data,
-  x = x,
-  method = "aces_forward"
-)
-
-plot_ly() %>%
-  add_trace (
-    data = data, x = data$x1, y = data$x2, z = data$y1,
-    type = "mesh3d"
-  ) %>%
-  add_trace (
-    data = data, x = data$x1, y = data$x2, z = data$y1_pred,
-    type = "mesh3d"
-  ) %>%
-  add_markers (
-    data = data, x = data$x1, y = data$x2, z = data$y1,
-    marker = list(size = 5, color = "red", opacity = 0.8)
-  )
-
-# ============================================================================ #
-#                                 RandomForest                                 #
-# ============================================================================ #
-
-devtools::load_all()
-
-data <- reffcy (
-  DGP = "translog_X2Y2",
-  parms = list (
-    N = 25,
-    border = 0.1,
-    noise = FALSE
-  ))
-
-x <- 1:2
-y <- 3:4
-
-ACES <- aces (
-  data = data,
-  x = x,
-  y = y,
-  y_type = "all",
-  model_type = "env",
-  error_type = "add",
-  RF = list (
-    "apply" = TRUE,
-    "sample" = nrow(data),
-    "models" = 200,
-    "nvars" = 1,
-    "oob_red" = 0.001
-  ),
-  mul_BF = list (
-    "degree" = 1,
-    "hd_cost" = 0
-  ),
-  metric = "mse",
-  shape = list (
-    "mon" = T,
-    "con" = T,
-    "ori" = F
-  ),
-  nterms = nrow(data),
-  err_red = 0.005,
-  kn_grid = - 1,
-  minspan = - 1,
-  endspan = 0,
-  kn_penalty = 1,
-  smoothing = list (
-    "wc" = seq(1, 2, length.out = 5),
-    "wq" = seq(8 / 7, 1.5, length.out = 5)
-  )
-)
-
-data[, c("y1_pred2RF", "y2_pred2RF")] <- predict (
-  object = ACES,
-  newdata = data,
-  x = x,
-  method = "aces_forward"
-)
-
-compute_variable_importance (
-  data = data,
-  x = x,
-  y = y,
-  object = ACES,
-  repeats = 1
-)
-
-# OOB
-oob <- c()
-for (j in 1:60) {
-  oob <- c(oob, ACES[[1]][[j]][[1]][["OOB"]])
-}
-
-oob_data <- data.frame (
-  model = 1:60,
-  oob_err = oob
-)
-
-ggplot(oob_data) +
-  geom_point(aes(x = model, y = oob_err), color = "#FFABAB") +
-  geom_line(aes(x = model, y = oob_err), color = "#85E3FF") +
-  theme_bw() +
-  theme (
-    axis.title.x = element_text(
-      size = 12, face = "bold", color = "#921F30",
-      margin = margin(t = 10)),
-    axis.title.y = element_text(
-      size = 12, face = "bold", color = "#921F30",
-      margin = margin(r = 10)),
-    axis.text = element_text(
-      size = 12, color = "black"),
-    plot.margin = unit(c(1.25, 1.25, 1.25, 1.25), "lines"),
-    plot.title = element_text(
-      size = 12, face = "bold", color = "#921F30",
-      margin = margin(b = 10)
-    )
-  )

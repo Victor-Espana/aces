@@ -643,9 +643,6 @@ cond_eff <- function (
 #' \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
 #' }
 #'
-#' @param proximity
-#' A value indicating the proximity of the DMUs to the DEA-VRS frontier.
-#'
 #' @param measure
 #' Mathematical programming model to calculate scores:
 #' \itemize{
@@ -659,7 +656,7 @@ cond_eff <- function (
 #' }
 #'
 #' @param convexity
-#' A \code{logical} value indicating if a convex technology is assumed. Default is \code{TRUE}.
+#' A \code{logical} value indicating if a convex technology is assumed. Only \code{TRUE} is available.
 #'
 #' @param returns
 #' Type of returns to scale:
@@ -703,7 +700,6 @@ aces_scores <- function (
     y,
     object,
     method,
-    proximity = ifelse(length(y) == 1, Inf, 0.05),
     measure = "rad_out",
     convexity = TRUE,
     returns = "variable",
@@ -738,6 +734,7 @@ aces_scores <- function (
     wq = NULL,
     object = object,
     measure = measure,
+    convexity = convexity,
     returns = returns,
     direction = direction,
     digits = digits
@@ -755,7 +752,7 @@ aces_scores <- function (
     object[[1]][["data"]][["y"]]
     ))
 
-  # Check if training and test names are the same
+  # check if training and test names are the same
   tr_names <- colnames(object[[1]][["data"]][["df"]])[var_indexes]
   te_names <- colnames(tech_data[c(x, y)])
   ev_names <- colnames(eval_data[c(x, y)])
@@ -782,13 +779,8 @@ aces_scores <- function (
 
   # matrix of inputs
   tech_xmat <- as.matrix(tech_data[, x])
-  colnames(tech_xmat) <- names(tech_data)[x]
 
   # matrix of outputs
-  tech_ymat <- as.matrix(tech_data[, y])
-  colnames(tech_ymat) <- names(tech_data)[y]
-
-  # new outputs for the technology
   y_hat <- predict (
     object = object,
     newdata = tech_data,
@@ -796,27 +788,7 @@ aces_scores <- function (
     method = method
   )
 
-  # add dea scores to y_hat
-  y_hat$dea_scores <- rad_out (
-     tech_xmat = tech_xmat,
-     tech_ymat = tech_ymat,
-     eval_xmat = tech_xmat,
-     eval_ymat = tech_ymat,
-     convexity = TRUE,
-     returns = "variable"
-   )[, 1]
-
-  # add technology to y_hat
-  y_hat <- cbind(y_hat, tech_ymat)
-
-  # If the DMU is not in the frontier --> we don't predict it
-  for (i in 1:nrow(y_hat)) {
-    if (y_hat[i, "dea_scores"] > 1 + proximity) {
-      y_hat[i, 1:length(y)] <- y_hat[i, (1:length(y)) + length(y)]
-    }
-  }
-
-  tech_ymat <- as.matrix(y_hat[, c(1:length(y))])
+  tech_ymat <- as.data.frame(tech_ymat)
 
   # ======================= #
   # Data for evaluated DMUs #
@@ -899,33 +871,27 @@ aces_scores <- function (
   # model name
   if (returns == "constant") {
     model <- "dea_crt"
+
   } else {
     if (convexity) {
       model <- "dea_vrt"
+
     } else {
       model <- "aces_fdh"
+
     }
   }
 
   model <- paste(model, measure, sep = "_")
 
   # scores as data.frame
-  scores <- as.data.frame(scores);
-  names(scores) <- model
-  rownames(scores) <- row.names(tech_data)
+  scores <- as.data.frame(scores)
 
-  descriptive <- scores %>%
-    summarise (
-      "Model" = model,
-      "Mean" = mean(scores[, 1]),
-      "Std. Dev." = sd(scores[, 1]),
-      "Min" = min(scores[, 1]),
-      "Q1" = quantile(scores[, 1])[[2]],
-      "Median" = median(scores[, 1]),
-      "Q3" = quantile(scores[, 1])[[3]],
-      "Max" = max(scores[, 1])
-      ) %>%
-    mutate_if(is.numeric, round, digits)
+  # column names
+  names(scores) <- model
+
+  # row names
+  rownames(scores) <- row.names(tech_data)
 
   return(round(scores, digits))
 }

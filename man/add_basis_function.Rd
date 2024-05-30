@@ -14,9 +14,7 @@ add_basis_function(
   metric,
   forward_model,
   Bp_list,
-  monotonicity,
-  concavity,
-  origin,
+  shape,
   kn_list,
   kn_grid,
   L,
@@ -34,9 +32,9 @@ add_basis_function(
 
 \item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
-\item{dea_eff}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
+\item{dea_eff}{An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
@@ -44,11 +42,7 @@ add_basis_function(
 
 \item{Bp_list}{A \code{list} containing the current set of basis functions for each input variable.}
 
-\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
 \item{kn_list}{A \code{list} containing the current set of selected knots for each input variable.}
 

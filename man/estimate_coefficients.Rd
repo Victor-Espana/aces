@@ -2,38 +2,24 @@
 % Please edit documentation in R/estimate_coefficients_linear.R
 \name{estimate_coefficients}
 \alias{estimate_coefficients}
-\title{Estimate Coefficients in Adaptive Constrained Enveloping Splines Fitting}
+\title{Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES) Fitting}
 \usage{
-estimate_coefficients(
-  model_type,
-  B,
-  y_obs,
-  dea_eff,
-  it_list,
-  Bp_list,
-  monotonicity,
-  concavity,
-  origin
-)
+estimate_coefficients(model_type, B, y_obs, dea_eff, it_list, Bp_list, shape)
 }
 \arguments{
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
 
 \item{B}{A \code{matrix} of linear basis functions.}
 
 \item{y_obs}{A \code{matrix} of the observed output data.}
 
-\item{dea_eff}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
+\item{dea_eff}{An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.}
 
 \item{it_list}{A \code{list} containing the set of intervals by input.}
 
 \item{Bp_list}{A \code{list} containing the set of basis functions by input.}
 
-\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 }
 \value{
 A \code{vector} of estimated coefficients.

@@ -12,8 +12,8 @@ concavity_matrix(Bp_list, N)
 \item{N}{Sample size.}
 }
 \value{
-A \code{matrix} to enforce concavity constraint on the estimated function.
+A \code{matrix} representing the constraint matrix to enforce concavity on the estimated function.
 }
 \description{
-This function constructs the constraint matrix (often denoted as matrix "A") to enforce concavity.
+This function constructs the constraint matrix (often denoted as matrix "A") to enforce concavity in the estimated function. The constraint matrix enforces concavity by ensuring that the coefficients of the basis functions satisfy certain conditions.
 }

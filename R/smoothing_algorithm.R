@@ -1,23 +1,32 @@
 #' @title Generate Side Knot Locations
 #'
-#' @description This function creates the input space for locating side knots in the smoothing procedure.
+#' @description
+#' This function creates the input space for locating side knots in the smoothing procedure.
 #'
-#' @param data A \code{matrix} containing the variables in the model.
-#' @param nX Number of inputs in \code{data}.
-#' @param knots A \code{data.frame} containing the knots from the backward step.
+#' @param data
+#' A \code{matrix} containing the variables in the model.
 #'
-#' @return A \code{list} with the locations of the central and the side knots in each dimension.
+#' @param nX
+#' Number of inputs in \code{data}.
+#'
+#' @param knots
+#' A \code{data.frame} containing the knots from the backward step.
+#'
+#' @return
+#' A \code{list} with the locations of the central and the side knots in each dimension.
 
-side_knots_location <- function (
-    data, nX, knots
+side_knot_location <- function (
+    data,
+    nX,
+    knots
     ) {
 
-  # List for kn_side_loc
+  # initialize a list to save side knot locations
   kn_side_loc <- vector("list", nX)
 
   for (v in 1:nX) {
 
-    # knots for the "v" variable
+    # get knots for the v-th variable
     kt_v <- sort(unique(knots[knots[, 1] == v, 2]))
 
     if (length(kt_v) == 0) next
@@ -25,31 +34,48 @@ side_knots_location <- function (
     # add the initial and the end observation. They cannot be used as knots.
     kn_side_loc[[v]] <- c(min(data[, v]), kt_v, max(data[, v]))
 
-    # calculate the midpoints between central knots
+    # compute the midpoints between central knots
     kn_side_loc[[v]] <- sort(c(kn_side_loc[[v]], kn_side_loc[[v]][- length(kn_side_loc[[v]])] + diff(kn_side_loc[[v]]) / 2))
+
   }
 
   return(kn_side_loc)
+
 }
 
 #' @title Generate a Suitable Triplet of Knots
 #'
-#' @description This function generates a suitable triplet of knots for the smoothing procedure depending on the shape-constraints.
+#' @description
+#' This function generates a suitable triplet of knots for the smoothing procedure depending on the shape-constraints.
 #'
-#' @param knots A \code{vector} with the initial locations for central and side knots.
-#' @param w Hyperparameter for the side knot distances in the cubic and quintic smoothing procedures.
-#' @param smoothing Type of smoothing:
+#' @param knots
+#' A \code{vector} with the initial locations for central and side knots.
+#'
+#' @param w
+#' Hyperparameter for side knot distances in the cubic and quintic smoothing procedures.
+#'
+#' @param smoothing
+#' Type of smoothing:
 #' \itemize{
 #' \item{\code{"cubic"}}: cubic smoothing procedure.
 #' \item{\code{"quintic"}}: quintic smoothing procedure.
 #' }
-#' @param monotonicity \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#' @param concavity \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
 #'
-#' @return A \code{vector} with a suitable triplet of knots.
+#' @param monotonicity
+#' A \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
+#'
+#' @param concavity
+#' A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
+#'
+#' @return
+#' A \code{vector} with a suitable triplet of knots.
 
 set_triplet_knots <- function (
-    knots, w, smoothing, monotonicity, concavity
+    knots,
+    w,
+    smoothing,
+    mono,
+    conc
     ) {
 
   # unconstrained knots
@@ -62,28 +88,36 @@ set_triplet_knots <- function (
   e <- t2 - t1 # t+ - t
 
   # constrained knots
-  if (monotonicity | concavity) {
+  if (mono | conc) {
+
     if (smoothing == "cubic") {
+
       ratio <- d / e
-    } else {
+
+      if (ratio < 1 | ratio > 2) {
+        # update t+
+        e <- w * d
+        t2 <- t1 + e
+      }
+
+    } else if (smoothing == "quintic") {
+
       ratio <- e / d
+
+      if (ratio < 8/7 | ratio > 1.5) {
+        # update t-
+        d <- w * e
+        t0 <- t1 - d
+
+      }
     }
-
-  if (smoothing == "cubic" && (ratio < 1 | ratio > 2)) {
-    # update t+
-    e <- w * d
-    t2 <- t1 + e
-
-  } else if (smoothing == "quintic" && (ratio < 8/7 | ratio > 1.5))
-    # update t-
-    d <- w * e
-    t0 <- t1 - d
   }
 
   return(c(t0, t1, t2))
+
 }
 
-#' @title Fit a Smoothing Adaptive Constrained Enveloping Splines using Cubic Functions
+#' @title Fit a Smooth Adaptive Constrained Enveloping Splines using Cubic Functions
 #'
 #' @description
 #'
@@ -107,14 +141,8 @@ set_triplet_knots <- function (
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
 #'
-#' @param monotonicity
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param concavity
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param origin
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
 #' @param kn_grid
 #' A \code{data.frame} containing the set of knots from the backward step for smoothing.
@@ -126,7 +154,7 @@ set_triplet_knots <- function (
 #' Generalized Cross Validation (GCV) penalty per knot.
 #'
 #' @param wc
-#' A \code{numeric} value used for the cubic smoothing procedure \insertCite{friedman1991}{aces}. This parameter adjusts the distance `e` between the central knot and the right side knot based on the distance `d` between the central knot and the left side knot. If the condition `1 < d / e <  2` is nos satisfied, then `e` is adjusted to be `wc * d`.
+#' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure.A \code{numeric} value used for cubic smoothing \insertCite{friedman1991}{aces}. This parameter is defined as `v / p` and must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
 #'
 #' @references
 #'
@@ -134,7 +162,7 @@ set_triplet_knots <- function (
 #'
 #' @return
 #'
-#' A \code{list} containing information relative to the Smoothing Adaptive Constrained Enveloping Splines through cubic functions.
+#' A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through cubic functions.
 
 cubic_aces <- function (
     data,
@@ -143,16 +171,14 @@ cubic_aces <- function (
     dea_eff,
     model_type,
     metric,
-    monotonicity,
-    concavity,
-    origin,
+    shape,
     kn_grid,
     kn_side_loc,
     d,
     wc
     ) {
 
-  if (origin != "FALSE") {
+  if (shape[["ptto"]] != FALSE) {
     data <- rbind(data, rep(0, ncol(data)))
   }
 
@@ -180,11 +206,13 @@ cubic_aces <- function (
     not_paired <- c()
 
     for (v in 1:nX) {
+
       if (is.null(kn_side_loc[[v]])) next
 
       # from first midpoint: position 2
       # to penultimate midpoint: position (-3)
       # step 2 to select midpoints
+
       for (i in seq(2, length(kn_side_loc[[v]]) - 3, 2)) {
 
         # select a central knot: position i + 1
@@ -198,8 +226,8 @@ cubic_aces <- function (
           knots = kn_side_loc[[v]][i:(i + 2)],
           w = wc[l],
           smoothing = "cubic",
-          monotonicity = monotonicity,
-          concavity = concavity
+          mono = shape[["mono"]],
+          conc = shape[["conc"]]
         )
 
         # update B with two new truncated cubic basis functions
@@ -212,14 +240,17 @@ cubic_aces <- function (
           )
 
         if (length(side) == 1) {
+
           not_paired <- c(not_paired, ncol(B))
           status <- "unpaired"
           side <- side
 
         } else {
+
           paired <- c(paired, (ncol(B) - 1):ncol(B))
           status <- "paired"
           side <- side
+
         }
 
         # update cubic knots
@@ -236,7 +267,7 @@ cubic_aces <- function (
       }
     }
 
-    if (monotonicity || concavity) {
+    if (shape[["mono"]] || shape[["conc"]]) {
 
       # number of paired basis functions
       n_pair <- sum(duplicated(kn_grid[, c("xi", "t")])) * 2
@@ -255,9 +286,7 @@ cubic_aces <- function (
         dea_eff = dea_eff,
         n_pair = n_pair,
         n_lsub = n_lsub,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin
+        shape = shape
         )
 
     } else {
@@ -269,9 +298,7 @@ cubic_aces <- function (
         dea_eff = dea_eff,
         it_list = NULL,
         Bp_list = NULL,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin
+        shape = shape
       )
 
     }
@@ -293,15 +320,11 @@ cubic_aces <- function (
       knots = sum(lengths(cubic_knots))
     )
 
-    if (origin != "FALSE") {
+    if (shape[["ptto"]] != FALSE) {
       B <- B[1:(nrow(B) - 1), ]
-
-    } else {
-      B <- B
-
     }
 
-    # save results
+    # save results of the smooth model
     w_list[[l]][["Bmatx"]] <- B
     w_list[[l]][["cubic_knots"]] <- cubic_knots
     w_list[[l]][["coefs"]] <- coefs
@@ -316,9 +339,10 @@ cubic_aces <- function (
   aces_cubic <- w_list[[which.min(GCVs)]]
 
   return(aces_cubic)
+
 }
 
-#' @title Generate a new pair of Cubic Basis Functions
+#' @title Generate a New Pair of Cubic Basis Functions
 #'
 #' @description
 #'
@@ -344,7 +368,11 @@ cubic_aces <- function (
 #' A \code{matrix} of basis functions updated with the new cubic basis functions.
 
 create_cubic_basis <- function (
-    data, xi, knots, B, side
+    data,
+    xi,
+    knots,
+    B,
+    side
     ) {
 
   # triplet of knots
@@ -362,7 +390,7 @@ create_cubic_basis <- function (
   p2 <- (2 * d - e) / (- e - d) ^ 2
   r2 <- (e - d) / (- e - d) ^ 3
 
-  # both or right
+  # side of the basis function: both or right
   if (length(side) == 2 || side == "R") {
 
     term1 <- p1 * (data[, xi] - t0) ^ 2
@@ -381,9 +409,10 @@ create_cubic_basis <- function (
 
     # add C1 to B matrix
     B <- cbind(B, C1)
+
   }
 
-  # both or left
+  # side of the basis function: both or right
   if (length(side) == 2 || side == "L") {
 
     term1 <- p2 * (data[, xi] - t2) ^ 2
@@ -402,13 +431,14 @@ create_cubic_basis <- function (
 
     # add C2 to B matrix
     B <- cbind(B, C2)
+
   }
 
   return(B)
+
 }
 
-
-#' @title Fit a Smoothing Adaptive Constrained Enveloping Splines using Quintic Functions
+#' @title Fit a Smooth Adaptive Constrained Enveloping Splines using Quintic Functions
 #'
 #' @description
 #'
@@ -432,14 +462,8 @@ create_cubic_basis <- function (
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
 #'
-#' @param monotonicity
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param concavity
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param origin
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
 #' @param kn_grid
 #' A \code{data.frame} containing the set of knots from the backward step for smoothing.
@@ -451,7 +475,7 @@ create_cubic_basis <- function (
 #' Generalized Cross Validation (GCV) penalty per knot.
 #'
 #' @param wq
-#'  A \code{numeric} value used for the quintic smoothing procedure \insertCite{chen1999}{aces}. This parameter adjusts the distance `d` between the central knot and the left side knot based on the distance `e` between the central knot and the right side knot. If the condition `8/7 < e / d <  1.5` is nos satisfied, then `d` is adjusted to be `wq * e`. This parameter must be set between 8/7 and 1.5.
+#' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
 #'
 #' @references
 #'
@@ -461,7 +485,7 @@ create_cubic_basis <- function (
 #'
 #' @return
 #'
-#' A \code{list} containing information relative to the Smoothing Adaptive Constrained Enveloping Splines through quintic functions.
+#' A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through quintic functions.
 
 quintic_aces <- function (
     data,
@@ -470,16 +494,14 @@ quintic_aces <- function (
     dea_eff,
     model_type,
     metric,
-    monotonicity,
-    concavity,
-    origin,
+    shape,
     kn_grid,
     kn_side_loc,
     d,
     wq
     ) {
 
-  if (origin != "FALSE") {
+  if (shape[["ptto"]] != FALSE) {
     data <- rbind(data, rep(0, ncol(data)))
   }
 
@@ -526,8 +548,8 @@ quintic_aces <- function (
           knots = kn_side_loc[[v]][i:(i + 2)],
           w = wq[l],
           smoothing = "quintic",
-          monotonicity = monotonicity,
-          concavity = concavity
+          mono = shape[["mono"]],
+          conc = shape[["conc"]]
         )
 
         # update B with two new truncated quintic basis functions
@@ -540,14 +562,17 @@ quintic_aces <- function (
           )
 
         if (length(side) == 1) {
+
           not_paired <- c(not_paired, ncol(B))
           status <- "unpaired"
           side <- side
 
         } else {
+
           paired <- c(paired, (ncol(B) - 1):ncol(B))
           status <- "paired"
           side <- side
+
         }
 
         # update cubic knots
@@ -561,10 +586,11 @@ quintic_aces <- function (
             )
           )
         )
+
       }
     }
 
-    if (monotonicity || concavity) {
+    if (shape[["mono"]] || shape[["conc"]]) {
 
       # number of paired basis functions
       n_pair <- sum(duplicated(kn_grid[, c("xi", "t")])) * 2
@@ -583,9 +609,7 @@ quintic_aces <- function (
         dea_eff = dea_eff,
         n_pair = n_pair,
         n_lsub = n_lsub,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin
+        shape = shape
       )
 
     } else {
@@ -597,10 +621,9 @@ quintic_aces <- function (
         dea_eff = dea_eff,
         it_list = NULL,
         Bp_list = NULL,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin
+        shape = shape
       )
+
     }
 
     # prediction
@@ -620,20 +643,17 @@ quintic_aces <- function (
       knots = sum(lengths(quintic_knots))
     )
 
-    if (origin != "FALSE") {
+    if (shape[["ptto"]] != FALSE) {
       B <- B[1:(nrow(B) - 1), ]
-
-    } else {
-      B <- B
-
     }
 
-    # save results
+    # save results of the smooth model
     w_list[[l]][["Bmatx"]] <- B
     w_list[[l]][["quintic_knots"]] <- quintic_knots
     w_list[[l]][["coefs"]] <- coefs
     w_list[[l]][["GCV"]] <- GCV
     w_list[[l]][["w"]] <- wq[l]
+
   }
 
   # lack-of-fit for each model
@@ -643,9 +663,10 @@ quintic_aces <- function (
   aces_quintic <- w_list[[which.min(GCVs)]]
 
   return(aces_quintic)
+
 }
 
-#' @title Generate a new pair of Quintic Basis Functions
+#' @title Generate a New Pair of Quintic Basis Functions
 #'
 #' @description
 #'
@@ -695,7 +716,7 @@ create_quintic_basis <- function (
 
   gamma1 <- gamma2 <- (3 * d1 - 3 * d2) / d ^ 5
 
-  # both or right
+  # side of the basis function: both or right
   if (length(side) == 2 || side == "R") {
 
     term1 <- alpha1 * (data[, xi] - t0) ^ 3
@@ -717,7 +738,7 @@ create_quintic_basis <- function (
     B  <- cbind(B, Q1)
   }
 
-  # both or left
+  # side of the basis function: both or right
   if (length(side) == 2 || side == "L") {
 
     term1 <- alpha2 * (data[, xi] - t2) ^ 3
@@ -740,4 +761,5 @@ create_quintic_basis <- function (
   }
 
   return(B)
+
 }

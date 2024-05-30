@@ -14,8 +14,8 @@ monotonocity_matrix(it_list, Bp_list, N)
 \item{N}{Sample size.}
 }
 \value{
-A \code{matrix} to enforce increasing monotonicity constraint on the estimated function.
+A \code{matrix} representing the constraint matrix to enforce non-decreasing monotonicity on the estimated function.
 }
 \description{
-This function constructs the constraint matrix (often denoted as matrix "A") to enforce non-decreasing monotonicity.
+This function constructs the constraint matrix (often denoted as matrix "A") to enforce non-decreasing monotonicity in an estimated function. The constraint matrix enforces concavity by ensuring that the coefficients of the basis functions satisfy certain conditions.
 }

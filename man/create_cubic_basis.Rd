@@ -2,7 +2,7 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{create_cubic_basis}
 \alias{create_cubic_basis}
-\title{Generate a new pair of Cubic Basis Functions}
+\title{Generate a New Pair of Cubic Basis Functions}
 \usage{
 create_cubic_basis(data, xi, knots, B, side)
 }

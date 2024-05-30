@@ -7,9 +7,9 @@
 compute_gcv(y_obs, y_hat, metric, n_bf, d, knots, xi_degree)
 }
 \arguments{
-\item{y_obs}{A \code{numeric} vector of observed data.}
+\item{y_obs}{A \code{numeric} matrix of observed data.}
 
-\item{y_hat}{A \code{numeric} vector of predicted values.}
+\item{y_hat}{A \code{numeric} matrix of predicted values.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
@@ -25,5 +25,5 @@ compute_gcv(y_obs, y_hat, metric, n_bf, d, knots, xi_degree)
 The Generalized Cross-Validation (GCV) value.
 }
 \description{
-This function computes the generalized cross-validation for the Backward Algorithm in Adaptive Constrained Enveloping Splines.
+This function computes the generalized cross-validation for the backward algorithm in Adaptive Constrained Enveloping Splines.
 }

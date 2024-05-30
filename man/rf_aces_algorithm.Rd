@@ -6,9 +6,9 @@
 \usage{
 rf_aces_algorithm(
   data,
-  x,
-  y,
-  z,
+  inps,
+  outs,
+  nets,
   y_type,
   model_type,
   error_type,
@@ -29,11 +29,11 @@ rf_aces_algorithm(
 \arguments{
 \item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
 
-\item{x}{Column indexes of input variables in \code{data}.}
+\item{inps}{Column indexes of input variables in \code{data}.}
 
-\item{y}{Column indexes of output variables in \code{data}.}
+\item{outs}{Column indexes of output variables in \code{data}.}
 
-\item{z}{Column indexes of netput variables in \code{data} (outputs evaluated as inputs). These variables must be considered as output when computing predictions or efficiency scores.}
+\item{nets}{Column indexes of netput (outputs evaluated as inputs) variables in \code{data}. These variables are treated as inputs during prediction computation and as outputs when computing efficiency scores.}
 
 \item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
 
@@ -59,21 +59,19 @@ rf_aces_algorithm(
 
 \item{endspan}{Minimum number of observations before the first and after the final knot.}
 
-\item{kn_grid}{Design of the grid of knots to perform ACES}
+\item{kn_grid}{Grid design for knots placement in ACES.}
 
-\item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure \insertCite{friedman1991}{aces}.}
+\item{wc}{Hyperparameter for side knot distances in the cubic smoothing procedure.}
 
-\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure \insertCite{chen1999}{aces}.}
+\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure.}
 }
 \value{
 An \code{aces} object.
 }
 \description{
-This function estimates a production frontier satisfying some classical production theory axioms, such as monotonicity and concavity. Both stochastic (as StoNED) and envelopment (as DEA) versions are available. These estimations are based upon the adaptation of the machine learning technique known as Multivariate Adaptive Regression Splines (MARS) developed by \insertCite{friedman1991;textual}{aces} using a bagging approach as in Random Forest.
+This function implements the Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) algorithm, which estimates a production frontier satisfying classical production theory axioms like monotonicity and concavity. It offers both stochastic and envelopment versions. These estimations are based on the adaptation of the Multivariate Adaptive Regression Splines (MARS) technique developed by \insertCite{friedman1991;textual}{aces} and the Random Forest methodology \insertCite{breiman2001}{aces}. For details, see \insertCite{espana2024;textual}{aces}.
 }
 \references{
 \insertRef{friedman1991}{aces} \cr \cr
-\insertRef{breiman2001}{aces} \cr \cr
-\insertRef{chen1999}{aces} \cr \cr
-\insertRef{zhang1994}{aces} \cr \cr
+\insertRef{breiman2001}{aces}
 }

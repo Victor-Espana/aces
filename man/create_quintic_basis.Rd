@@ -2,7 +2,7 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{create_quintic_basis}
 \alias{create_quintic_basis}
-\title{Generate a new pair of Quintic Basis Functions}
+\title{Generate a New Pair of Quintic Basis Functions}
 \usage{
 create_quintic_basis(data, xi, knots, B, side)
 }

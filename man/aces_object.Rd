@@ -2,7 +2,7 @@
 % Please edit documentation in R/ACES.R
 \name{aces_object}
 \alias{aces_object}
-\title{Create an aces object}
+\title{Create an aces Object}
 \usage{
 aces_object(
   data,
@@ -14,9 +14,7 @@ aces_object(
   error_type,
   degree,
   metric,
-  monotonicity,
-  concavity,
-  origin,
+  shape,
   nterms,
   err_red,
   hd_cost,
@@ -43,7 +41,7 @@ aces_object(
 
 \item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
 
 \item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model.}
 
@@ -51,11 +49,7 @@ aces_object(
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
 \item{nterms}{Maximum number of terms created before pruning.}
 

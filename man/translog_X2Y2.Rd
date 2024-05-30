@@ -11,7 +11,7 @@ translog_X2Y2(N, border, noise)
 
 \item{border}{Proportion of DMUs in the frontier.}
 
-\item{noise}{\code{logical}. Random noise.}
+\item{noise}{A \code{logical} indicating whether to add random noise.}
 }
 \value{
 A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yD1, yD2).

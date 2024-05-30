@@ -16,8 +16,8 @@ predict_origin(it_list, Bp_list, n_bf, N)
 \item{N}{Sample size.}
 }
 \value{
-A \code{vector} of coefficients that enforces the constraint f(0) = 0.
+A \code{vector} of coefficients that enforces the constraint f(0) = 0. This vector can be used to modify the model coefficients to satisfy the constraint.
 }
 \description{
-This function constructs the constraint to ensure that the function prediction at zero equals zero, i.e., f(0) = 0.
+This function constructs the constraint to ensure that the function prediction at zero equals zero, i.e., f(0) = 0. In the context of the model, this means that the model prediction for the output variable should be zero when all input variables are zero.
 }

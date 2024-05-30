@@ -44,27 +44,28 @@ predict.aces <- function (
     stochastic_pred = FALSE
     ) {
 
-  # strategy to predict y: "all" or "individual"
-  if (length(names(object)) == 1 && names(object) == "y_all") {
-    y_type <- "all"
-  } else {
-    y_type <- "ind"
-  }
+  # strategy to predict response variable: "all" or "individual"
+  y_type <- ifelse (
+    length(object) == 1 && names(object) == "y_all",
+    "all",
+    "ind"
+    )
 
-  if (y_type == "all") {
-    nY <- length(object[["y_all"]][["data"]][["y"]])
-  } else {
-    nY <- length(object)
-  }
+  # number of outputs
+  nY <- ifelse (
+    y_type == "all",
+    length(object[["y_all"]][["data"]][["y"]]),
+    length(object)
+    )
 
-  # model type
+  # determine model type
   model_type <- object[[1]][["control"]][["model_type"]]
 
-  if (model_type == "sto" && stochastic_pred == FALSE) {
+  if (model_type == "sto" && !stochastic_pred) {
     stop("A stochastic prediction must be selected if a stochastic model is estimated.")
   }
 
-  # error type
+  # determine error type
   error_type <- object[[1]][["control"]][["error_type"]]
 
   # number of models;
@@ -73,9 +74,10 @@ predict.aces <- function (
   models <- length(object)
 
   # output predictions
-  y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
+  y_hat <- as.data.frame (matrix(NA, nrow = nrow(newdata), ncol = nY))
 
   for (m in 1:models) {
+
     # select a model
     model <- object[[m]]
 
@@ -90,13 +92,15 @@ predict.aces <- function (
       stop("Different variable names in training data and newdata.")
     }
 
-    # data in [x, z, y] format with interaction of variables included
-    data <- set_interactions (
+    # data in [x, z, y] format with interaction and / or transformation of
+    # variables included
+    data <- prepare_data (
       data = newdata,
       x = x,
       y = NULL,
       z = z,
-      degree = model[["control"]][["degree"]]
+      degree = model[["control"]][["degree"]],
+      error_type = error_type
     )
 
     # sample size
@@ -120,6 +124,7 @@ predict.aces <- function (
 
     } else {
       stop("Not available method Please, check help(\"predict\")")
+
     }
 
     # matrix of basis function
@@ -137,54 +142,55 @@ predict.aces <- function (
         y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
       }
 
-      names(y_hat) <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
-
     } else {
 
       y_hat[, m] <- pmax(0, B %*% aces_model[["coefs"]])
 
-      names(y_hat)[m] <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
-
     }
   }
 
+  # transform data to original scale
   if (error_type == "mul") {
-    # change to original scale
     y_hat <- exp(y_hat)
   }
 
-  y_hat <- rad_out (
+  # compute DEA scores
+  eff_sco <- rad_out (
     tech_xmat = as.matrix(newdata[, x]),
     tech_ymat = as.matrix(y_hat),
     eval_xmat = as.matrix(newdata[, x]),
-    eval_ymat = as.matrix(y_hat),
+    eval_ymat = as.matrix(newdata[, y]),
     convexity = TRUE,
     returns = "variable"
-  ) * y_hat
+  )
+
+  # predictions
+  y_hat <- as.data.frame(newdata[, y] * eff_sco)
+  names(y_hat) <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
 
   if (model_type == "sto") {
 
     # standard deviation for inefficiency term
-    avg_std_u <- 0
-    mom_std_u <- aces_model[["sto"]][["mom"]][["std_u"]]
-    pse_std_u <- aces_model[["sto"]][["pse"]][["std_u"]]
+    std_u <- switch (
+      stochastic_pred,
+      "avg" = 0,
+      "mom" = aces_model[["sto"]][["mom"]][["std_u"]],
+      "pse" = aces_model[["sto"]][["pse"]][["std_u"]]
+      )
 
-    if (stochastic_pred == "avg") {
-      std_u <- avg_std_u
-    } else if (stochastic_pred == "mom") {
-      std_u <- mom_std_u
-    } else {
-      std_u <- pse_std_u
-    }
+    adjustment_factor <- std_u * sqrt(2 / pi)
 
+    # production function
     if (error_type == "add") {
-      # production function
-      y_hat <- y_hat + std_u * sqrt(2 / pi)
+
+      y_hat <- y_hat + adjustment_factor
 
     } else {
-      # production function
-      y_hat <- y_hat * exp(std_u * sqrt(2 / pi))
+
+      y_hat <- y_hat * exp(adjustment_factor)
+
     }
+
   }
 
   return(y_hat)
@@ -208,9 +214,9 @@ predict.aces <- function (
 #' @param method
 #' Model for prediction:
 #' \itemize{
-#' \item{\code{"aces_forward"}}: Random Forest Adaptive Constrained Enveloping Splines model.
-#' \item{\code{"aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-#' \item{\code{"aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
 #' }
 #'
 #' @return
@@ -223,31 +229,29 @@ predict.rf_aces <- function (
     object,
     newdata,
     x,
-    method = "aces"
+    method = "rf_aces"
     ) {
 
-  # strategy to predict y: "all" or "individual"
-  if (length(names(object[[1]])) == 1 && names(object[[1]]) == "y_all") {
-    y_type <- "all"
-  } else {
-    y_type <- "ind"
-  }
+  # strategy to predict response variable: "all" or "individual"
+  y_type <- ifelse(length(object) == 1 && names(object) == "y_all", "all", "ind")
 
-  if (y_type == "all") {
-    nY <- length(object[[1]][["y_all"]][["data"]][["y"]])
-  } else {
-    nY <- length(object[[1]])
-  }
+  # number of outputs
+  nY <- ifelse (
+    y_type == "all",
+    length(object[["y_all"]][["data"]][["y"]]),
+    length(object)
+  )
 
-  # model type
-  model_type <- object[[1]][[1]][["control"]][["model_type"]]
+  # determine model type
+  model_type <- object[[1]][["control"]][["model_type"]]
 
-  # error type
-  error_type <- object[[1]][[1]][["control"]][["error_type"]]
+  # determine error type
+  error_type <- object[[1]][["control"]][["error_type"]]
 
   # number of models in Random Forest
   RF_models <- length(object)
 
+  # list of predictions for each model
   y_hat_RF <- vector("list", RF_models)
 
   for (b in 1:RF_models) {
@@ -276,12 +280,13 @@ predict.rf_aces <- function (
       }
 
       # data in [x, z, y] format with interaction of variables included
-      data <- set_interactions (
+      data <- prepare_data (
         data = newdata,
         x = x,
         y = NULL,
         z = z,
-        degree = model[["control"]][["degree"]]
+        degree = model[["control"]][["degree"]],
+        error_type = error_type
       )
 
       # sample size

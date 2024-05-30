@@ -28,14 +28,8 @@
 #' @param Bp_list
 #' A \code{list} containing the current set of basis functions for each input variable.
 #'
-#' @param monotonicity
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param concavity
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param origin
-#' A \code{list} containing the current set of selected knots for each input variable.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
 #' @param d
 #' An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.
@@ -53,9 +47,7 @@ aces_pruning <- function (
     metric,
     forward_model,
     Bp_list,
-    monotonicity,
-    concavity,
-    origin,
+    shape,
     d
     ) {
 
@@ -122,7 +114,7 @@ aces_pruning <- function (
     # - basis function when appearing alone in an interval: excepting right-hand extreme interval
     bf_to_drop <- basis_to_drop (
       Bp_list = Bp_list,
-      concavity = concavity,
+      conc = shape[["conc"]],
       nX = nX
       )
 
@@ -175,6 +167,7 @@ aces_pruning <- function (
 
         # update new_basis
         new_basis[lapply(new_basis, "[[", "id") == sibling_id][[1]][["status"]] <- "unpaired"
+
       }
 
       # drop the selected basis function
@@ -263,11 +256,10 @@ aces_pruning <- function (
               dea_eff = dea_eff,
               it_list = new_it_list,
               Bp_list = new_Bp_list,
-              monotonicity = monotonicity,
-              concavity = concavity,
-              origin = origin
+              shape = shape
             )
           },
+
           error = function(e) {
             return("error")
           }
@@ -353,13 +345,13 @@ aces_pruning <- function (
 #'
 #' @description
 #'
-#' This function computes the generalized cross-validation for the Backward Algorithm in Adaptive Constrained Enveloping Splines.
+#' This function computes the generalized cross-validation for the backward algorithm in Adaptive Constrained Enveloping Splines.
 #'
 #' @param y_obs
-#' A \code{numeric} vector of observed data.
+#' A \code{numeric} matrix of observed data.
 #'
 #' @param y_hat
-#' A \code{numeric} vector of predicted values.
+#' A \code{numeric} matrix of predicted values.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
@@ -405,122 +397,145 @@ compute_gcv <- function (
 
   # number of knots
   if (is.list(knots)) {
-    # knot list to data.frame
+
+    # transform knot list to a data.frame
     knots_df <- do.call(rbind.data.frame, knots)
 
     # knot dimension
     knots_df$dimknot <- xi_degree[2, match(knots_df$xi, xi_degree[1, ])]
 
     if (nrow(knots_df) == 0) {
+
       nknots <- 0
 
     } else {
+
       # drop duplicated
-      knots_df_drop_duplicated <- knots_df[!duplicated(knots_df[c("xi", "t")]), ]
+      knots_df <- knots_df[!duplicated(knots_df[c("xi", "t")]), ]
 
       # number of knots
-      nknots <- nrow(knots_df_drop_duplicated)
+      nknots <- nrow(knots_df)
     }
 
   } else {
+
     nknots <- knots
+
   }
 
-  # cost-complexity measure + penalization of 0 coefficients
+  # cost-complexity measure
   ccm_val <- n_bf + d * nknots
   lof_den <- (1 - (ccm_val / (nY * N))) ^ 2
 
   # GCV
-  if (ccm_val > nY * N) {
-    GCV <- Inf
-
-  } else {
-    GCV <- lof_num / lof_den
-
-  }
+  GCV <- ifelse(ccm_val > nY * N, Inf, lof_num / lof_den)
 
   return(GCV)
+
 }
 
 #' @title Basis Functions to be Dropped
 #'
-#' @description This function determines the basis function to be dropped from a set of intervals.
+#' @description
+#' This function determines the basis function to be dropped from a set of intervals.
 #'
-#' @param Bp_list A \code{list} containing the set of basis functions by input.
-#' @param concavity \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
-#' @param nX Number of inputs.
+#' @param Bp_list
+#' A \code{list} containing the set of basis functions by input.
 #'
-#' @return A \code{data.frame} indicating the candidate basis function to be dropped for each input.
+#' @param conc
+#' A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
+#'
+#' @param nX
+#' Number of inputs.
+#'
+#' @return
+#' A \code{data.frame} indicating the candidate basis function to be dropped for each input.
 
 basis_to_drop <- function (
-    Bp_list, concavity, nX
+    Bp_list,
+    conc,
+    nX
     ) {
 
-  # Set of intervals from Bp_list
+  # set of intervals from Bp_list
   it_list <- set_intervals (
     Bp_list = Bp_list
     )
 
-  # Initialize a data.frame
+  # Initialize a data.frame for basis functions to drop
   bf_to_drop <- data.frame()
+
   for (v in 1:nX) {
+
     if (length(it_list[[v]]) != 0) {
+
       for (it in 1:length(it_list[[v]])) {
 
-        if (concavity) {
+        interval <- it_list[[v]][[it]]
+
+        if (conc) {
+
           # notice that concavity is lost in absence of a basis for a middle interval.
           # then, empty intervals are only available in the top right-side (last interval)
           # for example, if there is only one basis function in the first interval,
           # it can't be dropped.
 
-          # it != length(It.list[[v]]):
           # check if it is not the last interval
-          check1 <- it != length(it_list[[v]])
+          is_not_last_interval <- it != length(it_list[[v]])
 
-          # length(It.list[[v]][[it]][["Bp"]][["Bp_xi"]]) == 1:
           # check if there is only 1 basis function
-          check2 <- length(it_list[[v]][[it]][["Bp"]][["Bp_xi"]]) == 1
+          has_single_basis_function <- length(interval[["Bp"]][["Bp_xi"]]) == 1
 
-        } else {
+          if (is_not_last_interval && has_single_basis_function) next
 
-          check1 <- check2 <- FALSE
         }
 
-        if (check1 && check2) {
-          next
-        } else {
-          for (j in it_list[[v]][[it]][["Bp"]][["Bp_xi"]]) {
-            bf_to_drop <- rbind(bf_to_drop, c(v, j))
-          }
+        # add basis functions to drop
+        for (j in it_list[[v]][[it]][["Bp"]][["Bp_xi"]]) {
+          bf_to_drop <- rbind(bf_to_drop, c(v, j))
         }
       }
     }
   }
 
   if (nrow(bf_to_drop) != 0) {
-    names(bf_to_drop) <- c("xi", "Bp_xi")
 
-    # Drop duplicated values
+    # drop duplicated values
+    colnames(bf_to_drop) <- c("xi", "Bp_xi")
     bf_to_drop <- unique(bf_to_drop[order(bf_to_drop$xi, bf_to_drop$Bp_xi), ])
+
   }
 
   return(bf_to_drop)
+
 }
 
 #' @title Mapping between Basis Function ID and Matrix Column Index by Variable
 #'
-#' @description This function creates a mapping between the ID of a basis function and its corresponding column index in the basis function matrix (B matrix) by variable.
+#' @description
+#' This function creates a mapping between the ID of a basis function and its corresponding column index in the basis function matrix (B matrix) by variable.
 #'
-#' @param Bp_list A \code{list} containing the set of basis functions by input.
-#' @param nX Number of inputs.
+#' @param Bp_list
+#' A \code{list} containing the set of basis functions by input.
 #'
-#' @return A \code{matrix} that establishes the connection between the basis function ID and its column index in the basis function matrix by variable.
+#' @param nX
+#' Number of inputs.
+#'
+#' @return
+#' A \code{matrix} that establishes the connection between the basis function ID and its column index in the basis function matrix by variable.
 
 mapping_basis <- function (
-    Bp_list, nX
+    Bp_list,
+    nX
     ) {
 
-  id_Bp_xi <- data.frame(xi = NA, id = NA, Bp_xi = NA)
+  # initialize matrix to store mapping
+  id_Bp_xi <- data.frame (
+    xi = NA,
+    id = NA,
+    Bp_xi = NA
+    )
+
   k <- 1
 
   for (v in 1:nX) {
@@ -528,19 +543,19 @@ mapping_basis <- function (
       if (!is.null(Bp_list[[v]][[side]])) {
         for (l in 1:length(Bp_list[[v]][[side]])) {
 
-          # Select a Bp
+          # select a Bp
           Bp <- Bp_list[[v]][[side]][[l]]
 
-          # Save the id for the selected Bp
+          # save the id for the selected Bp
           Bp_id <- Bp[["id"]]
 
-          # Save the matrix column index by the "v" variable
+          # save the matrix column index by the v-th variable
           Bp_xi <- Bp[["Bp_xi"]]
 
           if (side == "paired") {
+
             # id and matrix column connection
-            id_Bp_xi[k, ] <- c(v, Bp_id[[1]], Bp_xi[[1]])
-            id_Bp_xi[k + 1, ] <- c(v, Bp_id[[2]], Bp_xi[[2]])
+            id_Bp_xi[k:(k + 1), ] <- cbind(rep(v, 2), Bp_id, Bp_xi)
 
             k <- k + 2
 
@@ -557,28 +572,39 @@ mapping_basis <- function (
   }
 
   return(id_Bp_xi)
+
 }
 
 #' @title Update knot_list
 #'
-#' @description This function updates the knot_list during the backward algorithm.
+#' @description
+#' This function updates the knot_list during the backward algorithm.
 #'
-#' @param Bp_list A \code{list} containing the set of basis functions by input.
+#' @param Bp_list
+#' A \code{list} containing the set of basis functions by input.
 #'
-#' @return A \code{list} with the knots updated.
+#' @return
+#' A \code{list} with the knots updated.
 
 update_knot_list <- function (
     Bp_list
     ) {
 
-  # Number of inputs
+  # number of inputs
   nX <- length(Bp_list)
 
-  knots <- list(); k <- 1
+  # initialize the knot list
+  knots <- list()
+  k <- 1
+
   for (v in 1:nX) {
+
     for (side in c("paired", "right", "left")) {
+
       if (!is.null(Bp_list[[v]][[side]])) {
+
         for (l in 1:length(Bp_list[[v]][[side]])) {
+
           # Bp_element
           Bp <- Bp_list[[v]][[side]][[l]]
 
@@ -621,6 +647,7 @@ update_knot_list <- function (
             )
 
             k <- k + 1
+
           }
         }
       }
@@ -628,61 +655,67 @@ update_knot_list <- function (
   }
 
   return(knots)
+
 }
 
 #' @title Update Bp_list
 #'
-#' @description This function updates the Bp_list during the backward algorithm.
+#' @description
+#' This function updates the Bp_list during the backward algorithm.
 #'
-#' @param basis A \code{list} containing the set of basis functions.
-#' @param nX Number of inputs.
+#' @param basis
+#' A \code{list} containing the set of basis functions.
 #'
-#' @return A \code{list} with the basis functions updated.
+#' @param nX
+#' Number of inputs.
+#'
+#' @return
+#' A \code{list} with the basis functions updated.
 
 update_Bp_list <- function (
     basis, nX
     ) {
 
+  # initialize the list of new basis functions
   new_Bp_list <- vector("list", nX)
 
   for (v in 1:nX) {
+
     new_Bp_list[[v]] <- list (
       "paired" = NULL,
       "right"  = NULL,
       "left"   = NULL
       )
-    }
 
+  }
+
+  # update the list of basis functions
   for (i in 2:length(basis)) {
 
     # id
     id <- basis[[i]][["id"]]
+
     # basis function
     Bp <- basis[[i]][["Bp"]]
+
     # variable
     xi <- basis[[i]][["xi"]]
+
     # knot
     kn <- basis[[i]][["t"]]
+
     # status
-    side <- basis[[i]][["status"]]
+    status <- basis[[i]][["status"]]
 
-    if (side == "unpaired" && basis[[i]][["side"]] == "R") {
+    # side
+    side <- basis[[i]][["side"]]
 
-      new_Bp_list[[xi]][["right"]] <- append (
-        new_Bp_list[[xi]][["right"]],
-        list (
-          list (
-            "Bp" = Bp,
-            "t"  = kn,
-            "id" = id
-            )
-          )
-        )
+    if (status == "unpaired") {
 
-    } else if (side == "unpaired" && basis[[i]][["side"]] == "L") {
+      side_key <- ifelse(side == "R", "right", "left")
 
-      new_Bp_list[[xi]][["left"]] <- append (
-        new_Bp_list[[xi]][["left"]],
+      new_Bp_list[[xi]][[side_key]] <- append (
+        new_Bp_list[[xi]][[side_key]],
         list (
           list (
             "Bp" = Bp,
@@ -694,7 +727,7 @@ update_Bp_list <- function (
 
     } else {
 
-      if (kn %in% sapply(new_Bp_list[[xi]][[side]], "[[", "t")) next
+      if (kn %in% sapply(new_Bp_list[[xi]][[status]], "[[", "t")) next
 
       new_Bp_list[[xi]][["paired"]] <- append (
         new_Bp_list[[xi]][["paired"]],
@@ -703,13 +736,13 @@ update_Bp_list <- function (
             "Bp" = cbind(Bp, basis[[i + 1]][["Bp"]]),
             "t"  = kn,
             "id" = c(id, id + 1)
-            )
           )
         )
+      )
     }
   }
 
-  # Sort basis function by variable | side | knot
+  # sort basis function by variable | side | knot
   for (v in 1:nX) {
     for (side in c("paired", "right", "left")) {
       if (!is.null(new_Bp_list[[v]][[side]])) {
@@ -720,20 +753,27 @@ update_Bp_list <- function (
   }
 
 
-  # Number of column in matrix for ensuring concavity and monotonicity
+  # number of column in matrix for ensuring concavity and monotonicity
   for (v in 1:nX) {
+
     Bp_xi <- 1
+
     for (side in c("paired", "right", "left")) {
+
       if (!is.null(new_Bp_list[[v]][[side]])) {
+
         for (l in 1:length(new_Bp_list[[v]][[side]])) {
 
           if (side == "paired") {
+
             new_Bp_list[[v]][[side]][[l]][["Bp_xi"]] <- c(Bp_xi, Bp_xi + 1)
             Bp_xi <- Bp_xi + 2
 
           } else {
+
             new_Bp_list[[v]][[side]][[l]][["Bp_xi"]] <- Bp_xi
             Bp_xi <- Bp_xi + 1
+
           }
         }
       }
@@ -741,5 +781,5 @@ update_Bp_list <- function (
   }
 
   return(new_Bp_list)
-}
 
+}

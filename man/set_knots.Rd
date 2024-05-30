@@ -27,5 +27,5 @@ set_knots(data, nX, var_idx, minspan, endspan, kn_list, bf, kn_grid)
 Numeric vector with the knots values for the variable.
 }
 \description{
-This function generates a vector of knots that can be used to create a new pair of basis functions.
+This function generates a vector of knots that can be used to create a new pair of basis functions during the forward algorithm.
 }

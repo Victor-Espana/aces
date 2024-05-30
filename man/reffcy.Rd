@@ -21,8 +21,6 @@ reffcy(DGP, parms)
    Check \code{help("mult_scenario_XnY1")}.
    \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario.
    Check \code{help("cobb_douglas_X3Y3")}.
-   \item{\code{homothetic_s_shaped}}: Homothetic S-shaped Data Generation Process.
-   Check \code{help("homothetic_s_shaped")}.
  }}
 
 \item{parms}{A \code{list} with the parameters of the simulation functions.

@@ -4,12 +4,12 @@
 \alias{set_triplet_knots}
 \title{Generate a Suitable Triplet of Knots}
 \usage{
-set_triplet_knots(knots, w, smoothing, monotonicity, concavity)
+set_triplet_knots(knots, w, smoothing, mono, conc)
 }
 \arguments{
 \item{knots}{A \code{vector} with the initial locations for central and side knots.}
 
-\item{w}{Hyperparameter for the side knot distances in the cubic and quintic smoothing procedures.}
+\item{w}{Hyperparameter for side knot distances in the cubic and quintic smoothing procedures.}
 
 \item{smoothing}{Type of smoothing:
 \itemize{
@@ -17,9 +17,9 @@ set_triplet_knots(knots, w, smoothing, monotonicity, concavity)
 \item{\code{"quintic"}}: quintic smoothing procedure.
 }}
 
-\item{monotonicity}{\code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+\item{monotonicity}{A \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
 
-\item{concavity}{\code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{concavity}{A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
 }
 \value{
 A \code{vector} with a suitable triplet of knots.

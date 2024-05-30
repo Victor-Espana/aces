@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_coefficients_smooth.R
 \name{estimate_coefficients_smoothed}
 \alias{estimate_coefficients_smoothed}
-\title{Estimate Coefficients during Non-decreasing and Concave Smoothing Procedure}
+\title{Estimate Coefficients for Smooth Adaptive Constrained Enveloping Splines (ACES) Fitting}
 \usage{
 estimate_coefficients_smoothed(
   model_type,
@@ -11,9 +11,7 @@ estimate_coefficients_smoothed(
   dea_eff,
   n_pair,
   n_lsub,
-  monotonicity,
-  concavity,
-  origin
+  shape
 )
 }
 \arguments{
@@ -23,21 +21,17 @@ estimate_coefficients_smoothed(
 
 \item{y_obs}{A \code{matrix} of the observed output data.}
 
-\item{dea_eff}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
+\item{dea_eff}{An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.}
 
 \item{n_pair}{An \code{integer} specifying the number of coefficients associated with the paired basis functions.}
 
 \item{n_lsub}{An \code{integer} specifying the number of coefficients associated with the unpaired left-side basis functions.}
 
-\item{monotonicity}{A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
-
-\item{concavity}{A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.}
-
-\item{origin}{A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 }
 \value{
 A \code{vector} with the estimated coefficients.
 }
 \description{
-This function solves a Linear Programming problem to obtain a set of coefficients that impose concavity and non-decreasing monotonicity in the Smoothing Adaptive Constrained Enveloping Splines estimator.
+This function solves a Linear Programming problem to obtain a set of coefficients that impose concavity and non-decreasing monotonicity in the Smooth Adaptive Constrained Enveloping Splines estimator.
 }

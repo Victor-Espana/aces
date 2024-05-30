@@ -7,11 +7,11 @@
 set_intervals(Bp_list)
 }
 \arguments{
-\item{Bp_list}{A \code{list} containing the set of basis functions by input.}
+\item{Bp_list}{A \code{list} containing the set of basis functions for each input.}
 }
 \value{
-A \code{list} with the boundaries of the intervals and the IDs of the activated basis functions within each interval.
+A \code{list} with the boundaries of the intervals and the IDs of the active basis functions within each interval.
 }
 \description{
-This function determines the boundaries for the intervals and identifies what basis functions activates on each interval.
+This function determines the boundaries for the intervals and identifies what basis functions are active in each interval.
 }
