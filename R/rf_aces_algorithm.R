@@ -19,7 +19,7 @@
 #' A \code{character} string that determines the prediction approach for \code{y}.
 #'
 #' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
+#' A \code{character} string specifying the nature of the production frontier that the function estimates.
 #'
 #' @param error_type
 #' A \code{character} string specifying the error structure that the function will use when fitting the model.
@@ -96,16 +96,13 @@ rf_aces_algorithm <- function (
     wq
     ) {
 
-  # shape constraints
-  monotonicity <- shape[["mon"]]
-  concavity    <- shape[["con"]]
-  origin       <- shape[["ori"]]
 
   # accelerate the algorithm by selecting the efficient DMUs in DEA to impose only
   # the envelope on these points.
   # only valid under monotonicity and concavity constraints
 
-  if (monotonicity && concavity) {
+  if (shape[["mono"]] && shape[["conc"]]) {
+
     dea_scores <- rad_out (
       tech_xmat = as.matrix(data[, x]),
       tech_ymat = as.matrix(data[, y]),
@@ -120,88 +117,69 @@ rf_aces_algorithm <- function (
   } else {
 
     dea_eff <- c(1:nrow(data))
+
   }
-
-  # original input indexes
-  inps <- x
-
-  # original output indexes
-  outs <- y
-
-  # original netput indexes
-  nets <- z
 
   # original set of DMUs
   dmus <- data
 
-  # change to logarithmic scale if multiplicative error type
-  if (error_type == "mul") {
-    data[, c(y)] <- log(data[, c(y)])
-  }
-
-  # origin
-  if (origin && error_type == "add") {
-    origin <- "0"
-
-  } else if (origin && error_type == "mul") {
-    origin <- "1"
-
-  } else {
-    origin <- "FALSE"
-
-  }
-
-  # data in [x, z, y] format with interaction of variables included
-  data <- set_interactions (
+  # data in [x, z, y] format with interaction and / or transformation of
+  # variables included
+  data <- prepare_data (
     data = data,
-    x = x,
-    y = y,
-    z = z,
-    degree = degree
-    )
+    x = inps,
+    y = outs,
+    z = nets,
+    degree = degree,
+    error_type = error_type
+  )
 
-  # samples in data
+  # samples size
   N <- nrow(data)
 
   # reorder index 'x' and 'y' in data
-  x <- 1:(ncol(data) - length(y))
+  x <- 1:(ncol(data) - length(outs))
   y <- (length(x) + 1):ncol(data)
 
   # number of inputs / outputs as inputs
   nX <- length(x)
 
-  # mumber of outputs
+  # number of outputs
   nY <- length(y)
 
   # matrix with:
   # row 1: the index of the variable
-  # row 2: the degree of the variable
+  # row 2: the degree of the variable (netput = 1)
   xi_degree <- matrix (
-    c(x, rep(0, length(x))),
+    c(x, rep(1, length(x))),
     byrow = TRUE,
     nrow = 2,
     ncol = length(x)
-    )
+  )
 
   if (!is.list(degree)) {
 
     v <- 0
 
     for (i in 1:degree) {
-      combs <- combn(1:(length(inps) + length(nets)), i)
+
+      combs <- combn(1:length(inps), i)
 
       for (k in 1:ncol(combs)) {
         v <- v + 1
         xi_degree[2, v] <- i
       }
+
     }
 
   } else {
+
     xi_degree[2, inps] <- 1
 
     for (k in 1:length(degree)) {
       xi_degree[2, length(inps) + k] <- length(degree[[k]])
     }
+
   }
 
   # ===================== #
@@ -209,9 +187,11 @@ rf_aces_algorithm <- function (
   # ===================== #
 
   if (model_type == "env") {
+
     y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, max)
 
-  } else {
+  } else if (model_type == "sto") {
+
     y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, mean)
 
   }
@@ -256,7 +236,7 @@ rf_aces_algorithm <- function (
   }
 
   # set of basis functions (bf_set) and the matrix of basis functions (B)
-  aces_forward <- list (
+  rf_aces <- list (
     "bf_set" = list(bf),
     "B" = matrix(rep(1, N))
     )
@@ -279,7 +259,7 @@ rf_aces_algorithm <- function (
   Le <- L_Le[[2]]
 
   # set the grid of knots
-  kn_grid <- set_kn_grid (
+  kn_grid <- set_knots_grid (
     data = data,
     nX = nX,
     inps = length(inps),
@@ -289,10 +269,10 @@ rf_aces_algorithm <- function (
   # initial error
   err_min <- err
 
-  while(length(aces_forward[["bf_set"]]) + 2 < nterms) {
+  while(length(rf_aces[["bf_set"]]) + 2 < nterms) {
 
     # negative GRSq
-    last_bf <- aces_forward[["bf_set"]][[length(aces_forward[["bf_set"]])]]
+    last_bf <- rf_aces[["bf_set"]][[length(rf_aces[["bf_set"]])]]
     if (last_bf[["GRSq"]] < 0) break
 
     while (last_bf[["id"]] == 1) {
@@ -309,11 +289,9 @@ rf_aces_algorithm <- function (
         dea_eff = dea_eff,
         model_type = model_type,
         metric = metric,
-        forward_model = aces_forward,
+        forward_model = rf_aces,
         Bp_list = Bp_list,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin,
+        shape = shape,
         kn_list = kn_list,
         kn_grid = kn_grid,
         L = L,
@@ -340,11 +318,9 @@ rf_aces_algorithm <- function (
         dea_eff = dea_eff,
         model_type = model_type,
         metric = metric,
-        forward_model = aces_forward,
+        forward_model = rf_aces,
         Bp_list = Bp_list,
-        monotonicity = monotonicity,
-        concavity = concavity,
-        origin = origin,
+        shape = shape,
         kn_list = kn_list,
         kn_grid = kn_grid,
         L = L,
@@ -355,20 +331,19 @@ rf_aces_algorithm <- function (
 
     }
 
-    if (!is.list(B_bf_knt_err)) {
-      break
-    } else {
-      new_err <- B_bf_knt_err[[5]]
-    }
+    if (!is.list(B_bf_knt_err)) break
 
-    # new minimum error
+    # new best error
+    new_err <- B_bf_knt_err[[5]]
+
+    # update model
     if (last_bf[["id"]] == 1 || new_err[1] < err[1] * (1 - err_red[1])) {
 
         # update B
-        aces_forward[["B"]] <- B_bf_knt_err[[1]]
+        rf_aces[["B"]] <- B_bf_knt_err[[1]]
 
         # update basis functions
-        aces_forward[["bf_set"]] <- B_bf_knt_err[[2]]
+        rf_aces[["bf_set"]] <- B_bf_knt_err[[2]]
 
         # update the knots list
         kn_list <- B_bf_knt_err[[3]]
@@ -382,6 +357,7 @@ rf_aces_algorithm <- function (
     } else {
 
       break
+
     }
   }
 
@@ -391,17 +367,23 @@ rf_aces_algorithm <- function (
   sts <- c()
 
   for (v in 1:nX) {
+
     for (side in c("paired", "right", "left")) {
+
       if (!is.null(Bp_list[[v]][[side]])) {
+
         # knots in variable "xi"
         knt_xi <- sapply(Bp_list[[v]][[side]], "[[", "t")
 
         # knots
         knt <- c(knt, knt_xi)
+
         # variable
         var <- c(var, rep(v, length(knt_xi)))
+
         # status
         sts <- c(sts, rep(side, length(knt_xi)))
+
       }
     }
   }
@@ -413,14 +395,14 @@ rf_aces_algorithm <- function (
     )
 
   # ==
-  # forward aces
+  # rf-aces
   # ==
 
-  aces_forward = list (
-    "basis" = aces_forward[["bf_set"]],
-    "Bmatx" = aces_forward[["B"]],
+  rf_aces = list (
+    "basis" = rf_aces[["bf_set"]],
+    "Bmatx" = rf_aces[["B"]],
     "knots" = kn_forward,
-    "coefs" = rev(aces_forward[["bf_set"]])[[1]][["coefs"]]
+    "coefs" = rev(rf_aces[["bf_set"]])[[1]][["coefs"]]
   )
 
   # ======================= #
@@ -428,19 +410,22 @@ rf_aces_algorithm <- function (
   # ======================= #
 
   # select a model to be smoothed
-  aces_smoothed <- aces_forward
+  rf_aces_smoothed <- rf_aces
 
   # data.frame of knots
-  kn_smoothed <- aces_smoothed[["knots"]]
+  kn_smoothed <- rf_aces_smoothed[["knots"]]
   kn_smoothed$side <- "R"
 
   kn_smoothed_left <- kn_smoothed
   kn_smoothed_left$side <- "L"
 
-  kn_smoothed <- rbind(kn_smoothed, kn_smoothed_left)
+  kn_smoothed <- rbind (
+    kn_smoothed,
+    kn_smoothed_left
+    )
 
   # generate the input space for side knots location
-  kn_side_loc <- side_knots_location (
+  kn_side_loc <- side_knot_location (
     data = data,
     nX = nX,
     knots = kn_smoothed
@@ -457,12 +442,10 @@ rf_aces_algorithm <- function (
     dea_eff = dea_eff,
     model_type = model_type,
     metric = metric,
-    monotonicity = monotonicity,
-    concavity = concavity,
-    origin = origin,
+    shape = shape,
     kn_grid = kn_smoothed,
     kn_side_loc = kn_side_loc,
-    d = 0.25,
+    d = 0,
     wc = wc
   )
 
@@ -473,12 +456,10 @@ rf_aces_algorithm <- function (
     dea_eff = dea_eff,
     model_type = model_type,
     metric = metric,
-    monotonicity = monotonicity,
-    concavity = concavity,
-    origin = origin,
+    shape = shape,
     kn_grid = kn_smoothed,
     kn_side_loc = kn_side_loc,
-    d = 0.25,
+    d = 0,
     wq = wq
   )
 
@@ -486,7 +467,7 @@ rf_aces_algorithm <- function (
   # ACES OBJECT #
   # =========== #
 
-  ACES <- aces_object (
+  RF_ACES <- aces_object (
     data = dmus,
     x = inps,
     y = outs,
@@ -496,10 +477,8 @@ rf_aces_algorithm <- function (
     error_type = error_type,
     degree = degree,
     metric = metric,
-    monotonicity = monotonicity,
-    concavity = concavity,
-    origin = origin,
-    nterms = ncol(aces_forward[["Bmatx"]]),
+    shape = shape,
+    nterms = ncol(rf_aces[["Bmatx"]]),
     err_red = err_red,
     hd_cost = hd_cost,
     minspan = minspan,
@@ -508,13 +487,14 @@ rf_aces_algorithm <- function (
     d = NULL,
     wc = wc,
     wq = wq,
-    aces_forward = aces_forward,
+    aces_forward = rf_aces,
     aces = NULL,
     aces_cubic = aces_cubic,
     aces_quintic = aces_quintic
   )
 
-  return(ACES)
+  return(RF_ACES)
+
 }
 
 #' @title Compute Out-of-Bag Error in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
@@ -573,25 +553,10 @@ compute_oob <- function (
   # sample size
   N <- nrow(data)
 
-  # # object as rf-aces
-  # object <- object[1:model]
-  # class(object) <- "rf_aces"
-  #
-  # # out-of-bag prediction
-  # y_hat_oob <- predict (
-  #   object = object,
-  #   newdata = oob_data,
-  #   x = x,
-  #   method = method
-  # )
-  #
-  # index of out-of-bag data
-  # oob_idx <- c(1:nrow(data))[!inb_idxs]
-  #
-  # # aggregation of out-of-bag individual predictions
-  # oob_pred[[model]] <- y_hat_oob
-
+  # combine predictions from all models up to the current model
   model_pred <- as.data.frame(do.call(rbind, oob_pred[1:model]))
+
+  # convert the predictions to a data frame and split by indices
   model_pred <- lapply (
     split (
       model_pred[, 1:nY, drop = F],
@@ -599,15 +564,16 @@ compute_oob <- function (
       ),
     function(t) apply(t, 2, mean)
     )
+
+  # calculate the mean prediction for each index
   model_pred <- do.call(rbind, model_pred)
 
-  # indices por computing error
+  # calculate the OOB mean squared error
   oob_idxs <- as.numeric(rownames(model_pred))
-  oob_mse <- sum (
-    (data[oob_idxs, y] - model_pred[, 1:nY, drop = F]) ^ 2
-    ) / (length(oob_idxs) * N)
+  oob_mse <- sum((data[oob_idxs, y] - model_pred[, 1:nY, drop = F]) ^ 2) / (length(oob_idxs) * nY)
 
   return(oob_mse)
+
 }
 
 #' @title Compute Variable Importance in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).

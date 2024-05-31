@@ -37,7 +37,7 @@ rf_aces_algorithm(
 
 \item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
 
 \item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model.}
 

@@ -373,14 +373,11 @@ aces <- function (
         names(RF_ACES[[m]])[1] <- "y_all"
 
         # predictions
-        y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
+        Bmatx <- RF_ACES[[m]][[1]][["methods"]][["aces_forward"]][["Bmatx"]]
+        coefs <- RF_ACES[[m]][[1]][["methods"]][["aces_forward"]][["coefs"]]
+        y_hat <- Bmatx %*% coefs
 
-        for (out in 1:length(y)) {
-          Bmatx <- RF_ACES[[m]][[1]][["methods"]][["aces_forward"]][["Bmatx"]]
-          coefs <- RF_ACES[[m]][[1]][["methods"]][["aces_forward"]][["coefs"]]
-          y_hat[, out] <- Bmatx %*% coefs[, out]
-        }
-
+        # select out-of-bag indexes
         y_hat <- y_hat[oob_idxs, ]
 
         oob_pred[[m]] <- matrix (
@@ -681,6 +678,7 @@ aces_algorithm <- function (
   } else {
 
     dea_eff <- c(1:nrow(data))
+
   }
 
   # save a copy of the original data
@@ -697,7 +695,7 @@ aces_algorithm <- function (
     error_type = error_type
     )
 
-  # samples in data
+  # samples size
   N <- nrow(data)
 
   # reorder index 'x' and 'y' in data
@@ -750,9 +748,11 @@ aces_algorithm <- function (
   # ===================== #
 
   if (model_type == "env") {
+
     y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, max)
 
   } else if (model_type == "sto") {
+
     y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, mean)
 
   }
