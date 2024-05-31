@@ -2,14 +2,15 @@ devtools::load_all()
 library("ggplot2")
 
 data <- reffcy (
-  DGP = "add_scenario_XnY1",
+  DGP = "translog_X2Y2",
   parms = list (
     N = 100,
-    scenario = "A"
+    border = 0.1,
+    noise = FALSE
   ))
 
-x <- 1
-y <- 2
+x <- 1:2
+y <- 3:4
 
 model <- aces (
   data = data,
@@ -26,7 +27,7 @@ model <- aces (
     "oob_red" = 0.001
   ),
   mul_BF = list (
-    "degree" = 1,
+    "degree" = 2,
     "hd_cost" = 0.05
   ),
   metric = "mse",
@@ -47,12 +48,33 @@ model <- aces (
   )
 )
 
-data$y_hat <- predict (
+data$score <- data[, 5] / data[, 3]
+
+data$aces <- aces_scores (
+  tech_data = data,
+  eval_data = data,
+  x = x,
+  y = y,
   object = model,
-  newdata = data,
-  x = 1,
-  method = "aces_cubic"
-)$y_pred
+  method = "aces",
+  convexity = TRUE,
+  returns = "variable",
+  direction = NULL,
+  weights = NULL,
+  digits = 3
+  )$aces_vrt_rad_out
+
+data$dea <- rad_out (
+  tech_xmat = as.matrix(data[, x]),
+  tech_ymat = as.matrix(data[, y]),
+  eval_xmat = as.matrix(data[, x]),
+  eval_ymat = as.matrix(data[, y]),
+  convexity = TRUE,
+  returns = "variable"
+)[, 1]
+
+sum((data[, 8] - data[, 7]) ^ 2) / 100
+sum((data[, 9] - data[, 7]) ^ 2) / 100
 
 ggplot (data) +
   geom_point(aes(x = x1, y = y)) +

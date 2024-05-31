@@ -7,13 +7,13 @@
 wam(tech_xmat, tech_ymat, eval_xmat, eval_ymat, weights, convexity, returns)
 }
 \arguments{
-\item{tech_xmat}{A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.}
+\item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
 
-\item{tech_ymat}{A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.}
+\item{tech_ymat}{A \code{matrix} containing the observed output variables used to define the technology.}
 
-\item{eval_xmat}{A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.}
+\item{eval_xmat}{A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.}
 
-\item{eval_ymat}{A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.}
+\item{eval_ymat}{A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.}
 
 \item{weights}{Weights for the additive model:
 \itemize{
@@ -24,7 +24,7 @@ wam(tech_xmat, tech_ymat, eval_xmat, eval_ymat, weights, convexity, returns)
 \item{\code{"BAM"}} Bounded Adjusted Measure.
 }}
 
-\item{convexity}{\code{logical} value indicating if a convex technology is assumed.}
+\item{convexity}{A \code{logical} value indicating if a convex technology is assumed.}
 
 \item{returns}{Type of returns to scale.}
 }

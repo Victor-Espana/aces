@@ -7,9 +7,9 @@
 mult_scenario_XnY1(N, scenario)
 }
 \arguments{
-\item{N}{Sample size.}
+\item{N}{An integer representing the sample size.}
 
-\item{scenario}{\code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, check Table 2 of \insertCite{kuosmanen2010;textual}{aces}.}
+\item{scenario}{A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.}
 }
 \value{
 A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).

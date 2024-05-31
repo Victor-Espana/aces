@@ -73,9 +73,9 @@ aces_object(
 
 \item{aces}{A \code{list} containing the Adaptive Constrained Enveloping Splines model.}
 
-\item{aces_cubic}{A \code{list} containing the smoothed version of Adaptive Constrained Enveloping Splines through cubic basis functions.}
+\item{aces_cubic}{A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through cubic basis functions.}
 
-\item{aces_quintic}{A \code{list} containing the smoothed version of Adaptive Constrained Enveloping Splines through quintic basis functions.}
+\item{aces_quintic}{A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through quintic basis functions.}
 }
 \value{
 An \code{aces} object.

@@ -34,8 +34,8 @@ aces_scores(
 \itemize{
 \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
 \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+\item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines model.
+\item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines model.
 }}
 
 \item{measure}{Mathematical programming model to calculate scores:
@@ -63,7 +63,7 @@ aces_scores(
 \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
 }}
 
-\item{weights}{Weights for the additive model:
+\item{weights}{Only applied if \code{measure = "wam"}. Weights for the additive model:
 \itemize{
 \item{\code{"WAM"}} Weighted Additive Model.
 \item{\code{"MIP"}} Measure of Inefficiency Proportions.

@@ -4,16 +4,16 @@
 #' This function computes the efficiency scores through the output-oriented radial model in the envelopment format.
 #'
 #' @param tech_xmat
-#' A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.
+#' A \code{matrix} containing the observed input variables used to define the technology.
 #'
 #' @param tech_ymat
-#' A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.
+#' A \code{matrix} containing the observed output variables used to define the technology.
 #'
 #' @param eval_xmat
-#' A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.
+#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
 #'
 #' @param eval_ymat
-#' A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.
+#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
 #'
 #' @param convexity
 #' A \code{logical} value indicating if a convex technology is assumed.
@@ -79,25 +79,40 @@ rad_out <- function (
 
     solve(lps)
     scores[d, ] <- get.objective(lps)
+
   }
 
   return(scores)
+
 }
 
 #' @title The input-oriented radial model in the envelopment format
 #'
-#' @description This function computes efficiency scores through the input-oriented radial model in the envelopment format.
+#' @description
+#' This function computes efficiency scores through the input-oriented radial model in the envelopment format.
 #'
-#' @param tech_xmat A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.
-#' @param tech_ymat A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.
-#' @param eval_xmat A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.
-#' @param eval_ymat A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.
-#' @param convexity A \code{logical} value indicating if a convex technology is assumed.
-#' @param returns Type of returns to scale.
+#' @param tech_xmat
+#' A \code{matrix} containing the observed input variables used to define the technology.
+#'
+#' @param tech_ymat
+#' A \code{matrix} containing the observed output variables used to define the technology.
+#'
+#' @param eval_xmat
+#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param eval_ymat
+#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param convexity
+#' A \code{logical} value indicating if a convex technology is assumed.
+#'
+#' @param returns
+#' Type of returns to scale.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
-#' @return A \code{vector} of \code{"numeric"} scores computed through the input-oriented radial model in the envelopment format.
+#' @return
+#' A \code{vector} of \code{"numeric"} scores computed through the input-oriented radial model in the envelopment format.
 
 rad_inp <- function (
     tech_xmat,
@@ -152,30 +167,47 @@ rad_inp <- function (
 
     solve(lps)
     scores[d, ] <- get.objective(lps)
+
   }
 
   return(scores)
+
 }
 
 #' @title The Directional Distance Function
 #'
-#' @description This function computes efficiency scores through the directional distance function in the envelopment format.
+#' @description
+#' This function computes efficiency scores through the directional distance function in the envelopment format.
 #'
-#' @param tech_xmat A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.
-#' @param tech_ymat A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.
-#' @param eval_xmat A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.
-#' @param eval_ymat A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.
-#' @param direction Direction of the vector to project on the frontier. Two possibilities:
+#' @param tech_xmat
+#' A \code{matrix} containing the observed input variables used to define the technology.
+#'
+#' @param tech_ymat
+#' A \code{matrix} containing the observed output variables used to define the technology.
+#'
+#' @param eval_xmat
+#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param eval_ymat
+#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param direction
+#' Direction of the vector to project on the frontier. Options are:
 #' \itemize{
 #' \item{\code{"mean"}} Projection vector given by the average value of inputs and outputs of all DMUs.
 #' \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
 #' }
-#' @param convexity A \code{logical} value indicating if a convex technology is assumed.
-#' @param returns Type of returns to scale.
+#'
+#' @param convexity
+#' A \code{logical} value indicating if a convex technology is assumed.
+#'
+#' @param returns
+#' Type of returns to scale.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
-#' @return A \code{vector} of \code{"numeric"} scores computed through the input-oriented radial model in the envelopment format.
+#' @return
+#' A \code{vector} of \code{"numeric"} scores computed through the directional distance function in the envelopment format.
 
 ddf <- function (
     tech_xmat,
@@ -240,28 +272,48 @@ ddf <- function (
 
     solve(lps)
     scores[d, ] <- get.objective(lps)
+
   }
 
   return(scores)
+
 }
 
 #' @title The output-oriented Russell model in the envelopment format
 #'
-#' @description This function computes efficiency scores through the output-oriented Russell model in the envelopment format.
+#' @description
+#' This function computes efficiency scores through the output-oriented Russell model in the envelopment format.
 #'
-#' @param tech_xmat A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.
-#' @param tech_ymat A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.
-#' @param eval_xmat A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.
-#' @param eval_ymat A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.
-#' @param convexity A \code{logical} value indicating if a convex technology is assumed.
-#' @param returns Type of returns to scale.
+#' @param tech_xmat
+#' A \code{matrix} containing the observed input variables used to define the technology.
+#'
+#' @param tech_ymat
+#' A \code{matrix} containing the observed output variables used to define the technology.
+#'
+#' @param eval_xmat
+#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param eval_ymat
+#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param convexity
+#' A \code{logical} value indicating if a convex technology is assumed.
+#'
+#' @param returns
+#' Type of returns to scale.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
-#' @return A \code{vector} of \code{"numeric"} scores computed through the output-oriented Russell model.
+#' @return
+#' A \code{vector} of \code{"numeric"} scores computed through the output-oriented Russell model.
 
 rsl_out <- function (
-    tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns
+    tech_xmat,
+    tech_ymat,
+    eval_xmat,
+    eval_ymat,
+    convexity,
+    returns
     ) {
 
   # number of DMUs in the technology
@@ -315,31 +367,51 @@ rsl_out <- function (
 
     solve(lps)
     scores[d, ] <- get.objective(lps)
+
   }
 
   return(scores)
+
 }
 
 #' @title The input-oriented Russell model in the envelopment format
 #'
-#' @description This function computes efficiency scores through the input-oriented Russell model in the envelopment format.
+#' @description
+#' This function computes efficiency scores through the input-oriented Russell model in the envelopment format.
 #'
-#' @param tech_xmat A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.
-#' @param tech_ymat A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.
-#' @param eval_xmat A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.
-#' @param eval_ymat A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.
-#' @param convexity A \code{logical} value indicating if a convex technology is assumed.
-#' @param returns Type of returns to scale.
+#' @param tech_xmat
+#' A \code{matrix} containing the observed input variables used to define the technology.
+#'
+#' @param tech_ymat
+#' A \code{matrix} containing the observed output variables used to define the technology.
+#'
+#' @param eval_xmat
+#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param eval_ymat
+#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param convexity
+#' A \code{logical} value indicating if a convex technology is assumed.
+#'
+#' @param returns
+#' Type of returns to scale.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
-#' @return A \code{vector} of \code{"numeric"} scores computed through the input-oriented Russell model.
+#' @return
+#' A \code{vector} of \code{"numeric"} scores computed through the input-oriented Russell model.
 
 rsl_inp <- function (
-    tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns
+    tech_xmat,
+    tech_ymat,
+    eval_xmat,
+    eval_ymat,
+    convexity,
+    returns
     ) {
 
-  # number of DMUs in the technology
+  # number of DMUs in theta technology
   tech_dmu <- nrow(tech_xmat)
 
   # number of DMUs to be evaluated
@@ -352,7 +424,7 @@ rsl_inp <- function (
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
 
-  # number of DMUs in the technology
+  # number of DMUs in theta technology
   tech_dmu <- nrow(tech_xmat)
 
   # number of DMUs to be evaluated
@@ -377,9 +449,9 @@ rsl_inp <- function (
 
     # inputs
     for (xi in 1:nX) {
-      the <- rep(0, nX)
-      the[xi] <- - eval_xmat[d, xi]
-      add.constraint(lps, xt = c(the, tech_xmat[, yi]), "<=",  rhs = 0)
+      theta <- rep(0, nX)
+      theta[xi] <- - eval_xmat[d, xi]
+      add.constraint(lps, xt = c(theta, tech_xmat[, yi]), "<=",  rhs = 0)
     }
 
     # outputs
@@ -388,8 +460,8 @@ rsl_inp <- function (
     }
 
     # upper bounds: theta <= 1
-    the.idx <- 1:nX
-    set.bounds(lps, lower = rep(0, nX), upper = rep(1, nX), columns = the.idx)
+    theta.idx <- 1:nX
+    set.bounds(lps, lower = rep(0, nX), upper = rep(1, nX), columns = theta.idx)
 
     # technology
     if (returns == "variable") {
@@ -410,12 +482,21 @@ rsl_inp <- function (
 
 #' @title The Weighted Additive Model
 #'
-#' @description This function computes efficiency scores through a Weighted Additive Model.
+#' @description
+#' This function computes efficiency scores through a Weighted Additive Model.
 #'
-#' @param tech_xmat A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.
-#' @param tech_ymat A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.
-#' @param eval_xmat A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.
-#' @param eval_ymat A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.
+#' @param tech_xmat
+#' A \code{matrix} containing the observed input variables used to define the technology.
+#'
+#' @param tech_ymat
+#' A \code{matrix} containing the observed output variables used to define the technology.
+#'
+#' @param eval_xmat
+#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#'
+#' @param eval_ymat
+#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#'
 #' @param weights Weights for the additive model:
 #' \itemize{
 #' \item{\code{"WAM"}} Weighted Additive Model.
@@ -424,12 +505,16 @@ rsl_inp <- function (
 #' \item{\code{"RAM"}} Range Adjusted Measure.
 #' \item{\code{"BAM"}} Bounded Adjusted Measure.
 #' }
-#' @param convexity \code{logical} value indicating if a convex technology is assumed.
-#' @param returns Type of returns to scale.
+#' @param convexity
+#' A \code{logical} value indicating if a convex technology is assumed.
+#'
+#' @param returns
+#' Type of returns to scale.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
-#' @return A \code{vector} of \code{"numeric"} scores computed through the Weighted Additive Model.
+#' @return
+#' A \code{vector} of \code{"numeric"} scores computed through the Weighted Additive Model.
 
 wam <- function (
     tech_xmat,
@@ -461,31 +546,38 @@ wam <- function (
 
     # Weights
     if (weights == "WAM") {
+
       # Weighted Additive Model
       objVal[1:(nX + nY)] <- 1
 
     } else if (weights == "MIP") {
+
       # Measure of Inefficiency Proportions
       objVal[1:(nX + nY)] <- c(1 / eval_xmat[d, ], 1 / eval_ymat[d, ])
 
     } else if (weights == "NOR") {
+
       # Normalized Weighted Additive Model
       objVal[1:(nX + nY)] <- c(1 / apply(eval_xmat, 2, sd), 1 / apply(eval_ymat, 2, sd))
 
     } else if (weights == "RAM") {
+
       # Range Adjusted Measure
       xranges <- apply(eval_xmat, 2, max) - apply(eval_xmat, 2, min)
       yranges <- apply(eval_ymat, 2, max) - apply(eval_ymat, 2, min)
       objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * xranges), 1 / ((nX + nY) * yranges))
 
     } else if (weights == "BAM") {
+
       # Bounded Adjusted Measure
       p1 <- eval_xmat[d, ] - apply(eval_xmat, 2, min)
       p2 <- apply(eval_ymat, 2, max) - eval_ymat[d, ]
       objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * p1), 1 / ((nX + nY) * p2))
 
     } else {
-      stop(print(paste(weights, "no disponibles")))
+
+      stop(print(paste(weights, "not available")))
+
     }
 
     # structure for lpSolve
@@ -495,20 +587,24 @@ wam <- function (
 
     # inputs
     for (xi in 1:nX) {
+
       x_slack <- rep(0, nX)
       x_slack[xi] <- 1
       slacks <- c(x_slack, rep(0, nY))
 
       add.constraint(lps, xt = c(slacks, tech_xmat[, xi]), "=", rhs = eval_xmat[d, xi])
+
     }
 
     # outputs
     for (yi in 1:nY) {
+
       y_slack <- rep(0, nY)
       y_slack[yi] <- - 1
       slacks <- c(rep(0, nX), y_slack)
 
       add.constraint(lps, xt = c(slacks, tech_ymat[, yi]), "=", rhs = eval_ymat[d, yi])
+
     }
 
     if (returns == "variable") {
@@ -522,6 +618,7 @@ wam <- function (
 
     solve(lps)
     scores[d, ] <- get.objective(lps)
+
   }
 
   return(scores)
@@ -619,7 +716,6 @@ cond_eff <- function (
 #' This function calculates the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and a specific technology determined by the user.
 #'
 #' @param tech_data
-#'
 #' A \code{data.frame} or a \code{matrix} containing the observed DMUs to determine the technology.
 #'
 #' @param eval_data
@@ -639,8 +735,8 @@ cond_eff <- function (
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
-#' \item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-#' \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines model.
 #' }
 #'
 #' @param measure
@@ -673,7 +769,7 @@ cond_eff <- function (
 #' }
 #'
 #' @param weights
-#' Weights for the additive model:
+#' Only applied if \code{measure = "wam"}. Weights for the additive model:
 #' \itemize{
 #' \item{\code{"WAM"}} Weighted Additive Model.
 #' \item{\code{"MIP"}} Measure of Inefficiency Proportions.
@@ -708,10 +804,6 @@ aces_scores <- function (
     digits = 3
     ) {
 
-  if (object[[1]][["control"]][["error_type"]] != "add") {
-    stop("This function must be used to estimate efficiency scores in additive modeling.")
-  }
-
   # Possible error messages:
   display_errors (
     caller = "aces_scores",
@@ -720,7 +812,7 @@ aces_scores <- function (
     y = NULL,
     y_type = NULL,
     model_type = NULL,
-    error_type = NULL,
+    error_type = object[[1]][["control"]][["error_type"]],
     degree = NULL,
     metric = NULL,
     nterms = NULL,
@@ -788,7 +880,7 @@ aces_scores <- function (
     method = method
   )
 
-  tech_ymat <- as.data.frame(tech_ymat)
+  tech_ymat <- as.data.frame(y_hat)
 
   # ======================= #
   # Data for evaluated DMUs #
@@ -801,6 +893,7 @@ aces_scores <- function (
   eval_ymat <- as.matrix(eval_data[, y])
 
   if (measure == "rad_out") {
+
     scores <- rad_out (
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
@@ -811,6 +904,7 @@ aces_scores <- function (
       )
 
   } else if (measure == "rad_inp") {
+
     scores <- rad_inp (
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
@@ -822,9 +916,7 @@ aces_scores <- function (
 
   } else if (measure == "ddf") {
 
-    if (is.null(direction)) {
-      direction <- "mean"
-    }
+    if (is.null(direction)) direction <- "mean"
 
     scores <- ddf (
       tech_xmat = tech_xmat,
@@ -837,6 +929,7 @@ aces_scores <- function (
     )
 
   } else if (measure == "rsl_out") {
+
     scores <- rsl_out (
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
@@ -847,6 +940,7 @@ aces_scores <- function (
       )
 
   } else if (measure == "rsl_inp") {
+
     scores <- rsl_inp (
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
@@ -857,6 +951,7 @@ aces_scores <- function (
     )
 
   } else if (measure == "wam") {
+
     scores <- wam (
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
@@ -869,31 +964,20 @@ aces_scores <- function (
   }
 
   # model name
-  if (returns == "constant") {
-    model <- "dea_crt"
-
-  } else {
-    if (convexity) {
-      model <- "dea_vrt"
-
-    } else {
-      model <- "aces_fdh"
-
-    }
-  }
-
+  model <- ifelse(returns == "constant", "aces_crt", "aces_vrt")
   model <- paste(model, measure, sep = "_")
 
-  # scores as data.frame
+  # transform scores as a data.frame format
   scores <- as.data.frame(scores)
 
-  # column names
-  names(scores) <- model
+  # column names of the new data.frame
+  colnames(scores) <- model
 
-  # row names
+  # row names of the new data.frame
   rownames(scores) <- row.names(tech_data)
 
   return(round(scores, digits))
+
 }
 
 #' @title Compute Efficiency Scores using a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.

@@ -7,9 +7,9 @@
 cobb_douglas_XnY1(N, nX)
 }
 \arguments{
-\item{N}{Sample size.}
+\item{N}{An integer representing the sample size.}
 
-\item{nX}{Number of inputs. Possible values: \code{1}, \code{3}, \code{6}, \code{9}, \code{12} and \code{15}.}
+\item{nX}{An integer representing the number of inputs. Possible values: \code{1}, \code{3}, \code{6}, \code{9}, \code{12} and \code{15}.}
 }
 \value{
 A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yD).

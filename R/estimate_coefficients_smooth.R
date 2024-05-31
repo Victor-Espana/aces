@@ -166,13 +166,15 @@ estim_coefs_smooth_env <- function (
     # matrix of coefficients
     Amat <- rbind(EMat)
 
-    # concavity: paired basis functions
+    # generate concavity matrix for paired basis functions
     if (conc) {
 
       CMat <- matrix(0, nrow = pairs, ncol = p + N)
 
       if (pairs >= 1) {
+
         for (i in 1:pairs) {
+
           CMat[i, ] <- c (
             0,
             rep(c(0, 0), i - 1),
@@ -182,6 +184,7 @@ estim_coefs_smooth_env <- function (
             rep(0, n_lsub + N)
             )
         }
+
       }
 
       # add concavity matrix to the envelopment matrix

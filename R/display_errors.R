@@ -228,6 +228,11 @@ display_errors <- function (
       stop(paste(deparse(substitute(object)), "must be an aces or rf_aces object."))
     }
 
+    # error_type must be additive
+    if (error_type != "add") {
+      stop("This function must be used to estimate efficiency scores in additive modeling.")
+    }
+
     # convexity must be assumed
     if (!is.null(convexity) && !convexity) {
       stop(paste(convexity, "is not available. Please, check help(\"aces_scores\")"))

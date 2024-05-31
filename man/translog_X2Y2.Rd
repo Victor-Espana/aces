@@ -7,7 +7,7 @@
 translog_X2Y2(N, border, noise)
 }
 \arguments{
-\item{N}{Sample size.}
+\item{N}{An integer representing the sample size.}
 
 \item{border}{Proportion of DMUs in the frontier.}
 

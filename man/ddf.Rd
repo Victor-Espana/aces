@@ -7,15 +7,15 @@
 ddf(tech_xmat, tech_ymat, eval_xmat, eval_ymat, direction, convexity, returns)
 }
 \arguments{
-\item{tech_xmat}{A \code{data.frame} or \code{matrix} containing the observed inputs to determine the technology.}
+\item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
 
-\item{tech_ymat}{A \code{data.frame} or \code{matrix} containing the observed outputs to determine the technology.}
+\item{tech_ymat}{A \code{matrix} containing the observed output variables used to define the technology.}
 
-\item{eval_xmat}{A \code{data.frame} or \code{matrix} containing the containing the input data of the DMUs to be evaluated.}
+\item{eval_xmat}{A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.}
 
-\item{eval_ymat}{A \code{data.frame} or \code{matrix} containing the containing the output data of the DMUs to be evaluated.}
+\item{eval_ymat}{A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.}
 
-\item{direction}{Direction of the vector to project on the frontier. Two possibilities:
+\item{direction}{Direction of the vector to project on the frontier. Options are:
 \itemize{
 \item{\code{"mean"}} Projection vector given by the average value of inputs and outputs of all DMUs.
 \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
@@ -26,7 +26,7 @@ ddf(tech_xmat, tech_ymat, eval_xmat, eval_ymat, direction, convexity, returns)
 \item{returns}{Type of returns to scale.}
 }
 \value{
-A \code{vector} of \code{"numeric"} scores computed through the input-oriented radial model in the envelopment format.
+A \code{vector} of \code{"numeric"} scores computed through the directional distance function in the envelopment format.
 }
 \description{
 This function computes efficiency scores through the directional distance function in the envelopment format.

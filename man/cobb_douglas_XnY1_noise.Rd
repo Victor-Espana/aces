@@ -7,9 +7,9 @@
 cobb_douglas_XnY1_noise(N, nX, p, heteroskedasticity = FALSE)
 }
 \arguments{
-\item{N}{Sample size.}
+\item{N}{An integer representing the sample size.}
 
-\item{nX}{Number of inputs.}
+\item{nX}{An integer representing the number of inputs.}
 
 \item{p}{Noise-to-signal ratio.}
 

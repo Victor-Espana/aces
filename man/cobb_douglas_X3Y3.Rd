@@ -7,7 +7,7 @@
 cobb_douglas_X3Y3(N, border, noise, returns)
 }
 \arguments{
-\item{N}{Sample size.}
+\item{N}{An integer representing the sample size.}
 
 \item{border}{Proportion of DMUs in the frontier: \code{0.1}, \code{0.2} or \code{0.3}.}
 

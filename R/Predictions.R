@@ -123,12 +123,12 @@ predict.aces <- function (
       knots <- aces_model[["quintic_knots"]]
 
     } else {
-      stop("Not available method Please, check help(\"predict\")")
+      stop("Not available method. Please, check help(\"predict\")")
 
     }
 
     # matrix of basis function
-    B <- set_B (
+    B <- set_Bmat (
       newdata = data,
       model = aces_model,
       knots = knots,
@@ -385,68 +385,100 @@ predict.rf_aces <- function (
 
 #' @title Build (B) Matrix of Basis Functions
 #'
-#' @description This function builds the (B) matrix of basis functions for prediction given a model.
+#' @description
+#' This function builds the (B) matrix of basis functions for prediction given a model.
 #'
-#' @param newdata A \code{data.frame} containing the input and netput variables to predict on.
-#' @param model A \code{list} with data of a model.
-#' @param knots Set of knots of the \code{model}.
-#' @param method Type of model for prediction.
+#' @param newdata
+#' A \code{data.frame} containing the input and netput variables to predict on.
 #'
-#' @return The (B) Matrix of Basis Functions
+#' @param model
+#' A \code{list} with data of a model.
+#'
+#' @param knots
+#' Set of knots of the \code{model}.
+#'
+#' @param method
+#' Type of model for prediction.
+#'
+#' @return
+#' The (B) Matrix of Basis Functions
 
-set_B <- function (
-    newdata, model, knots, method
+set_Bmat <- function (
+    newdata,
+    model,
+    knots,
+    method
     ) {
 
-  # Sample size
+  # sample size
   N <- nrow(newdata)
-  # Initialize B matrix
+
+  # initialize B matrix
   B <- matrix(rep(1, N), nrow = N)
 
   if (method == "aces_forward") {
 
     for (i in 1:nrow(knots)) {
-      # Variable and knot
+
+      # variable
       v <- knots[i, 1]
+
+      # knot
       t <- knots[i, 2]
 
-      # Basis functions for the new data
+      # basis functions for the new data
       hinge1 <- pmax(0, newdata[, v] - t)
       hinge2 <- pmax(0, t - newdata[, v])
 
-      # Update B matrix
+      # update B matrix
       B <- cbind(B, hinge1, hinge2)
     }
 
   } else if (method == "aces") {
 
     for (i in 1:nrow(knots)) {
-      # Variable and knot
+
+      # variable
       v <- knots[i, 1]
+
+      # knot
       t <- knots[i, 2]
 
-      # Basis functions for the new data
+      # basis functions for the new data
       if (knots[i, 3] == "R") {
+
+        # right-hand basis function
         hinge1 <- pmax(0, newdata[, v] - t)
 
-        # Update B
+        # update B matrix
         B <- cbind(B, hinge1)
 
       } else {
+
+        # left-hand basis function
         hinge2 <- pmax(0, t - newdata[, v])
 
-        # Update B
+        # update B matrix
         B <- cbind(B, hinge2)
+
       }
     }
 
   } else if (method == "aces_cubic") {
 
     for (status in c("paired", "unpaired")) {
-      for (v in 1:length(knots)) { # variable
-        if (is.null(knots[[v]])) next # variable is not used
+
+      # select a variable
+      for (v in 1:length(knots)) {
+
+        # the variable is not used
+        if (is.null(knots[[v]])) next
+
+        # select a knot
         for (t in 1:length(knots[[v]])) {
-          if (knots[[v]][[t]][["status"]] != status) next # keep the order
+
+          # keep the order: first paired and then unpaired
+          if (knots[[v]][[t]][["status"]] != status) next
 
           # knot side
           side <- knots[[v]][[t]][["side"]]
@@ -454,11 +486,20 @@ set_B <- function (
           # cubic knot
           Ct <- knots[[v]][[t]][["t"]]
 
-          # t-; t; t+
-          t0 <- Ct[1]; t1 <- Ct[2]; t2 <- Ct[3]
+          # t-
+          t0 <- Ct[1]
 
-          d <- t1 - t0 # t  - t-
-          e <- t2 - t1 # t+ - t
+          # t
+          t1 <- Ct[2]
+
+          # t+
+          t2 <- Ct[3]
+
+          # t  - t-
+          d <- t1 - t0
+
+          # t+ - t
+          e <- t2 - t1
 
           p1 <- (2 * e - d) / (e + d) ^ 2
           r1 <- (d - e) / (e + d) ^ 3
@@ -478,6 +519,7 @@ set_B <- function (
                                  term1 + term2,
                                  newdata[, v] - t1)))
             B  <- cbind(B, C1)
+
           }
 
           if (status == "paired" || (status == "unpaired" && side == "L")) {
@@ -492,6 +534,7 @@ set_B <- function (
                                  term1 + term2,
                                  0)))
             B  <- cbind(B, C2)
+
           }
         }
       }
@@ -500,10 +543,18 @@ set_B <- function (
   } else if (method == "aces_quintic") {
 
     for (status in c("paired", "unpaired")) {
-      for (v in 1:length(knots)) { # variable
-        if (is.null(knots[[v]])) next # variable is not used
+
+      # select a variable
+      for (v in 1:length(knots)) {
+
+        # the variable is not used
+        if (is.null(knots[[v]])) next
+
+        # select a knot
         for (t in 1:length(knots[[v]])) {
-          if (knots[[v]][[t]][["status"]] != status) next # keep the order
+
+          # keep the order: first paired and then unpaired
+          if (knots[[v]][[t]][["status"]] != status) next
 
           # knot side
           side <- knots[[v]][[t]][["side"]]
@@ -511,12 +562,23 @@ set_B <- function (
           # quintic knot
           Qt <- knots[[v]][[t]][["t"]]
 
-          # t-; t; t+
-          t0 <- Qt[1]; t1 <- Qt[2]; t2 <- Qt[3]
+          # t-
+          t0 <- Qt[1]
 
-          d  <- t2 - t0 # t+ - t-
-          d1 <- t2 - t1 # t+ - t
-          d2 <- t1 - t0 # t  - t-
+          # t
+          t1 <- Qt[2]
+
+          # t+
+          t2 <- Qt[3]
+
+          # t+ - t-
+          d  <- t2 - t0
+
+          # t+ - t
+          d1 <- t2 - t1
+
+          # t  - t-
+          d2 <- t1 - t0
 
           alpha1 <- (6 * d1 - 4 * d2) / d ^ 3
           alpha2 <- (4 * d1 - 6 * d2) / d ^ 3
@@ -540,6 +602,7 @@ set_B <- function (
                                  newdata[, v] - t1)))
 
             B  <- cbind(B, Q1)
+
           }
 
           if (status == "paired" || (status == "unpaired" && side == "L")) {
@@ -555,14 +618,18 @@ set_B <- function (
                                  term1 + term2 + term3,
                                  0)))
             B  <- cbind(B, Q2)
+
           }
         }
       }
     }
 
   } else {
-    stop("Not available method Please, check help(\"predict\")")
+
+    stop("Not available method. Please, check help(\"predict\")")
+
   }
 
   return(B)
+
 }
