@@ -2,7 +2,7 @@
 #'
 #' @description
 #'
-#' This function predicts the expected output by an \code{aces} object.
+#' This function predicts the expected output using an \code{aces} object.
 #'
 #' @param object
 #' An \code{aces} object.
@@ -11,7 +11,10 @@
 #' A \code{data.frame} containing the input and netput variables to predict on.
 #'
 #' @param x
-#' Input indexes in \code{newdata}.
+#' Column indexes of input variables in \code{data}.
+#'
+#' @param z
+#' Column indexes of contextual variables in \code{data}.
 #'
 #' @param method
 #' Model for prediction:
@@ -20,14 +23,6 @@
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
 #' \item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines model.
 #' \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
-#' }
-#'
-#' @param stochastic_pred
-#' This parameter should be kept as \code{FALSE} (default) if an additive model is estimated. If a stochastic model is estimated, one of the following elements should be specified:
-#' \itemize{
-#'   \item{"avg"}: average-practice production function.
-#'   \item{"mom"}: moments-estimation production function.
-#'   \item{"pse"}: pseudolikelihood-estimation production function.
 #' }
 #'
 #' @return
@@ -40,160 +35,96 @@ predict.aces <- function (
     object,
     newdata,
     x,
-    method = "aces",
-    stochastic_pred = FALSE
+    z = NULL,
+    method = "aces"
     ) {
 
-  # strategy to predict response variable: "all" or "individual"
-  y_type <- ifelse (
-    length(object) == 1 && names(object) == "y_all",
-    "all",
-    "ind"
-    )
-
   # number of outputs
-  nY <- ifelse (
-    y_type == "all",
-    length(object[["y_all"]][["data"]][["y"]]),
-    length(object)
-    )
-
-  # determine model type
-  model_type <- object[[1]][["control"]][["model_type"]]
-
-  if (model_type == "sto" && !stochastic_pred) {
-    stop("A stochastic prediction must be selected if a stochastic model is estimated.")
-  }
+  nY <- length(object[["data"]][["y"]])
 
   # determine error type
-  error_type <- object[[1]][["control"]][["error_type"]]
-
-  # number of models;
-  # all: 1 model
-  # ind: 1 model for each output
-  models <- length(object)
+  error_type <- object[["control"]][["error_type"]]
 
   # output predictions
-  y_hat <- as.data.frame (matrix(NA, nrow = nrow(newdata), ncol = nY))
+  y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
 
-  for (m in 1:models) {
+  # check if training and test names are equal
+  tr_names <- object[["data"]][["xnames"]]
+  ts_names <- colnames(newdata)[x]
 
-    # select a model
-    model <- object[[m]]
-
-    # look for netputs if y_type = "individual"
-    z <- model[["data"]][["z"]]
-
-    # check if training and test names are equal
-    tr_names <- model[["data"]][["xnames"]]
-    ts_names <- colnames(newdata)[c(x, z)]
-
-    if (!identical(sort(tr_names), sort(ts_names))) {
-      stop("Different variable names in training data and newdata.")
-    }
-
-    # data in [x, z, y] format with interaction and / or transformation of
-    # variables included
-    data <- prepare_data (
-      data = newdata,
-      x = x,
-      y = NULL,
-      z = z,
-      degree = model[["control"]][["degree"]],
-      error_type = error_type
-    )
-
-    # sample size
-    N <- nrow(data)
-
-    if (method == "aces_forward") {
-      aces_model <- model[["methods"]][["aces_forward"]]
-      knots <- aces_model[["knots"]]
-
-    } else if (method == "aces") {
-      aces_model <- model[["methods"]][["aces"]]
-      knots <- aces_model[["knots"]]
-
-    } else if (method == "aces_cubic") {
-      aces_model <- model[["methods"]][["aces_cubic"]]
-      knots <- aces_model[["cubic_knots"]]
-
-    } else if (method == "aces_quintic") {
-      aces_model <- model[["methods"]][["aces_quintic"]]
-      knots <- aces_model[["quintic_knots"]]
-
-    } else {
-      stop("Not available method. Please, check help(\"predict\")")
-
-    }
-
-    # matrix of basis function
-    B <- set_Bmat (
-      newdata = data,
-      model = aces_model,
-      knots = knots,
-      method = method
-      )
-
-    # prediction
-    if (y_type == "all") {
-
-      for (out in 1:nY) {
-        y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
-      }
-
-    } else {
-
-      y_hat[, m] <- pmax(0, B %*% aces_model[["coefs"]])
-
-    }
+  if (!identical(sort(tr_names), sort(ts_names))) {
+    stop("Different variable names in training data and newdata.")
   }
 
-  # transform data to original scale
-  if (error_type == "mul") {
-    y_hat <- exp(y_hat)
+  # data in [x, y] format with interaction and / or transformation of variables included
+  data <- prepare_data (
+    data = newdata,
+    x = x,
+    y = NULL,
+    z = z,
+    max_degree = object[["control"]][["max_degree"]],
+    error_type = error_type
+  )
+
+  # sample size
+  N <- nrow(data)
+
+  if (!method %in% c("aces_forward", "aces", "aces_cubic", "aces_quintic")) {
+    stop("Not available method. Please, check help(\"predict\")")
+  }
+
+  # model
+  aces_model <- object[["methods"]][[method]]
+
+  # set of knots
+  knots <- aces_model[["knots"]]
+
+  # technology
+  tecno <- object[["technology"]][[method]]
+
+  # matrix of basis function
+  B <- set_Bmat (
+    newdata = data,
+    model = aces_model,
+    knots = knots,
+    method = method
+    )
+
+  if (error_type == "add") {
+
+    for (out in 1:nY) {
+
+      y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
+
+    }
+
+  } else {
+
+    for (out in 1:nY) {
+
+      y_hat[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
+      y_hat[, out] <- exp(y_hat[, out])
+
+    }
   }
 
   # compute DEA scores
-  eff_sco <- rad_out (
-    tech_xmat = as.matrix(newdata[, x]),
-    tech_ymat = as.matrix(y_hat),
+  scores <- rad_out (
+    tech_xmat = tecno[["xmat"]],
+    tech_ymat = tecno[["ymat"]],
     eval_xmat = as.matrix(newdata[, x]),
-    eval_ymat = as.matrix(newdata[, y]),
+    eval_ymat = as.matrix(y_hat),
     convexity = TRUE,
     returns = "variable"
   )
 
   # predictions
-  y_hat <- as.data.frame(newdata[, y] * eff_sco)
-  names(y_hat) <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
+  y_hat <- as.data.frame(y_hat * scores)
 
-  if (model_type == "sto") {
-
-    # standard deviation for inefficiency term
-    std_u <- switch (
-      stochastic_pred,
-      "avg" = 0,
-      "mom" = aces_model[["sto"]][["mom"]][["std_u"]],
-      "pse" = aces_model[["sto"]][["pse"]][["std_u"]]
-      )
-
-    adjustment_factor <- std_u * sqrt(2 / pi)
-
-    # production function
-    if (error_type == "add") {
-
-      y_hat <- y_hat + adjustment_factor
-
-    } else {
-
-      y_hat <- y_hat * exp(adjustment_factor)
-
-    }
-
-  }
+  names(y_hat) <- paste(object[["data"]][["ynames"]], "_pred", sep = "")
 
   return(y_hat)
+
 }
 
 #' @title Model Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES)
@@ -219,6 +150,14 @@ predict.aces <- function (
 #' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
 #' }
 #'
+#' @param stochastic_pred
+#' This parameter should be kept as \code{FALSE} (default) if an additive model is estimated. If a stochastic model is estimated, one of the following elements should be specified:
+#' \itemize{
+#'   \item{"avg"}: average-practice production function.
+#'   \item{"mom"}: moments-estimation production function.
+#'   \item{"pse"}: pseudolikelihood-estimation production function.
+#' }
+#'
 #' @return
 #'
 #' A \code{data.frame} with the predicted values through the Random Forest Adaptive Constrained Enveloping Splines model.
@@ -229,128 +168,171 @@ predict.rf_aces <- function (
     object,
     newdata,
     x,
-    method = "rf_aces"
+    method = "rf_aces",
+    stochastic_pred = FALSE
     ) {
 
-  # strategy to predict response variable: "all" or "individual"
-  y_type <- ifelse(length(object) == 1 && names(object) == "y_all", "all", "ind")
-
   # number of outputs
-  nY <- ifelse (
-    y_type == "all",
-    length(object[["y_all"]][["data"]][["y"]]),
-    length(object)
-  )
+  nY <- length(object[["models"]][[1]][["data"]][["y"]])
 
   # determine model type
-  model_type <- object[[1]][["control"]][["model_type"]]
+  model_type <- object[["models"]][[1]][["control"]][["model_type"]]
+
+  if (model_type == "stochastic" && !stochastic_pred %in% c("avg", "mom", "pse")) {
+    stop("A stochastic prediction must be selected if a stochastic model is estimated.")
+  }
 
   # determine error type
-  error_type <- object[[1]][["control"]][["error_type"]]
+  error_type <- object[["models"]][[1]][["control"]][["error_type"]]
 
   # number of models in Random Forest
-  RF_models <- length(object)
+  RF_models <- length(object[["models"]])
 
   # list of predictions for each model
   y_hat_RF <- vector("list", RF_models)
 
   for (b in 1:RF_models) {
 
-    # number of models;
-    # all: 1 model
-    # ind: 1 model for each output
-    models <- length(object[[b]])
-
     # output predictions
     y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
 
-    for (m in 1:models) {
-      # select a model
-      model <- object[[b]][[m]]
+    # select a model
+    model <- object[["models"]][[b]]
 
-      # look for netputs if y_type = "individual"
-      z <- model[["data"]][["z"]]
+    # check if training and test names are equal
+    tr_names <- model[["data"]][["xnames"]]
+    ts_names <- colnames(newdata)[c(x)]
 
-      # check if training and test names are equal
-      tr_names <- model[["data"]][["xnames"]]
-      ts_names <- colnames(newdata)[c(x, z)]
+    if (!identical(sort(tr_names), sort(ts_names))) {
+      stop("Different variable names in training data and newdata.")
+    }
 
-      if (!identical(sort(tr_names), sort(ts_names))) {
-        stop("Different variable names in training data and newdata.")
+    # data in [x, y] format with interaction of variables included
+    data <- prepare_data (
+      data = newdata,
+      x = x,
+      y = NULL,
+      degree = model[["control"]][["degree"]],
+      error_type = error_type
+    )
+
+    # sample size
+    N <- nrow(data)
+
+    if (method == "rf_aces") {
+      aces_model <- model[["methods"]][["rf_aces"]]
+      knots <- aces_model[["knots"]]
+
+    } else if (method == "rf_aces_cubic") {
+      aces_model <- model[["methods"]][["rf_aces_cubic"]]
+      knots <- aces_model[["cubic_knots"]]
+
+    } else if (method == "rf_aces_quintic") {
+      aces_model <- model[["methods"]][["rf_aces_quintic"]]
+      knots <- aces_model[["quintic_knots"]]
+
+    } else {
+      stop("Not available method Please, check help(\"predict\")")
+
+    }
+
+    # matrix of basis function
+    B <- set_Bmat (
+      newdata = data,
+      model = aces_model,
+      knots = knots,
+      method = method
+    )
+
+    if (error_type == "add") {
+
+      for (out in 1:nY) {
+        y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
       }
 
-      # data in [x, z, y] format with interaction of variables included
-      data <- prepare_data (
-        data = newdata,
-        x = x,
-        y = NULL,
-        z = z,
-        degree = model[["control"]][["degree"]],
-        error_type = error_type
+      # compute DEA scores
+      scores <- rad_out (
+        tech_xmat = aces_model[["technology"]][["xmat"]],
+        tech_ymat = aces_model[["technology"]][["ymat"]],
+        eval_xmat = as.matrix(newdata[, x]),
+        eval_ymat = as.matrix(y_hat),
+        convexity = TRUE,
+        returns = "variable"
       )
 
-      # sample size
-      N <- nrow(data)
+      # predictions
+      y_hat <- as.data.frame(y_hat * scores)
 
-      if (method == "aces_forward") {
-        aces_model <- model[["methods"]][["aces_forward"]]
-        knots <- aces_model[["knots"]]
+    } else {
 
-      } else if (method == "aces_cubic") {
-        aces_model <- model[["methods"]][["aces_cubic"]]
-        knots <- aces_model[["knots"]]
-
-      } else if (method == "aces_quintic") {
-        aces_model <- model[["methods"]][["aces_quintic"]]
-        knots <- aces_model[["cubic_knots"]]
-
-      } else {
-        stop("Not available method Please, check help(\"predict\")")
-
+      for (out in 1:nY) {
+        y_hat[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
+        y_hat[, out] <- exp(y_hat[, out])
       }
 
-      # matrix of basis function
-      B <- set_B (
-        newdata = data,
-        model = aces_model,
-        knots = knots,
-        method = method
+    }
+
+    if (model_type == "stochastic") {
+
+      # standard deviation for inefficiency term
+      std_u <- switch (
+        stochastic_pred,
+        "avg" = 0,
+        "mom" = aces_model[["stochastic"]][["mom"]][["std_u"]],
+        "pse" = aces_model[["stochastic"]][["pse"]][["std_u"]]
       )
 
-      # prediction
-      if (y_type == "all") {
+      adjustment_factor <- std_u * sqrt(2 / pi)
 
-        for (out in 1:nY) {
-          y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
-        }
+      # production function
+      if (error_type == "add") {
 
-        names(y_hat) <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
+        y_hat <- y_hat + adjustment_factor
 
       } else {
 
-        y_hat[, m] <- pmax(0, B %*% aces_model[["coefs"]])
-
-        names(y_hat)[m] <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
+        y_hat <- y_hat * exp(adjustment_factor)
 
       }
     }
-
-    if (error_type == "mul") {
-      # change to original scale
-      y_hat <- exp(y_hat)
-    }
-
-    y_hat <- rad_out (
-      tech_xmat = as.matrix(newdata[, x]),
-      tech_ymat = as.matrix(y_hat),
-      eval_xmat = as.matrix(newdata[, x]),
-      eval_ymat = as.matrix(y_hat),
-      convexity = TRUE,
-      returns = "variable"
-    ) * y_hat
-
-    y_hat_RF[[b]] <- y_hat
   }
+
+
+  #     # prediction
+  #     if (y_type == "all") {
+  #
+  #       for (out in 1:nY) {
+  #         y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
+  #       }
+  #
+  #       names(y_hat) <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
+  #
+  #     } else {
+  #
+  #       y_hat[, m] <- pmax(0, B %*% aces_model[["coefs"]])
+  #
+  #       names(y_hat)[m] <- paste(model[["data"]][["ynames"]], "_pred", sep = "")
+  #
+  #     }
+  #   }
+  #
+  #   if (error_type == "mul") {
+  #     # change to original scale
+  #     y_hat <- exp(y_hat)
+  #   }
+  #
+  #   y_hat <- rad_out (
+  #     tech_xmat = as.matrix(newdata[, x]),
+  #     tech_ymat = as.matrix(y_hat),
+  #     eval_xmat = as.matrix(newdata[, x]),
+  #     eval_ymat = as.matrix(y_hat),
+  #     convexity = TRUE,
+  #     returns = "variable"
+  #   ) * y_hat
+  #
+  #   y_hat_RF[[b]] <- y_hat
+  #
+  # }
 
   # point estimation
   y_hat_aux <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
@@ -380,7 +362,189 @@ predict.rf_aces <- function (
 
   y_hat <- y_hat_aux
 
-  return(list("point_estimation" = y_hat, "interval_estimation" = inter_estim))
+  return(y_hat)
+
+}
+
+#' @title Model Prediction for Adaptive Constrained Enveloping Splines (ACES).
+#'
+#' @description
+#'
+#' This function predicts the expected output by an \code{aces} object.
+#'
+#' @param object
+#' An \code{aces} object.
+#'
+#' @param newdata
+#' A \code{data.frame} containing the input and netput variables to predict on.
+#'
+#' @param x
+#' Column indexes of input variables in \code{data}.
+#'
+#' @param z
+#' Column indexes of contextual variables in \code{data}.
+#'
+#' @param method
+#' Model for prediction:
+#' \itemize{
+#' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines model.
+#' \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+#' }
+#'
+#' @param stochastic_pred
+#' This parameter should be kept as \code{FALSE} (default) if an additive model is estimated. If a stochastic model is estimated, one of the following elements should be specified:
+#' \itemize{
+#'   \item{"avg"}: average-practice production function.
+#'   \item{"mom"}: moments-estimation production function.
+#'   \item{"pse"}: pseudolikelihood-estimation production function.
+#' }
+#'
+#' @return
+#'
+#' A \code{data.frame} with the predicted values through the Adaptive Constrained Enveloping Splines model.
+#'
+#' @export
+
+predict.s_aces <- function (
+    object,
+    newdata,
+    x,
+    z = NULL,
+    method = "aces",
+    stochastic_pred = FALSE
+) {
+
+  # number of outputs
+  nY <- length(object[["data"]][["y"]])
+
+  # determine model type
+  model_type <- object[["control"]][["model_type"]]
+
+  if (model_type == "stochastic" && !stochastic_pred %in% c("avg", "mom", "pse")) {
+    stop("A stochastic prediction must be selected if a stochastic model is estimated.")
+  }
+
+  # determine error type
+  error_type <- object[["control"]][["error_type"]]
+
+  # output predictions
+  y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
+
+  # check if training and test names are equal
+  tr_names <- object[["data"]][["xnames"]]
+  ts_names <- colnames(newdata)[x]
+
+  if (!identical(sort(tr_names), sort(ts_names))) {
+    stop("Different variable names in training data and newdata.")
+  }
+
+  # data in [x, y] format with interaction and / or transformation of variables included
+  data <- prepare_data (
+    data = newdata,
+    x = x,
+    y = NULL,
+    z = z,
+    max_degree = object[["control"]][["max_degree"]],
+    error_type = error_type
+  )
+
+  # sample size
+  N <- nrow(data)
+
+  if (method == "aces_forward") {
+    aces_model <- object[["methods"]][["aces_forward"]]
+    knots <- aces_model[["knots"]]
+    tecno <- object[["technology"]][["aces_forward"]]
+
+  } else if (method == "aces") {
+    aces_model <- object[["methods"]][["aces"]]
+    knots <- aces_model[["knots"]]
+    tecno <- object[["technology"]][["aces"]]
+
+  } else if (method == "aces_cubic") {
+    aces_model <- object[["methods"]][["aces_cubic"]]
+    knots <- aces_model[["cubic_knots"]]
+    tecno <- object[["technology"]][["aces_cubic"]]
+
+  } else if (method == "aces_quintic") {
+    aces_model <- object[["methods"]][["aces_quintic"]]
+    knots <- aces_model[["quintic_knots"]]
+    tecno <- object[["technology"]][["aces_quintic"]]
+
+  } else {
+    stop("Not available method. Please, check help(\"predict\")")
+
+  }
+
+  # matrix of basis function
+  B <- set_Bmat (
+    newdata = data,
+    model = aces_model,
+    knots = knots,
+    method = method
+  )
+
+  if (error_type == "add") {
+
+    for (out in 1:nY) {
+
+      y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
+
+    }
+
+  } else {
+
+    for (out in 1:nY) {
+
+      y_hat[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
+      y_hat[, out] <- exp(y_hat[, out])
+
+    }
+  }
+
+  # compute DEA scores
+  scores <- rad_out (
+    tech_xmat = tecno[["xmat"]],
+    tech_ymat = tecno[["ymat"]],
+    eval_xmat = as.matrix(newdata[, x]),
+    eval_ymat = as.matrix(y_hat),
+    convexity = TRUE,
+    returns = "variable"
+  )
+
+  # predictions
+  y_hat <- as.data.frame(y_hat * scores)
+
+  if (model_type == "stochastic") {
+
+    # standard deviation for inefficiency term
+    std_u <- switch (
+      stochastic_pred,
+      "avg" = 0,
+      "mom" = aces_model[["stochastic"]][["mom"]][["std_u"]],
+      "pse" = aces_model[["stochastic"]][["pse"]][["std_u"]]
+    )
+
+    adjustment_factor <- std_u * sqrt(2 / pi)
+
+    # production function
+    if (error_type == "add") {
+
+      y_hat <- y_hat + adjustment_factor
+
+    } else {
+
+      y_hat <- y_hat * exp(adjustment_factor)
+
+    }
+  }
+
+  names(y_hat) <- paste(object[["data"]][["ynames"]], "_pred", sep = "")
+
+  return(y_hat)
+
 }
 
 #' @title Build (B) Matrix of Basis Functions
@@ -416,7 +580,7 @@ set_Bmat <- function (
   # initialize B matrix
   B <- matrix(rep(1, N), nrow = N)
 
-  if (method == "aces_forward") {
+  if (method %in% c("aces_forward", "rf_aces")) {
 
     for (i in 1:nrow(knots)) {
 
@@ -464,7 +628,7 @@ set_Bmat <- function (
       }
     }
 
-  } else if (method == "aces_cubic") {
+  } else if (method %in% c("aces_cubic", "rf_aces_cubic")) {
 
     for (status in c("paired", "unpaired")) {
 
@@ -540,7 +704,7 @@ set_Bmat <- function (
       }
     }
 
-  } else if (method == "aces_quintic") {
+  } else if (method %in% c("aces_quintic", "rf_aces_quintic")) {
 
     for (status in c("paired", "unpaired")) {
 

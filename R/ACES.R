@@ -1,8 +1,8 @@
-#' @title Fit an Adaptive Constrained Enveloping Splines (ACES) Model
+#' @title Fit an Adaptive Constrained Enveloping Splines (ACES) model
 #'
 #' @description
 #'
-#' This function estimates a production frontier that satisfies classical production theory axioms, such as monotonicity and concavity. Both stochastic and deterministic versions are available. The estimations are based on the adaptation of the Multivariate Adaptive Regression Splines (MARS) technique developed by \insertCite{friedman1991;textual}{aces}. An adaptation of Random Forest \insertCite{breiman2001}{aces} is also included. For details, see \insertCite{espana2024;textual}{aces}
+#' This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
 #'
 #' @name aces
 #'
@@ -15,19 +15,11 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param y_type
-#' A \code{character} string specifying the nature of the production frontier to estimate. Options are:
-#' \itemize{
-#'   \item{\code{"ind"}}: Predict one output at a time, using the rest of the outputs as additional inputs (netputs). Netputs are treated as inputs for prediction and as outputs for efficiency estimation.
-#'   \item{\code{"all"}}: Predict all the outputs simultaneously with the original set of inputs.
-#' }
+#' @param z
+#' Column indexes of contextual variables in \code{data}.
 #'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier to estimate. Options are:
-#' \itemize{
-#'   \item{\code{"env"}}: Fit an enveloping production frontier.
-#'   \item{\code{"sto"}}: Fit a stochastic production frontier.
-#' }
+#' @param quick_aces
+#' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
 #' @param error_type
 #' A \code{character} string specifying the error structure to use. Options are:
@@ -36,21 +28,11 @@
 #'   \item{\code{"mul"}}: Multiplicative error structure.
 #' }
 #'
-#' @param RF
-#' A \code{list} indicating if a bootstrap aggregation methodology like Random Forest should be used. Items include:
-#' \itemize{
-#'   \item{\code{apply}}: A \code{logical} indicating if bagging should be applied.
-#'   \item{\code{sample}}: A \code{numeric} indicating the sample size for bagging.
-#'   \item{\code{models}}: A \code{numeric} indicating the number of models for bagging.
-#'   \item{\code{nvars}}: An \code{integer} indicating the number of variables randomly chosen at each split.
-#'   \item{\code{oob_red}}: A \code{numeric} specifying the minimum improvement ratio in the moving average of the out-of-bag error over a period of 10 compared to the previous period for the addition of a new model to the ensamble. Default is \code{0.001}.
-#' }
-#'
 #' @param mul_BF
-#' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a multivariate BF. Items include:
+#' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 #' \itemize{
-#' \item{\code{degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. Basis functions products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-#' \item{\code{hd_cost}}:  A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+#' \item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
+#' \item{\code{compl_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
 #' }
 #'
 #' @param metric
@@ -74,13 +56,18 @@
 #' }
 #'
 #' @param nterms
-#' A positive \code{integer} specifying the maximum number of terms created before pruning. Default is \code{50}.
+#' A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.
 #'
 #' @param err_red
-#' A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.
+#' A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs. Default is \code{0.01}.
 #'
 #' @param kn_grid
-#' Either a \code{-1} (default) to use the original approach of \insertCite{friedman1991;textual}{aces} based on the observed data, or a a \code{list} with the grid of knots for performing ACES. Each element of the \code{list} contains a vector with the knots of one variable (e.g., the first element of the list contains the knot values of the first variable and so on).
+#' Specifies the grid of knots to be used in the ACES algorithm. Accepts two options:
+#' \itemize{
+#'    \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
+#'    \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
+#'
+#' }
 #'
 #' @param minspan
 #' A \code{numeric} specifying the minimum number of observations between two adjacent knots. Options are:
@@ -101,35 +88,28 @@
 #' @param kn_penalty
 #' A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.
 #'
-#' @param smoothing
-#' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{list} specifying conditions for the smoothing procedure. Items include:
-#' \itemize{
-#' \item{\code{wc}}:  A \code{numeric} value used for cubic smoothing \insertCite{friedman1991}{aces}. This parameter is defined as `v / p` and must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
-#' \item{\code{wq}}: A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
-#' }
-#'
 #' @details
 #'
-#' This function generates a production frontier adhering to classical production theory axioms, such as monotonicity and concavity. Users can choose between enveloping or stochastic versions of the production functions. The algorithm comprises three main procedures:
+#' This function generates a production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The algorithm comprises three main procedures:
 #'
-#' 1. A forward selection algorithm that creates a ser of linear basis functions, which may initially overfit the training data.
+#' Forward Selection Algorithm. This initial step constructs a set of linear BFs to model the production frontier. While it may initially overfit the training data by capturing complex patterns and interactions, it provides a comprehensive foundation for the model.
 #'
-#' 2. A backward elimination algorithm that remove basis that do not significantly contribute to the model's performance.
+#' Backward Elimination Algorithm. To enhance model generalization and prevent overfitting, this procedure systematically removes BFs that do not significantly contribute to the model's performance. It retains only those functions that have a meaningful impact on predicting the output.
 #'
-#' 3. Two smoothing procedures are available: one using cubic functions and another using quintic functions.
+#' Smoothing Procedures. After refining the set of BFs, the algorithm offers two smoothing options to produce a smooth and continuous production frontier:
 #'
-#' If the stochastic version is selected, the frontier's shape is estimated without imposing enveloping constraints on the observations. In the second stage, the expected value of inefficiency is estimated using the residuals obtained from the first stage.
+#' * Cubic Smoothing: Applies cubic functions to achieve a balance between flexibility and smoothness, suitable for capturing moderate curvature in the data.
+#'
+#' * Quintic Smoothing: Utilizes quintic functions for a higher degree of smoothness and continuity, ideal for modelling more complex relationships.
 #'
 #' @references
 #'
 #' \insertRef{espana2024}{aces} \cr \cr
 #' \insertRef{friedman1991}{aces} \cr \cr
-#' \insertRef{breiman2001}{aces} \cr \cr
-#' \insertRef{zhang1994}{aces} \cr \cr
-#' \insertRef{chen1999}{aces}
+#' \insertRef{zhang1994}{aces} \cr
 #'
 #' @importFrom Rdpack reprompt
-#' @importFrom dplyr desc
+#' @importFrom dplyr desc group_by across all_of summarise
 #' @importFrom extraDistr rsign
 #'
 #' @return
@@ -142,419 +122,75 @@ aces <- function (
     data,
     x,
     y,
-    y_type = "ind",
-    model_type = "env",
+    z = NULL,
+    quick_aces = TRUE,
     error_type = "add",
-    RF = list (
-      "apply" = FALSE,
-      "sample" = nrow(data),
-      "models" = 100,
-      "nvars" = ceiling(length(x) / 3),
-      "oob_red" = 0.001
-      ),
     mul_BF = list (
-      "degree" = 1,
-      "hd_cost" = 0.05
+      "max_degree" = 1,
+      "compl_cost" = 0.05
     ),
     metric = "mse",
     shape = list (
       "mono" = TRUE,
       "conc" = TRUE,
-      "ptto" = FALSE
+      "ptto" = FALSE,
       ),
     nterms = 50,
     err_red = 0.01,
     kn_grid = - 1,
     minspan = - 1,
     endspan = - 1,
-    kn_penalty = 2,
-    smoothing = list (
-      "wc" = seq(1, 2, length.out = 5),
-      "wq" = seq(8 / 7, 1.5, length.out = 5)
-    )
-  ) {
+    kn_penalty = 2
+    ) {
 
   # possible error messages:
-  display_errors (
-    caller = "aces",
+  display_errors_aces (
     data = data,
     x = x,
     y = y,
-    y_type = y_type,
-    model_type = model_type,
+    z = z,
+    quick_aces = quick_aces,
     error_type = error_type,
-    nvars = RF[["nvars"]],
-    degree = mul_BF[["degree"]],
+    max_degree = mul_BF[["max_degree"]],
+    compl_cost = mul_BF[["compl_cost"]],
     metric = metric,
     nterms = nterms,
     err_red = err_red,
-    hd_cost = mul_BF[["hd_cost"]],
     minspan = minspan,
     endspan = endspan,
     kn_grid = kn_grid,
-    d = kn_penalty,
-    wc = smoothing[["wc"]],
-    wq = smoothing[["wq"]],
-    object = NULL,
-    measure = NULL,
-    convexity = NULL,
-    returns = NULL,
-    direction = NULL,
-    digits = NULL
-  )
+    kn_penalty = kn_penalty
+    )
 
-  # adapt "pass through origin" hyperparameter based on error_type
-  if (shape[["ptto"]] && error_type == "add") {
-    shape[["ptto"]] <- "0"
-
-  } else if (shape[["ptto"]] && error_type == "mul") {
-    shape[["ptto"]] <- "1"
-
+  if (shape[["ptto"]]) {
+    data <- rbind(data, rep(1e-10, ncol(data)))
   }
 
-  # list with individual ACES models
-  ACES <- list()
-
-  if (!RF[["apply"]]) {
-
-    if (y_type == "all") {
-
-      ACES[[1]] <- aces_algorithm (
-        data = data,
-        inps = x,
-        outs = y,
-        nets = NULL,
-        y_type = y_type,
-        model_type = model_type,
-        error_type = error_type,
-        degree = mul_BF[["degree"]],
-        metric = metric,
-        shape = list (
-          "mono" = shape[["mono"]],
-          "conc" = shape[["conc"]],
-          "ptto" = shape[["ptto"]]
-        ),
-        nterms = nterms,
-        err_red = err_red,
-        hd_cost = mul_BF[["hd_cost"]],
-        minspan = minspan,
-        endspan = endspan,
-        kn_grid = kn_grid,
-        d = kn_penalty,
-        wc = smoothing[["wc"]],
-        wq = smoothing[["wq"]]
-      )
-
-      # name
-      names(ACES)[1] <- "y_all"
-
-    } else {
-
-      for (out in 1:length(y)) {
-
-        # output indicator
-        indx <- rep(FALSE, length(y))
-
-        # select the output
-        indx[out] <- TRUE
-
-        # outputs as inputs
-        nets <- y[!indx]
-        outs <- y[indx]
-
-        ACES[[out]] <- aces_algorithm (
-          data = data,
-          inps = x,
-          outs = outs,
-          nets = nets,
-          y_type = y_type,
-          model_type = model_type,
-          error_type = error_type,
-          degree = mul_BF[["degree"]],
-          metric = metric,
-          shape = list (
-            "mono" = shape[["mono"]],
-            "conc" = shape[["conc"]],
-            "ptto" = shape[["ptto"]]
-          ),
-          nterms = nterms,
-          err_red = err_red,
-          hd_cost = mul_BF[["hd_cost"]],
-          minspan = minspan,
-          endspan = endspan,
-          kn_grid = kn_grid,
-          d = kn_penalty,
-          wc = smoothing[["wc"]],
-          wq = smoothing[["wq"]]
-        )
-
-        # name
-        names(ACES)[out] <- names(data)[y[out]]
-      }
-    }
-
-  } else {
-
-    # number of models to train
-    number_models <- RF[["models"]]
-
-    # sample size for each model
-    sample_size <- RF[["sample"]]
-
-    # number of outputs
-    nY <- length(y)
-
-    # RF-ACES models
-    RF_ACES <- vector("list", number_models)
-
-    # Progress Bar
-    pb <- txtProgressBar(min = 0, max = number_models, style = 3)
-
-    # out-of-bag predictions
-    oob_pred <- vector("list", number_models)
-
-    # moving-average for the out-of-bag
-    oob_vec <- c()
-    mov_avg_oob_05 <- c()
-    mov_avg_oob_10 <- c()
-    mov_avg_oob_25 <- c()
-
-    stopping_condition_counter <- 0
-
-    for (m in 1:length(RF_ACES)) {
-
-      # update Progress Bar
-      setTxtProgressBar(pb, m)
-
-      # index of samples in the model
-      sample_bag <- sample (
-        1:nrow(data),
-        size = sample_size,
-        replace = TRUE
-      )
-
-      # data for the m-model
-      data_bag <- data[sample_bag, ]
-
-      # out of bag data for the m-model
-      inb_idxs <- 1:nrow(data) %in% sample_bag
-      oob_idxs <- which(!(1:nrow(data) %in% sample_bag))
-      data_oob <- data[!inb_idxs, ]
-
-      if (y_type == "all") {
-
-        RF_ACES[[m]][[1]] <- rf_aces_algorithm (
-          data = data_bag,
-          inps = x,
-          outs = y,
-          nets = NULL,
-          y_type = y_type,
-          model_type = model_type,
-          error_type = error_type,
-          degree = mul_BF[["degree"]],
-          metric = metric,
-          shape = list (
-            "mono" = shape[["mono"]],
-            "conc" = shape[["conc"]],
-            "ptto" = shape[["ptto"]]
-          ),
-          nterms = nterms,
-          nvars = RF[["nvars"]],
-          err_red = err_red,
-          hd_cost = mul_BF[["hd_cost"]],
-          minspan = minspan,
-          endspan = endspan,
-          kn_grid = kn_grid,
-          wc = smoothing[["wc"]],
-          wq = smoothing[["wq"]]
-        )
-
-        # name
-        names(RF_ACES[[m]])[1] <- "y_all"
-
-        # predictions
-        Bmatx <- RF_ACES[[m]][[1]][["methods"]][["aces_forward"]][["Bmatx"]]
-        coefs <- RF_ACES[[m]][[1]][["methods"]][["aces_forward"]][["coefs"]]
-        y_hat <- Bmatx %*% coefs
-
-        # select out-of-bag indexes
-        y_hat <- y_hat[oob_idxs, ]
-
-        oob_pred[[m]] <- matrix (
-          c (
-            "y_hat" = y_hat,
-            "idx" = oob_idxs
-            ),
-          ncol = nY + 1
-        )
-
-        # OOB performance
-        oob_mse <- compute_oob (
-          data = data,
-          y = y,
-          oob_idxs = oob_idxs,
-          oob_pred = oob_pred,
-          model = m
-        )
-
-        # out-of-bag error
-        RF_ACES[[m]][[1]][["OOB"]] <- oob_mse
-
-        # early stopping RF-ACES based on moving average
-        oob_vec <- c(oob_vec, RF_ACES[[m]][["y_all"]][["OOB"]])
-        mov_avg_oob_05 <- c(mov_avg_oob_05, mean(tail(oob_vec, 05)))
-        mov_avg_oob_10 <- c(mov_avg_oob_10, mean(tail(oob_vec, 10)))
-        mov_avg_oob_25 <- c(mov_avg_oob_25, mean(tail(oob_vec, 25)))
-
-        if (m > min(nrow(data), 200) && oob_vec[m] >= oob_vec[m - 1]) {
-
-          stopping_condition_counter <- ifelse (
-            oob_vec[m] >= mov_avg_oob_05[m] * (1 - RF[["oob_red"]]) &
-            oob_vec[m] >= mov_avg_oob_10[m] * (1 - RF[["oob_red"]]) &
-            oob_vec[m] >= mov_avg_oob_25[m] * (1 - RF[["oob_red"]]),
-            stopping_condition_counter + 1,
-            0
-          )
-
-        if (stopping_condition_counter == 5) {
-
-          cat("\n")
-          print(paste("Out-of-bag error stabilized after", m, "models"))
-          break
-
-        }
-      }
-
-    } else {
-
-      for (out in 1:length(y)) {
-
-        # output indicator
-        indx <- rep(FALSE, length(y))
-
-        # select the output
-        indx[out] <- TRUE
-
-        # outputs as inputs
-        nets <- y[!indx]
-        outs <- y[indx]
-
-        RF_ACES[[m]][[out]] <- rf_aces_algorithm (
-          data = data_bag,
-          inps = x,
-          outs = outs,
-          nets = nets,
-          y_type = y_type,
-          model_type = model_type,
-          error_type = error_type,
-          degree = mul_BF[["degree"]],
-          metric = metric,
-          shape = list (
-            "mono" = shape[["mono"]],
-            "conc" = shape[["conc"]],
-            "ptto" = shape[["ptto"]]
-          ),
-          nterms = nterms,
-          nvars = RF[["nvars"]],
-          err_red = err_red,
-          hd_cost = mul_BF[["hd_cost"]],
-          minspan = minspan,
-          endspan = endspan,
-          kn_grid = kn_grid,
-          wc = smoothing[["wc"]],
-          wq = smoothing[["wq"]]
-        )
-
-        # name
-        names(RF_ACES[[m]])[out] <- names(data)[y[out]]
-
-      }
-
-      # predictions
-      y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
-
-      for (out in 1:length(y)) {
-        Bmatx <- RF_ACES[[m]][[out]][["methods"]][["aces_forward"]][["Bmatx"]]
-        coefs <- RF_ACES[[m]][[out]][["methods"]][["aces_forward"]][["coefs"]]
-        y_hat[, out] <- Bmatx %*% coefs
-      }
-
-      y_hat <- y_hat[oob_idxs, ]
-
-      oob_pred[[m]] <- matrix (
-        c (
-          "y_hat" = y_hat,
-          "idx" = oob_idxs
-        ),
-        ncol = nY + 1
-      )
-
-      # OOB performance
-      oob_mse <- compute_oob (
-        data = data,
-        y = y,
-        oob_idxs = oob_idxs,
-        oob_pred = oob_pred,
-        model = m
-      )
-
-      # out-of-bag error
-      for (out in 1:length(y)) {
-        RF_ACES[[m]][[out]][["OOB"]] <- oob_mse
-      }
-
-      # early stopping RF-ACES based on moving average
-      oob_vec <- c(oob_vec, RF_ACES[[m]][["y1"]][["OOB"]])
-      mov_avg_oob_05 <- c(mov_avg_oob_05, mean(tail(oob_vec, 05)))
-      mov_avg_oob_10 <- c(mov_avg_oob_10, mean(tail(oob_vec, 10)))
-      mov_avg_oob_25 <- c(mov_avg_oob_25, mean(tail(oob_vec, 25)))
-
-      if (m > min(nrow(data), 200) && oob_vec[m] >= oob_vec[m - 1]) {
-
-        stopping_condition_counter <- ifelse (
-          oob_vec[m] >= mov_avg_oob_05[m] * (1 - RF[["oob_red"]]) &
-            oob_vec[m] >= mov_avg_oob_10[m] * (1 - RF[["oob_red"]]) &
-            oob_vec[m] >= mov_avg_oob_25[m] * (1 - RF[["oob_red"]]),
-          stopping_condition_counter + 1,
-          0
-        )
-
-        if (stopping_condition_counter == 5) {
-
-          cat("\n")
-          print(paste("Out-of-bag error stabilized after", m, "models"))
-          break
-
-        }
-      }
-    }
-  }
-
-  # random-forest hyperparameters
-  rf_list = list (
-    "apply" = RF[["apply"]],
-    "sample" = RF[["sample"]],
-    "models" = m,
-    "nvars" = RF[["nvars"]],
-    "oob_red" = RF[["oob_red"]]
-  )
-
-  ACES <- RF_ACES[1:m]
-
-  for (j in seq_along(ACES)) {
-
-    for (out in 1:length(ACES[[1]])) {
-
-      ACES[[j]][[out]][["control"]] <- append (
-        ACES[[j]][[out]][["control"]],
-        list("RF" = rf_list)
-        )
-      }
-    }
-  }
+  ACES <- aces_algorithm (
+    data = data,
+    x_vars = x,
+    y_vars = y,
+    z_vars = z,
+    quick_aces = quick_aces,
+    error_type = error_type,
+    max_degree = mul_BF[["max_degree"]],
+    compl_cost = mul_BF[["compl_cost"]],
+    metric = metric,
+    shape = list (
+      "mono" = shape[["mono"]],
+      "conc" = shape[["conc"]],
+      "ptto" = shape[["ptto"]]
+    ),
+    nterms = nterms,
+    err_red = err_red,
+    minspan = minspan,
+    endspan = endspan,
+    kn_grid = kn_grid,
+    kn_penalty = kn_penalty
+    )
 
   # type of object
-  class(ACES) <- ifelse(RF[["apply"]], "rf_aces", "aces")
+  class(ACES) <- "aces"
 
   return(ACES)
 
@@ -563,46 +199,43 @@ aces <- function (
 #' @title Algorithm of Adaptive Constrained Enveloping Splines (ACES).
 #'
 #' @description
-#'This function implements the Adaptive Constrained Enveloping Splines (ACES) algorithm, which estimates a production frontier satisfying classical production theory axioms like monotonicity and concavity. It offers both stochastic and envelopment versions. These estimations are based on the adaptation of the Multivariate Adaptive Regression Splines (MARS) technique developed by \insertCite{friedman1991;textual}{aces}. For details, see \insertCite{espana2024;textual}{aces}
+#' This function implements the Adaptive Constrained Enveloping Splines (ACES) algorithm.
 #'
 #' @param data
 #' A \code{data.frame} or \code{matrix} containing the variables in the model.
 #'
-#' @param inps
+#' @param x_vars
 #' Column indexes of input variables in \code{data}.
 #'
-#' @param outs
+#' @param y_vars
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param nets
-#' Column indexes of netput (outputs evaluated as inputs) variables in \code{data}. These variables are treated as inputs during prediction computation and as outputs when computing efficiency scores.
+#' @param z_vars
+#' Column indexes of contextual variables in \code{data}.
 #'
-#' @param y_type
-#' A \code{character} string that determines the prediction approach for \code{y}.
-#'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function estimates.
+#' @param quick_aces
+#' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
 #' @param error_type
-#' A \code{character} string specifying the error structure that the function will use when fitting the model.
+#' A \code{character} string specifying the error structure when fitting the model.
 #'
-#' @param degree
+#' @param max_degree
 #' Maximum degree of interaction between variables.
 #'
+#' @param compl_cost
+#' Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.
+#'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#' A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin (only for piece-wise linear version).
 #'
 #' @param nterms
-#' Maximum number of terms created before pruning.
+#' Maximum number of terms created during the forward step.
 #'
 #' @param err_red
-#' Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.
-#'
-#' @param hd_cost
-#' Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.
+#' Minimum reduced error rate for the addition of a new pair of 1-degree BFs.
 #'
 #' @param minspan
 #' Minimum number of observations between two adjacent knots.
@@ -613,21 +246,9 @@ aces <- function (
 #' @param kn_grid
 #' Grid design for knots placement in ACES.
 #'
-#' @param d
-#' Penalty per knot for Generalized Cross Validation.
+#' @param kn_penalty
+#' Penalty per knot for computing Generalized Cross Validation.
 #'
-#' @param wc
-#' Hyperparameter for side knot distances in the cubic smoothing procedure.
-#'
-#' @param wq
-#' Hyperparameter for the side knot distances in the quintic smoothing procedure.
-#'
-#' @references
-#'
-#' \insertRef{friedman1991}{aces} \cr \cr
-#' \insertRef{espana2024}{aces} \cr \cr
-#'
-#' @importFrom Rdpack reprompt
 #' @importFrom dplyr desc
 #'
 #' @return
@@ -638,93 +259,106 @@ aces <- function (
 
 aces_algorithm <- function (
     data,
-    inps,
-    outs,
-    nets,
-    y_type,
-    model_type,
+    x_vars,
+    y_vars,
+    z_vars,
+    quick_aces,
     error_type,
-    degree,
+    max_degree,
+    compl_cost,
     metric,
     shape,
     nterms,
     err_red,
-    hd_cost,
     minspan,
     endspan,
     kn_grid,
-    d,
-    wc,
-    wq
+    kn_penalty
     ) {
 
-  # accelerate the algorithm by selecting the efficient DMUs in DEA to impose only
-  # the envelope on these points.
-  # only valid under monotonicity and concavity constraints
-
-  if (shape[["mono"]] && shape[["conc"]]) {
-
-    dea_scores <- rad_out (
-      tech_xmat = as.matrix(data[, x]),
-      tech_ymat = as.matrix(data[, y]),
-      eval_xmat = as.matrix(data[, x]),
-      eval_ymat = as.matrix(data[, y]),
-      convexity = TRUE,
-      returns = "variable"
-    )
-
-    dea_eff <- c(1:nrow(data))[dea_scores <= 1.001]
-
-  } else {
-
-    dea_eff <- c(1:nrow(data))
-
-  }
-
   # save a copy of the original data
-  dmus <- data
+  DMUs <- data
 
-  # data in [x, z, y] format with interaction and / or transformation of
-  # variables included
+  # data in [x, z, y] format with interaction of variables included
   data <- prepare_data (
     data = data,
-    x = inps,
-    y = outs,
-    z = nets,
-    degree = degree,
+    x = x_vars,
+    y = y_vars,
+    z = z_vars,
+    max_degree = max_degree,
     error_type = error_type
     )
 
   # samples size
   N <- nrow(data)
 
-  # reorder index 'x' and 'y' in data
-  x <- 1:(ncol(data) - length(outs))
-  y <- (length(x) + 1):ncol(data)
+  # set "x", "z" and "y" indexes in data
+  x <- 1:(ncol(data) - length(z_vars) - length(y_vars))
 
-  # number of inputs / outputs as inputs
+  if (!is.null(z_vars)) {
+    z <- (length(x) + 1):(ncol(data) - length(y_vars))
+  } else {
+    z <- integer(0)
+  }
+
+  y <- (length(x) + length(z) + 1):ncol(data)
+
+  # set number of inputs, contextual variables and outputs
   nX <- length(x)
-
-  # number of outputs
+  nZ <- length(z)
   nY <- length(y)
+
+  # table of scores
+  table_scores <- matrix (
+    ncol = nY + 1,
+    nrow = nrow(data),
+    dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
+  ) %>% as.data.frame()
+
+  dea_returns <- ifelse(shape[["conc"]], "variable", "constant")
+
+  table_scores[, 1] <- rad_out (
+    tech_xmat = as.matrix(DMUs[, x_vars]),
+    tech_ymat = as.matrix(DMUs[, y_vars]),
+    eval_xmat = as.matrix(DMUs[, x_vars]),
+    eval_ymat = as.matrix(DMUs[, y_vars]),
+    convexity = TRUE,
+    returns = dea_returns
+  )[, 1]
+
+  for (out in 1:nY) {
+
+    table_scores[, 1 + out] <- rad_out (
+      tech_xmat = as.matrix(DMUs[, x_vars]),
+      tech_ymat = as.matrix(DMUs[, y_vars[out]]),
+      eval_xmat = as.matrix(DMUs[, x_vars]),
+      eval_ymat = as.matrix(DMUs[, y_vars[out]]),
+      convexity = TRUE,
+      returns = dea_returns
+    )[, 1]
+
+  }
+
+  # weights for error metrics based on DEA
+  dea_scores <-  table_scores[, 2:ncol(table_scores)]
 
   # matrix with:
   # row 1: the index of the variable
-  # row 2: the degree of the variable (netput = 1)
+  # row 2: the degree of the variable
   xi_degree <- matrix (
     c(x, rep(1, length(x))),
     byrow = TRUE,
     nrow = 2,
     ncol = length(x)
-    )
+  )
 
-  if (!is.list(degree)) {
+  if (!is.list(max_degree)) {
 
     v <- 0
 
-    for (i in 1:degree) {
+    for (i in 1:max_degree) {
 
-      combs <- combn(1:length(inps), i)
+      combs <- combn(1:length(x_vars), i)
 
       for (k in 1:ncol(combs)) {
         v <- v + 1
@@ -735,10 +369,10 @@ aces_algorithm <- function (
 
   } else {
 
-    xi_degree[2, inps] <- 1
+    xi_degree[2, x_vars] <- 1
 
-    for (k in 1:length(degree)) {
-      xi_degree[2, length(inps) + k] <- length(degree[[k]])
+    for (k in 1:length(max_degree)) {
+      xi_degree[2, length(x_vars) + k] <- length(max_degree[[k]])
     }
 
   }
@@ -747,15 +381,15 @@ aces_algorithm <- function (
   #   FORWARD ALGORITHM   #
   # ===================== #
 
-  if (model_type == "env") {
+  y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, max)
 
-    y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, max)
-
-  } else if (model_type == "sto") {
-
-    y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, mean)
-
-  }
+  # lack-of-fit
+  LOF <- err_metric (
+    y_obs = data[, y, drop = F],
+    y_hat = y_hat,
+    metric = metric,
+    weight = 1 / dea_scores
+  )
 
   # basis function
   #     id: index
@@ -765,8 +399,6 @@ aces_algorithm <- function (
   #     xi: variable for splitting
   #      t: knot for splitting
   #      R: mean error between true data and predicted data (B %*% coefs)
-  #    GCV: generalized cross validation
-  #   GRSq: generalized residual of squares
   #  coefs: regression coefficients
 
   bf <- list (
@@ -776,19 +408,17 @@ aces_algorithm <- function (
     "Bp" = rep(1, N),
     "xi" = c(- 1),
     "t" = c(- 1),
-    "R" = err_metric(data[, y, drop = F], y_hat, metric),
-    "GCV" = compute_gcv(data[, y, drop = F], y_hat, metric, 1, 1, 0, xi_degree),
-    "GRSq" = 0,
+    "LOF" = LOF,
     "coefs" = unname(apply(data[, y, drop = FALSE], 2, max))
   )
 
-  # set of knots. It saves indexes of data used as knots.
-  kn_list <- vector("list", nX)
+  # set of knots to save indexes of data used as knots
+  kn_list <- vector("list", nX + nZ)
 
-  # set of basis functions by variable.
-  Bp_list <- vector("list", nX)
+  # set of basis functions by variable
+  Bp_list <- vector("list", nX + nZ)
 
-  for (xi in 1:nX) {
+  for (xi in 1:(nX + nZ)) {
     Bp_list[[xi]] <- list (
       "paired" = NULL,
       "right" = NULL,
@@ -803,57 +433,87 @@ aces_algorithm <- function (
     )
 
   # error of the first basis function
-  err <- bf[["R"]]
-
-  # minimum span (minspan) and end span (endspan)
-  L_Le <- compute_span (
-    data = data,
-    minspan = minspan,
-    endspan = endspan,
-    nX = nX
-    )
-
-  # minimum span
-  L  <- L_Le[[1]]
-
-  # end span
-  Le <- L_Le[[2]]
+  err <- bf[["LOF"]]
 
   # set the grid of knots
   kn_grid <- set_knots_grid (
     data = data,
-    nX = nX,
-    inps = length(inps),
-    kn_grid = kn_grid
+    n_input_1 = length(x_vars) + length(z_vars),
+    n_input_2 = nX + nZ,
+    nZ = nZ,
+    kn_grid = kn_grid,
+    quick_aces = quick_aces,
+    dea_scores = table_scores[, 1]
+  )
+
+  # minimum span (minspan) and end span (endspan)
+  L_Le <- compute_span (
+    kn_grid = kn_grid,
+    minspan = minspan,
+    endspan = endspan,
+    n_input = nX + nZ
     )
+
+  # list to save technologies created through ACES
+  technology <- list()
 
   # initial error
   err_min <- err
 
-  while(length(aces_forward[["bf_set"]]) + 2 < nterms) {
+  # variable importance
+  var_imp <- matrix (
+    rep(0, nX + nZ),
+    nrow = 1
+  )
+  colnames(var_imp) <- colnames(data)[1:(nX + nZ)]
 
-    # negative GRSq
-    last_bf <- aces_forward[["bf_set"]][[length(aces_forward[["bf_set"]])]]
-    if (last_bf[["GRSq"]] < 0) break
+  # remove variables with low correlation
+  if (quick_aces) {
+
+    # Spearman’s Rank Correlation
+    spearman_corr <- cor(data, method = "spearman")[1:length(x), (length(x) + 1):ncol(data)]
+
+    # Kendall’s Tau
+    kendall_corr <- cor(data, method = "kendall")[1:length(x), (length(x) + 1):ncol(data)]
+
+    # compute threshold for removing variables
+    threshold_1 <- min(0.1, quantile(spearman_corr[spearman_corr > 0], probs = 0.2))
+    threshold_2 <- min(0.1, quantile(kendall_corr[kendall_corr > 0], probs = 0.2))
+
+    # iterate over the variables
+    for (j in 1:(nX + nZ)) {
+
+      # check for both Spearman and Kendall correlations
+      if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
+
+        var_imp[1, j] <- - 1
+
+      }
+    }
+  }
+
+  while(length(aces_forward[["bf_set"]]) + 2 < nterms) {
 
     # add 2 new basis functions to the model:
     B_bf_knt_err <- add_basis_function (
       data = data,
       x = x,
       y = y,
+      z = z,
       xi_degree = xi_degree,
-      dea_eff = dea_eff,
-      model_type = model_type,
+      compl_cost = compl_cost,
+      model_type = "envelopment",
+      dea_scores = dea_scores,
       metric = metric,
       forward_model = aces_forward,
       Bp_list = Bp_list,
       shape = shape,
       kn_list = kn_list,
       kn_grid = kn_grid,
-      L = L,
-      Le = Le,
+      span = c(L_Le[[1]], L_Le[[2]]),
       err_min = err,
-      hd_cost = hd_cost
+      var_imp = var_imp,
+      quick_aces = quick_aces
       )
 
     if (!is.list(B_bf_knt_err)) break
@@ -876,8 +536,12 @@ aces_algorithm <- function (
       # update the Bp list
       Bp_list <- B_bf_knt_err[[4]]
 
-      # update error
+      # updated error
       err <- new_err
+
+      # updated variable importance matrix
+      var_imp <- B_bf_knt_err[[6]]
+      var_imp <- rbind(var_imp, rep(0, nX + nZ))
 
     } else {
 
@@ -928,21 +592,33 @@ aces_algorithm <- function (
     "coefs" = rev(aces_forward[["bf_set"]])[[1]][["coefs"]]
   )
 
+  # generate technology
+  technology[["aces_forward"]] <- generate_technology (
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
+    tech_ymat2 = aces_forward[["Bmatx"]] %*% aces_forward[["coefs"]],
+    error_type = error_type,
+    table_scores = table_scores,
+    ptto = shape[["ptto"]]
+  )
+
   # ====================== #
   #   BACKWARD ALGORITHM   #
   # ====================== #
 
   aces_submodels <- aces_pruning (
       data = data,
+      x = x,
       y = y,
+      z = z,
       xi_degree = xi_degree,
-      dea_eff = dea_eff,
-      model_type = model_type,
+      model_type = "envelopment",
+      dea_scores = dea_scores,
       metric = metric,
       forward_model = aces_forward,
       Bp_list = Bp_list,
       shape = shape,
-      d = d
+      kn_penalty = kn_penalty
     )
 
   # generalized cross-validation for each model
@@ -957,7 +633,11 @@ aces_algorithm <- function (
   # sort the knots by "xi", "status", "side", "t"
   knots_backward_order <- with (
     kn_backward, {
-    order(xi, status, ifelse(status == "paired", t, desc(side)), ifelse(status == "paired", desc(side), t))
+    order (
+      xi,
+      status,
+      ifelse(status == "paired", t, desc(side)),
+      ifelse(status == "paired", desc(side), t))
     }
   )
 
@@ -976,6 +656,16 @@ aces_algorithm <- function (
     "GCV" = aces_backward[["GCV"]]
   )
 
+  # generate technology
+  technology[["aces"]] <- generate_technology (
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
+    tech_ymat2 = aces[["Bmatx"]] %*% aces[["coefs"]],
+    error_type = error_type,
+    table_scores = table_scores,
+    ptto = shape[["ptto"]]
+  )
+
   # ======================= #
   #   SMOOTHING PROCEDURE   #
   # ======================= #
@@ -985,6 +675,10 @@ aces_algorithm <- function (
 
   # initialize a list with smoothed sub-models
   aces_smoothed_submodels <- vector("list", length(aces_submodels_gcv))
+
+  # distance between knots in smooth models
+  wc <- seq(1, 2, length.out = 5)
+  wq <- seq(8 / 7, 1.5, length.out = 5)
 
   for (s in 1:length(aces_submodels_gcv)) {
 
@@ -1055,13 +749,14 @@ aces_algorithm <- function (
           data = data,
           x = x,
           y = y,
-          dea_eff = dea_eff,
-          model_type = model_type,
+          dea_scores = dea_scores,
+          model_type = "envelopment",
           metric = metric,
           shape = shape,
           kn_grid = kn_smoothed,
           kn_side_loc = kn_side_loc,
-          d = d,
+          kn_penalty = kn_penalty,
+          xi_degree = xi_degree,
           wc = wc
         )
 
@@ -1073,15 +768,17 @@ aces_algorithm <- function (
           data = data,
           x = x,
           y = y,
-          dea_eff = dea_eff,
-          model_type = model_type,
+          dea_scores = dea_scores,
+          model_type = "envelopment",
           metric = metric,
           shape = shape,
           kn_grid = kn_smoothed,
           kn_side_loc = kn_side_loc,
-          d = d,
+          kn_penalty = kn_penalty,
+          xi_degree = xi_degree,
           wq = wq
         )
+
       }
     }
 
@@ -1102,6 +799,16 @@ aces_algorithm <- function (
     # cubic aces
     aces_cubic <- cubic_aces_models[[min_gcv]]
 
+    # generate technology
+    technology[["aces_cubic"]] <- generate_technology (
+      tech_xmat = DMUs[, x_vars],
+      tech_ymat1 = DMUs[, y_vars],
+      tech_ymat2 = aces_cubic[["Bmatx"]] %*% aces_cubic[["coefs"]],
+      error_type = error_type,
+      table_scores = table_scores,
+      ptto = FALSE
+    )
+
     # GCVs of quintic models
     aces_quintic_gcvs <- sapply (
       quintic_aces_models,
@@ -1119,250 +826,50 @@ aces_algorithm <- function (
     # quintic aces
     aces_quintic <- quintic_aces_models[[min_gcv]]
 
-    # ==================================================== #
-    #  STOCHASTIC ADAPTIVE CONSTRAINED ENVELOPING SPLINES  #
-    # ==================================================== #
-
-    if (model_type == "sto") {
-      for (model in c("aces_forward", "aces", "aces_cubic", "aces_quintic")) {
-
-        # =========
-        # Residuals
-        # =========
-
-        if (model == "aces_forward") {
-          y_hat <- aces_forward[["Bmatx"]] %*% aces_forward[["coefs"]]
-
-        } else if (model == "aces") {
-          y_hat <- aces[["Bmatx"]] %*% aces[["coefs"]]
-
-        } else if (model == "aces_cubic") {
-          y_hat <- aces_cubic[["Bmatx"]] %*% aces_cubic[["coefs"]]
-
-        } else {
-          y_hat <- aces_quintic[["Bmatx"]] %*% aces_quintic[["coefs"]]
-
-        }
-
-        if (error_type == "mul") {
-          mean_pred <- exp(y_hat)
-
-        } else {
-          mean_pred <- y_hat
-        }
-
-        mean_pred <- rad_out (
-          tech_xmat = as.matrix(data[, inps]),
-          tech_ymat = as.matrix(mean_pred),
-          eval_xmat = as.matrix(data[, inps]),
-          eval_ymat = as.matrix(mean_pred),
-          convexity = TRUE,
-          returns = "variable"
-        ) * mean_pred
-
-        if (error_type == "mul") {
-          mean_pred <- log(mean_pred)
-
-        } else {
-          mean_pred <- mean_pred
-        }
-
-        residuals <- data[, y] - mean_pred
-
-        # H0: residuals are symmetrically distributed
-        # H1: residuals are negatively skewed
-
-        sqrt_b1_btp <- c()
-        for (m in 1:100) {
-          # number of residulas
-          nresid <- length(residuals)
-
-          # stage 1: re-centered residuals
-          recentered_residuals <- residuals - mean(residuals)
-
-          # stage 2: symmetrized residuals
-          random_signs <- rsign(nresid)
-          symmetrized_residuals <- random_signs * recentered_residuals
-
-          # stage 3: re-sample
-          resample_idx <- sample(1:nresid, nresid, replace = TRUE)
-          bootstrapped <- symmetrized_residuals[resample_idx]
-
-          # stage 4: compute the sqrt_b1 statistic for the bootstrapped sample
-          M2_btp <- mean((bootstrapped - mean(bootstrapped)) ^ 2)
-          M3_btp <- mean((bootstrapped - mean(bootstrapped)) ^ 3)
-
-          sqrt_b1_btp[m] <- M3_btp / M2_btp ^ (3 / 2)
-        }
-
-        # 1 - alpha percentile
-        critical_value <- quantile(sqrt_b1_btp, 0.05, na.rm = TRUE)
-
-        # the sqrt_b1 test from a symmetric data sample takes a value lower than
-        # critical_value the 95% of the times.
-
-        # compute the sqrt_b1 statistic
-        M2 <- mean((residuals - mean(residuals)) ^ 2)
-        M3 <- mean((residuals - mean(residuals)) ^ 3)
-
-        if (M3 > 0) {
-          M3 <- - 0.0001
-        }
-
-        sqrt_b1 <- M3 / M2 ^ (3 / 2)
-
-        if (sqrt_b1 > critical_value) {
-          residual_shape <- "symmetric"
-          # warning (
-          #   "The statistical evidence is not sufficient to reject the hypothesis
-          # that the residuals are symmetrically distributed."
-          # )
-        } else {
-          residual_shape <- "left-skewed"
-
-        }
-
-        # ==
-        # Efficiency estimation by the method of moments
-        # ==
-
-        # standard deviation for inefficiency term
-        std_u_mm <- (M3 / (sqrt(2 / pi) * (1 - 4 / pi))) ^ (1 / 3)
-
-        # standard deviation for error term
-        std_v_mm <- sqrt(M2 - ((pi - 2) / pi) * std_u_mm ^ 2)
-
-        if (is.nan(std_v_mm)) {
-          std_v_mm <- 0.0001
-        }
-
-        # conditional efficiency
-        eff_score_mm <- cond_eff (
-          data = data,
-          y = y,
-          mean_pred = mean_pred,
-          std_ineff = std_u_mm,
-          std_error = std_v_mm,
-          error_type = error_type
-        )
-
-        # ==
-        # Efficiency estimation by pseudolikelihood
-        # ==
-
-        sigma_hat <- function (l) {
-          sqrt(mean(residuals ^ 2) / (1 - ((2 * l ^ 2) / (pi * (1 + l ^ 2)))))
-        }
-
-        epsilon_hat <- function (l) {
-          residuals - (sqrt(2) * l * sigma_hat(l)) / (pi * (1 + l ^ 2)) ^ (1 / 2)
-        }
-
-        log_like <- function(l) {
-          # log-likelihood function
-          logmv <- - N * log(sigma_hat(l)) +
-            sum(pnorm((- epsilon_hat(l) * l) / sigma_hat(l), log.p = TRUE)) -
-            0.5 * (sum(epsilon_hat(l) ^ 2) / sigma_hat(l) ^ 2)
-
-          return(- sum(logmv))
-        }
-
-        lambda_hat <- optim (
-          c(1), log_like,
-          method = c("L-BFGS-B"),
-          lower = 0
-        )[["par"]]
-
-        # standard deviation for error term
-        std_v_pl <- (sigma_hat(lambda_hat) ^ 2 / (1 + lambda_hat ^ 2)) ^ (1 / 2)
-
-        # standard deviation for inefficiency term
-        std_u_pl <- std_v_pl * lambda_hat
-
-        if (std_v_pl < 0) {
-          std_v_pl <- 0.0001
-        }
-
-        # conditional efficiency
-        eff_score_pl <- cond_eff (
-          data = data,
-          y = y,
-          mean_pred = mean_pred,
-          std_ineff = std_u_pl,
-          std_error = std_v_pl,
-          error_type = error_type
-        )
-
-        # results
-        stochastic_analysis <- list (
-          "mean_pred" = mean_pred,
-
-          "residuals" = residuals,
-          "residual_shape" = residual_shape,
-
-          "mom" = list (
-            "std_u" = std_u_mm,
-            "std_v" = std_v_mm,
-            "eff_score" = eff_score_mm
-          ),
-
-          "pse" = list (
-            "std_u" = std_u_pl,
-            "std_v" = std_v_pl,
-            "eff_score" = eff_score_pl
-          )
-        )
-
-        if (model == "aces_forward") {
-          aces_forward[["sto"]] <- stochastic_analysis
-
-        } else if (model == "aces") {
-          aces[["sto"]] <- stochastic_analysis
-
-        } else if (model == "aces_cubic") {
-          aces_cubic[["sto"]] <- stochastic_analysis
-
-        } else {
-          aces_quintic[["sto"]] <- stochastic_analysis
-
-        }
-      }
-    }
+    # generate technology
+    technology[["aces_quintic"]] <- generate_technology (
+      tech_xmat = DMUs[, x_vars],
+      tech_ymat1 = DMUs[, y_vars],
+      tech_ymat2 = aces_quintic[["Bmatx"]] %*% aces_quintic[["coefs"]],
+      error_type = error_type,
+      table_scores = table_scores,
+      ptto = FALSE
+    )
 
     # =========== #
     # ACES OBJECT #
     # =========== #
 
     ACES <- aces_object (
-      data = dmus,
-      x = inps,
-      y = outs,
-      z = nets,
-      y_type = y_type,
-      model_type = model_type,
+      data = DMUs,
+      x = x_vars,
+      y = y_vars,
+      z = z_vars,
       error_type = error_type,
-      degree = degree,
+      max_degree = max_degree,
+      compl_cost = compl_cost,
+      xi_degree = xi_degree,
       metric = metric,
       shape = shape,
       nterms = ncol(aces_forward[["Bmatx"]]),
       err_red = err_red,
-      hd_cost = hd_cost,
       minspan = minspan,
       endspan = endspan,
       kn_grid = kn_grid,
-      d = d,
-      wc = wc,
-      wq = wq,
+      kn_penalty = kn_penalty,
+      wc = aces_cubic[["w"]],
+      wq = aces_quintic[["w"]],
       aces_forward = aces_forward,
       aces = aces,
       aces_cubic = aces_cubic,
-      aces_quintic = aces_quintic
+      aces_quintic = aces_quintic,
+      technology = technology
     )
 
     return(ACES)
 }
 
-#' @title Create an aces Object
+#' @title Create an aces object
 #'
 #' @description
 #'
@@ -1378,34 +885,31 @@ aces_algorithm <- function (
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param z
-#' Column indexes of netput variables in \code{data} (outputs evaluated as inputs).
-#'
-#' @param y_type
-#' A \code{character} string that determines the prediction approach for \code{y}.
-#'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function estimates.
+#' Column indexes of contextual variables in \code{data}.
 #'
 #' @param error_type
-#' A \code{character} string specifying the error structure that the function will use when fitting the model.
+#' A \code{character} string specifying the error structure when fitting the model.
 #'
-#' @param degree
+#' @param max_degree
 #' Maximum degree of interaction between variables.
+#'
+#' @param compl_cost
+#' Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.
+#'
+#' @param xi_degree
+#' A \code{matrix} specifying the degree of each variable.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @param nterms
 #' Maximum number of terms created before pruning.
 #'
 #' @param err_red
 #' Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.
-#'
-#' @param hd_cost
-#' Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.
 #'
 #' @param minspan
 #' Minimum number of observations between two adjacent knots.
@@ -1416,14 +920,14 @@ aces_algorithm <- function (
 #' @param kn_grid
 #' Design of the grid of knots to perform ACES
 #'
-#' @param d
+#' @param kn_penalty
 #' Generalized Cross Validation (GCV) penalty per knot.
 #'
 #' @param wc
-#' Hyperparameter for the side knot distances in the cubic smoothing procedure \insertCite{friedman1991}{aces}.
+#' Hyperparameter for the side knot distances in the cubic smoothing procedure.
 #'
 #' @param wq
-#' Hyperparameter for the side knot distances in the quintic smoothing procedure \insertCite{chen1999}{aces}.
+#' Hyperparameter for the side knot distances in the quintic smoothing procedure.
 #'
 #' @param aces_forward
 #' A \code{list} containing the forward step of the Adaptive Constrained Enveloping Splines model.
@@ -1437,10 +941,8 @@ aces_algorithm <- function (
 #' @param aces_quintic
 #' A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through quintic basis functions.
 #'
-#' @references
-#'
-#' \insertRef{friedman1991}{aces} \cr \cr
-#' \insertRef{chen1999}{aces}
+#' @param technology
+#' A \code{list} with the points that make up the technology set for each model.
 #'
 #' @return
 #'
@@ -1451,25 +953,25 @@ aces_object <- function (
     x,
     y,
     z,
-    y_type,
-    model_type,
     error_type,
-    degree,
+    max_degree,
+    compl_cost,
+    xi_degree,
     metric,
     shape,
     nterms,
     err_red,
-    hd_cost,
     minspan,
     endspan,
     kn_grid,
-    d,
+    kn_penalty,
     wc,
     wq,
     aces_forward,
     aces,
     aces_cubic,
-    aces_quintic
+    aces_quintic,
+    technology
     ) {
 
   object <- list()
@@ -1477,27 +979,27 @@ aces_object <- function (
   object[["data"]] <- list (
     "df" = data,
     "x" = x,
-    "z" = z,
     "y" = y,
-    "xnames" = colnames(data)[c(x, z)],
+    "z" = z,
+    "xnames" = colnames(data)[x],
     "ynames" = colnames(data)[y],
-    "y_type" = y_type,
+    "znames" = colnames(data)[z],
     "rownames" = rownames(data)
   )
 
   object[["control"]] <- list (
-    "model_type" = model_type,
     "error_type" = error_type,
-    "degree" = degree,
+    "max_degree" = max_degree,
+    "compl_cost" = compl_cost,
+    "xi_degree" = xi_degree,
     "metric" = metric,
     "shape" = shape,
     "nterms" = nterms,
     "err_red" = err_red,
-    "hd_cost" = hd_cost,
     "minspan" = minspan,
     "endspan" = endspan,
     "kn_grid" = kn_grid,
-    "d" = d,
+    "kn_penalty" = kn_penalty,
     "wc" = wc,
     "wq" = wq
   )
@@ -1509,6 +1011,8 @@ aces_object <- function (
     "aces_quintic" = aces_quintic
   )
 
+  object[["technology"]] <- technology
+
   return(object)
 
 }
@@ -1516,7 +1020,7 @@ aces_object <- function (
 #' @title Prepare Data for Fitting
 #'
 #' @description
-#' This function prepares the data for model fitting by generating additional input variables through interactions between variables. It also performs any necessary transformations, such as changing to a logarithmic scale if the error type is multiplicative. It returns a matrix in [x, z, y] format, where x represents input variables, z represents netput variables, and y represents output variables.
+#' This function prepares the data for model fitting by generating additional input variables through interactions between variables. It also performs any necessary transformations, such as changing to a logarithmic scale if the error type is multiplicative. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
 #'
 #' @param data
 #' A \code{matrix} containing the variables in the model.
@@ -1528,9 +1032,9 @@ aces_object <- function (
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param z
-#' Column indexes of netput variables in \code{data}. These variables are not considered for interaction with other variables.
+#' Column indexes of contextual variables in \code{data}.
 #'
-#' @param degree
+#' @param max_degree
 #'  Maximum degree of interaction between variables. It can be a \code{list} of input indexes for interactions or a \code{numeric} value determining the maximum degree of interaction.
 #'
 #' @param error_type
@@ -1544,7 +1048,7 @@ prepare_data <- function (
     x,
     y,
     z,
-    degree,
+    max_degree,
     error_type
     ) {
 
@@ -1553,17 +1057,12 @@ prepare_data <- function (
     data[, c(y)] <- log(data[, c(y)])
   }
 
-  # 2. transform the output(s) as input(s) through the opposite: netput(s)
-  data[, z] <- - data[, z]
+  # 2. generate interaction effects
+  if (is.list(max_degree) || max_degree > 1) {
 
-  # 3. generate interaction effects
-  if (is.list(degree) || degree > 1) {
+    if (!is.list(max_degree)) {
 
-    if (!is.list(degree)) {
-
-      # create a list with all the possible combinations between 1 and as much
-      # len(x) elements
-      max_degree <- degree
+      # create a list with all the possible combinations between 1 and as much len(x) elements
       degree <- list()
 
       for (i in 2:max_degree) {
@@ -1604,7 +1103,7 @@ prepare_data <- function (
 
   }
 
-  # 4. data correctly sorted
+  # 3. data correctly sorted
   data <- data[, c(new_x, z, y)]
 
   return(as.matrix(data))
@@ -1633,13 +1132,17 @@ prepare_data <- function (
 #' \item{\code{nrmse2}}: Normalized Root Mean Squared Error (using range)
 #' }
 #'
+#' @param weight
+#' Weights to compute error metrics.
+#'
 #' @return
 #' The calculated error metric.
 
 err_metric <- function (
     y_obs,
     y_hat,
-    metric
+    metric,
+    weight
     ) {
 
   # samples in data
@@ -1656,37 +1159,37 @@ err_metric <- function (
 
     # mean absolute error
     devtn <- abs(y_hat - y_obs)
-    error <- sum(devtn) / (N * nY)
+    error <- sum(weight * devtn) / (N * nY)
 
   } else if (metric == "mape") {
 
     # mean absolute percentage error
     devtn <- abs(y_hat - y_obs) / y_obs
-    error <- sum(devtn) / (N * nY) * 100
+    error <- sum(weight * devtn) / (N * nY) * 100
 
   } else if (metric == "mse") {
 
     # mean squared error
     devtn <- (y_hat - y_obs) ^ 2
-    error <- sum(devtn) / (N * nY)
+    error <- sum(weight * devtn) / (N * nY)
 
   } else if (metric == "msle") {
 
     # mean squared logarithmic error
     devtn <- (log(y_hat + 1) - log(y_obs + 1)) ^ 2
-    error <- sum(devtn) / (N * nY)
+    error <- sum(weight * devtn) / (N * nY)
 
   } else if (metric == "rmse") {
 
     # root mean squared error
     devtn <- (y_hat - y_obs) ^ 2
-    error <- sqrt(sum(devtn) / (N * nY))
+    error <- sqrt(sum(weight * devtn) / (N * nY))
 
   } else if (metric == "nrmse1") {
 
     # normalized root mean squared error by the mean
     devtn <- (y_hat - y_obs) ^ 2
-    error <- sqrt(sum(devtn) / (N * nY)) / mean(y_obs)
+    error <- sqrt(sum(weight * devtn) / (N * nY)) / mean(y_obs)
 
   } else {
 
@@ -1696,10 +1199,11 @@ err_metric <- function (
 
     # normalized root mean squared error by the range
     devtn <- (y_hat - y_obs) ^ 2
-    error <- sqrt(sum(devtn) / (N * nY)) / (ymax - ymin)
+    error <- sqrt(sum(weight * devtn) / (N * nY)) / (ymax - ymin)
   }
 
   return(error)
+
 }
 
 #' @title Compute Minimum and End Span
@@ -1707,8 +1211,8 @@ err_metric <- function (
 #' @description
 #' This function computes the minimum span, which is the minimum number of observations between two adjacent knots, and the end span, which is the minimum number of observations before the first knot and after the final knot.
 #'
-#' @param data
-#' A \code{matrix} containing the variables in the model.
+#' @param kn_grid
+#' A \code{list} with the available set of knots to perform ACES.
 #'
 #' @param minspan
 #' A \code{numeric} value or vector specifying the minimum number of observations between two adjacent knots. The following options are available:
@@ -1726,8 +1230,8 @@ err_metric <- function (
 #'   \item{\code{endspan = +m}}: A positive integer specifying the exact number of observations.
 #' }
 #'
-#' @param nX
-#' Number of input variables.
+#' @param n_input
+#' Number of input variables and contextual variables
 #'
 #' @references
 #'
@@ -1742,11 +1246,14 @@ err_metric <- function (
 #' }
 
 compute_span <- function (
-    data,
+    kn_grid,
     minspan,
     endspan,
-    nX
+    n_input
     ) {
+
+  # data.frame
+  data <- do.call(cbind, kn_grid)
 
   # sample size
   N <- nrow(data)
@@ -1754,12 +1261,12 @@ compute_span <- function (
   # minimum span (L)
   if (minspan == - 2) { # Zhang approach
 
-    L <- numeric(nX)
+    L <- numeric(n_input)
 
     # fixed log_factor
     log_factor <- log2(- (1 / N) * log(0.95))
 
-    for (var in 1:nX) {
+    for (var in 1:n_input) {
 
       # sorted variable
       sorted_var <- sort(data[, var])
@@ -1791,12 +1298,12 @@ compute_span <- function (
   # end span (Le)
   if (endspan == - 2) { # Zhang approach
 
-    Le <- numeric(nX)
+    Le <- numeric(n_input)
 
     # fixed log_factor
     log_factor <- log2(- (1 / N) * log(0.95))
 
-    for (var in 1:nX) {
+    for (var in 1:n_input) {
 
       # sorted variable
       sorted_var <- sort(data[, var])
@@ -1816,7 +1323,7 @@ compute_span <- function (
 
   } else if (endspan == - 1) { # Friedman approach
 
-    Le <- floor(min(N * 0.1, 3 - log2(0.05 / nX)))
+    Le <- floor(min(N * 0.1, 3 - log2(0.05 / n_input)))
 
   } else {
 
@@ -1828,31 +1335,43 @@ compute_span <- function (
 
 }
 
-#' @title Set the Grid of Knots
+#' @title Define the Grid of Knots
 #'
 #' @description
-#' This function sets the grid of knots to perform Adaptive Concave Estimation for Stochastic Frontier (ACES).
+#' This function defines the grid of knots to perform Adaptive Constrained Enveloping Splines (ACES).
 #'
 #' @param data
 #' A \code{matrix} containing the variables in the model.
 #'
-#' @param nX
-#' Number of inputs (including interactions and netputs).
+#' @param n_input_1
+#' Number of inputs (excluding interactions) and contextual variables.
 #'
-#' @param inps
-#' Number of original inputs (excluding interactions).
+#' @param n_input_2
+#' Number of inputs (including interactions) and contextual variables.
+#'
+#' @param nZ
+#' Number of contextual variables
 #'
 #' @param kn_grid
-#' Grid of knots to perform ACES. If not provided, the function creates a grid of knots for each variable.
+#' A \code{list} providing a custom grid of knots for each variable. If not supplied, the function automatically generates a grid of knots for each variable based on the data.
+#'
+#' @param quick_aces
+#' A \code{logical} indicating whether to use the fast version of ACES.
+#
+#' @param dea_scores
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model.
 #'
 #' @return
-#' A \code{list} with the available vector of knots for each variable.
+#' A \code{list} where each element contains the generated or provided vector of knots for the corresponding variable in the model.
 
 set_knots_grid <- function (
     data,
-    nX,
-    inps,
-    kn_grid
+    n_input_1,
+    n_input_2,
+    nZ,
+    kn_grid,
+    quick_aces,
+    dea_scores
     ) {
 
   # Case 1: kn_grid is provided (list) and new variables are created (nX > inputs):
@@ -1866,15 +1385,15 @@ set_knots_grid <- function (
 
   if (is.list(kn_grid)) { # if kn_grid is provided
 
-    if (nX > inps) {
+    if (n_input_2 > n_input_1) {
 
-      # Number of new variables (through interactions and netputs)
-      new_vars <- nX - inps
+      # number of new variables (through interactions)
+      new_vars <- n_input_2 - n_input_1
 
       for (v in seq_len(new_vars)) {
 
         # variable index
-        var_idx <- nX - new_vars + v
+        var_idx <- n_input_2 - nZ - new_vars + v
 
         # variable name
         var_name <- colnames(data)[var_idx]
@@ -1897,13 +1416,137 @@ set_knots_grid <- function (
 
   } else { # if kn_grid is not provided, create it
 
-    kn_grid <- lapply(1:nX, function(i) data[, i])
+    if (quick_aces) {
+
+      # identify efficient DMUs
+      eff_dmus <- data[abs(dea_scores - 1) < 0.001, ]
+
+      # grid of knots: inputs and interactions
+      kn_grid <- lapply(1:(n_input_2 - nZ), function(i) eff_dmus[, i])
+
+      if (nZ > 0) {
+
+        # grid of knots: contextual variables
+        kn_grid_2 <- lapply((length(kn_grid) + 1):n_input_2, function(i) data[, i])
+
+        # grid of knots
+        kn_grid <- append(kn_grid, kn_grid_2)
+
+      }
+
+      for (j in 1:length(kn_grid)) {
+
+        # sort the unique values of the dimension
+        sorted_values <- sort(unique(data[, j]))
+
+        # find the index of the current DMU value in the sorted list
+        matched_indices <- which(!is.na(match(data[, j], kn_grid[[j]])))
+
+        # add neighbourhood
+        matched_indices_l <- matched_indices - 1
+        matched_indices_r <- matched_indices + 1
+
+        # remove NA values
+        matched_indices <- sort(unique(c(matched_indices, matched_indices_l, matched_indices_r)))
+        matched_indices <- matched_indices[matched_indices > 0 & matched_indices <= nrow(data)]
+
+        # final knots grid
+        kn_grid[[j]] <- data[matched_indices, j]
+
+      }
+
+    } else {
+
+      kn_grid <- lapply(1:n_input_2, function(i) data[, i])
+
+    }
 
     # names
-    names(kn_grid) <- colnames(data)[1:nX]
+    names(kn_grid) <- colnames(data)[1:n_input_2]
 
   }
 
   return(kn_grid)
+
+}
+
+#' @title Generate a Technology Set
+#'
+#' @description
+#' This function generates a technology set based on input data and an ACES model output.
+#' The technology set represents the feasible combinations of inputs and outputs.
+#'
+#' @param tech_xmat
+#' A \code{matrix} representing the input data.
+#'
+#' @param tech_ymat1
+#' A \code{matrix} representing the output data.
+#'
+#' @param tech_ymat2
+#' A \code{matrix} representing the output data generated from an ACES model.
+#'
+#' @param error_type
+#' A \code{character} string specifying the error structure when fitting the model.
+#'
+#' @param table_scores
+#' A \code{matrix} containing radial output scores using all outputs and using just each individual output.
+#'
+#' @param ptto
+#' A \code{logical} indicating if (0, 0) should be included in the technology.
+#'
+#' @return
+#' A \code{matrix} representing the technology set.
+
+generate_technology <- function (
+    tech_xmat,
+    tech_ymat1,
+    tech_ymat2,
+    error_type,
+    table_scores,
+    ptto
+    ) {
+
+  # define technology
+  tecno <- list()
+
+  # matrix of inputs for the technology
+  tecno[["xmat"]] <- as.matrix(tech_xmat)
+
+  # matrix of outputs for the technology
+  tech_ymat <- as.data.frame (
+    matrix (
+      NA,
+      nrow = nrow(table_scores),
+      ncol = ncol(table_scores) - 1
+      )
+    )
+
+  colnames(tech_ymat) <- colnames(tech_ymat1)
+
+  for (i in 1:nrow(table_scores)) {
+
+    for (j in 2:ncol(table_scores)) {
+
+      if (abs(table_scores[i, 1] - table_scores[i, j]) < 0.05) {
+
+        tech_ymat[i, j - 1] <- tech_ymat2[i, j - 1]
+
+      } else {
+
+        tech_ymat[i, j - 1] <- tech_ymat1[i, j - 1]
+
+      }
+    }
+  }
+
+  # modify the last row of tech_ymat based on the error type
+  if (ptto) {
+    tech_ymat[nrow(tech_ymat), ] <- if (error_type == "add") 1e-10 else log(1 + 1e-10)
+  }
+
+  # assign tech_ymat to tecno[["ymat"]] with the appropriate transformation
+  tecno[["ymat"]] <- if (error_type == "add") as.matrix(tech_ymat) else exp(as.matrix(tech_ymat))
+
+  return(tecno)
 
 }
