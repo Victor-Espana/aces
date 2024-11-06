@@ -13,7 +13,7 @@
 #' @param y_obs
 #' A \code{matrix} of the observed output data.
 #'
-#' @param dea_eff
+#' @param dea_scores
 #' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
 #'
 #' @param n_pair
@@ -23,7 +23,7 @@
 #'  An \code{integer} specifying the number of coefficients associated with the unpaired left-side basis functions.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @return
 #'
@@ -33,35 +33,31 @@ estimate_coefficients_smoothed <- function (
     model_type,
     B,
     y_obs,
-    dea_eff,
+    dea_scores,
     n_pair,
     n_lsub,
     shape
     ) {
 
-  if (model_type == "env") {
+  if (model_type == "envelopment") {
 
-    coefs <- estim_coefs_smooth_env (
+    coefs <- estim_coefs_smooth_envelopment (
       B = B,
       y_obs = y_obs,
-      dea_eff = dea_eff,
+      dea_scores = dea_scores,
       n_pair = n_pair,
       n_lsub = n_lsub,
-      mono = shape[["mono"]],
-      conc = shape[["conc"]],
-      ptto = shape[["ptto"]]
+      shape = shape
     )
 
   } else {
 
-    coefs <- estim_coefs_smooth_sto (
+    coefs <- estim_coefs_smooth_stochastic (
       B = B,
       y_obs = y_obs,
       n_pair = n_pair,
       n_lsub = n_lsub,
-      mono = shape[["mono"]],
-      conc = shape[["conc"]],
-      ptto = shape[["ptto"]]
+      shape = shape
     )
 
   }
@@ -81,7 +77,7 @@ estimate_coefficients_smoothed <- function (
 #' @param y_obs
 #' A \code{matrix} of the observed output data.
 #'
-#' @param dea_eff
+#' @param dea_scores
 #' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
 #'
 #' @param n_pair
@@ -90,14 +86,8 @@ estimate_coefficients_smoothed <- function (
 #' @param n_lsub
 #'  An \code{integer} specifying the number of coefficients associated with the unpaired left-side basis functions.
 #'
-#' @param mono
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param conc
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param ptto
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @importFrom Rglpk Rglpk_solve_LP
 #'
@@ -105,35 +95,26 @@ estimate_coefficients_smoothed <- function (
 #'
 #' A \code{vector} of estimated coefficients.
 
-estim_coefs_smooth_env <- function (
+estim_coefs_smooth_envelopment <- function (
     B,
     y_obs,
-    dea_eff,
+    dea_scores,
     n_pair,
     n_lsub,
-    mono,
-    conc,
-    ptto
+    shape
     ) {
 
-  if (ptto != FALSE) {
+  # monotonicity
+  mono <- shape[["mono"]]
 
-    # f(0) = 0 vector of coefficients
-    origin_vec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
+  # concavity
+  conc <- shape[["conc"]]
 
-    # B matrix
-    B <- B[1:(nrow(B) - 1), ]
-
-    # y_obs
-    y_obs <- as.matrix(y_obs[1:(length(y_obs) - 1)])
-
-  }
+  # dea weights
+  deaw <- as.matrix(1 / dea_scores)
 
   # sample size
   N <- nrow(B)
-
-  # number of efficient DMUs
-  N_eff <- length(dea_eff)
 
   # number of basis functions: 1 + n_pair + n_lsub
   p <- ncol(B)
@@ -150,7 +131,7 @@ estim_coefs_smooth_env <- function (
   for (out in 1:nY) {
 
     # vars: c(tau_0, alpha_1, beta_2, ... , alpha_(H-1), beta_H, w_1, ..., w_R, e_1, ... , e_n)
-    objVal <- c(rep(0, p), rep(1, N))
+    objVal <- c(rep(0, p), deaw[, out])
 
     # select a variable
     y_ind <- y_obs[, out]
@@ -161,7 +142,6 @@ estim_coefs_smooth_env <- function (
 
     # equality constraints: y_hat - e = y
     EMat <- cbind(B, diag(rep(- 1, N), N))
-    EMat <- EMat[dea_eff, ]
 
     # matrix of coefficients
     Amat <- rbind(EMat)
@@ -207,7 +187,7 @@ estim_coefs_smooth_env <- function (
 
     }
 
-    # generate concavity & increasing monotonicity matrix for left-side unpaired basis functions
+    # generate concavity & increasing monotonicity matrix for LF-U-BF
     if (mono | conc) {
 
       MCMat <- cbind (
@@ -225,30 +205,13 @@ estim_coefs_smooth_env <- function (
     # b: envelopment + concavity + monotonicity            #
     # ==================================================== #
 
-    bvec <- c(y_ind[dea_eff], rep(0, nrow(Amat) - N_eff))
+    bvec <- c(y_ind, rep(0, nrow(Amat) - N))
 
     # ==================================================== #
     # Directions of inequalities                           #
     # ==================================================== #
 
-    dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff))
-
-    # ==================================================== #
-    # Prediction: f(0) = 0                                 #
-    # ==================================================== #
-
-    if (ptto != FALSE) {
-
-      # add constraint f(0) = 0 to Amat
-      Amat <- rbind(Amat, origin_vec)
-
-      # update right-hand terms
-      bvec <- c(bvec, if (ptto == "0") 0 else 1)
-
-      # add f(0) = 0 to vector of inequalities directions
-      dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff - 1), "==")
-
-    }
+    dirs <- c(rep("==", N), rep(">=", nrow(Amat) - N))
 
     # ==================================================== #
     # Lower and upper bounds                               #
@@ -298,14 +261,8 @@ estim_coefs_smooth_env <- function (
 #' @param n_lsub
 #'  An \code{integer} specifying the number of coefficients associated with the unpaired left-side basis functions.
 #'
-#' @param mono
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param conc
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param ptto
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @importFrom quadprog solve.QP
 #'
@@ -313,29 +270,20 @@ estim_coefs_smooth_env <- function (
 #'
 #' A \code{vector} of estimated coefficients.
 
-estim_coefs_smooth_sto <- function (
+estim_coefs_smooth_stochastic <- function (
     B,
     y_obs,
-    dea_eff,
+    dea_scores,
     n_pair,
     n_lsub,
-    mono,
-    conc,
-    ptto
+    shape
     ) {
 
-  if (ptto != FALSE) {
+  # monotonicity
+  mono <- shape[["mono"]]
 
-    # f(0) = 0 vector of coefficients
-    origin_vec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
-
-    # B matrix
-    B <- B[1:(nrow(B) - 1), ]
-
-    # y_obs
-    y_obs <- as.matrix(y_obs[1:(length(y_obs) - 1)])
-
-  }
+  # concavity
+  conc <- shape[["conc"]]
 
   # sample size
   N <- nrow(B)
@@ -384,11 +332,6 @@ estim_coefs_smooth_sto <- function (
     # fitting matrix: y_hat - e = y
     FMat <- cbind(B, diag(rep(- 1, N), N))
     Amat <- FMat
-
-    # f(0) = 0
-    if (ptto != FALSE) {
-      Amat <- rbind(Amat, origin_vec)
-    }
 
     # generate concavity matrix for paired basis functions
     if (conc) {
@@ -445,7 +388,7 @@ estim_coefs_smooth_sto <- function (
     # b: envelopment + concavity + monotonicity            #
     # ==================================================== #
 
-    if (ptto == "1") {
+    if (ptto_val) {
       bvec <- c(y_ind, 1, rep(0, nrow(Amat) - N - 1))
 
     } else {
@@ -457,7 +400,7 @@ estim_coefs_smooth_sto <- function (
     # Solution of the optimization problem                 #
     # ==================================================== #
 
-    if (origin != FALSE) {
+    if (ptto != FALSE) {
 
       sols <- solve.QP (
         Dmat = Dmat, dvec = dvec,

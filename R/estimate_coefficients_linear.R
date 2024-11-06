@@ -1,20 +1,23 @@
-#' @title Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES) Fitting
+#' @title Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES)
 #'
 #' @description
 #'
-#' This function solves a Mathematical Programming problem to obtain a vector of coefficients that impose the required shaped on the Adaptive Constrained Enveloping Splines estimator.
+#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model. These coefficients enforce the desired shape properties, such as monotonicity and concavity to fit the data within the ACES framework.
 #'
 #' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function estimates.
+#' A \code{character} string specifying the nature of the production frontier.
 #'
 #' @param B
-#' A \code{matrix} of linear basis functions.
+#' A \code{matrix} of linear basis functions derived from input variables.
+#'
+#' @param Z
+#' A \code{matrix} of linear basis functions derived from contextual variables.
 #'
 #' @param y_obs
 #' A \code{matrix} of the observed output data.
 #'
-#' @param dea_eff
-#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
+#' @param dea_scores
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
@@ -23,36 +26,53 @@
 #' A \code{list} containing the set of basis functions by input.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @return
 #'
-#' A \code{vector} of estimated coefficients.
+#' A \code{vector} containing the estimated coefficients for the ACES model.
 
 estimate_coefficients <- function (
     model_type,
     B,
+    Z,
     y_obs,
-    dea_eff,
+    dea_scores,
     it_list,
     Bp_list,
     shape
     ) {
 
-  if (model_type == "env") {
+  if (model_type == "envelopment") {
 
-    coefs <- estim_coefs_env (
-      B = B,
-      y_obs = y_obs,
-      dea_eff = dea_eff,
-      it_list = it_list,
-      Bp_list = Bp_list,
-      shape = shape
-    )
+    if (is.null(Z)) {
+
+      coefs <- estimate_coefficients_envelopment (
+        B = B,
+        y_obs = y_obs,
+        dea_scores = dea_scores,
+        it_list = it_list,
+        Bp_list = Bp_list,
+        shape = shape
+      )
+
+    } else {
+
+      coefs <- estimate_coefficients_envelopment_contextual (
+        B = B,
+        Z = Z,
+        y_obs = y_obs,
+        dea_scores = dea_scores,
+        it_list = it_list,
+        Bp_list = Bp_list,
+        shape = shape
+      )
+
+    }
 
   } else {
 
-    coefs <- estim_coefs_sto (
+    coefs <- estimate_coefficients_stochastic (
       B = B,
       y_obs = y_obs,
       it_list = it_list,
@@ -63,22 +83,23 @@ estimate_coefficients <- function (
   }
 
   return(coefs)
+
 }
 
-#' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines Fitting: Envelopment Version
+#' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines: Envelopment Version
 #'
 #' @description
 #'
-#' This function solves a Linear Programming problem to obtain a vector of coefficients that impose the required shaped on the Adaptive Constrained Enveloping Splines estimator in the envelopment version.
+#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model in its envelopment version. It solves a mathematical programming problem to determine the coefficients that best fit the observed data while respecting certain shape constraints such as monotonicity and/or concavity. The model aims to envelop the data points, particularly when estimating production functions or efficiency frontiers.
 #'
 #' @param B
-#' A \code{matrix} of linear basis functions.
+#' A \code{matrix} of linear basis functions derived from input variables.
 #'
 #' @param y_obs
 #' A \code{matrix} of the observed output data.
 #'
-#' @param dea_eff
-#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
+#' @param dea_scores
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
@@ -87,54 +108,34 @@ estimate_coefficients <- function (
 #' A \code{list} containing the set of basis functions by input.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @return
 #'
-#' A \code{vector} of estimated coefficients.
+#' A \code{vector} containing the estimated coefficients for the ACES model.
 
-estim_coefs_env <- function (
+estimate_coefficients_envelopment <- function (
     B,
     y_obs,
-    dea_eff,
+    dea_scores,
     it_list,
     Bp_list,
     shape
     ) {
 
   # monotonicity
-  mono = shape[["mono"]]
+  mono <- shape[["mono"]]
 
   # concavity
-  conc = shape[["conc"]]
+  conc <- shape[["conc"]]
 
-  # pass through the origin
-  ptto = shape[["ptto"]]
-
-  # ===================== #
-  # called from smoothing #
-  # ===================== #
-
-  if (ptto != FALSE && (is.null(it_list) && is.null(Bp_list))) {
-
-    # f(0) = 0 vector of coefficients
-    origin_vec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
-
-    # B matrix
-    B <- B[1:(nrow(B) - 1), ]
-
-    # y_obs
-    y_obs <- as.matrix(y_obs[1:(length(y_obs) - 1)])
-
-  }
+  # dea weights
+  deaw <- as.matrix(1 / dea_scores)
 
   # sample size
   N <- nrow(B)
 
-  # number of efficient DMUs
-  N_eff <- length(dea_eff)
-
-  # number of basis functions
+  # number of basis functions (inputs)
   p <- ncol(B)
 
   # number of outputs
@@ -155,15 +156,14 @@ estim_coefs_env <- function (
     # vars: c(coef_0, coef_1, ..., coef_P, e_1, ... , e_n) #
     # ==================================================== #
 
-    objVal <- c(rep(0, p), rep(1, N))
+    objVal <- c(rep(0, p), deaw[, out])
 
     # ==================================================== #
     # A: envelopment + concavity + monotonicity            #
     # ==================================================== #
 
-    # envelopment: y_hat + e = y
+    # envelopment: y_hat - e = y
     EMat <- cbind(B, diag(rep(- 1, N), N))
-    EMat <- EMat[dea_eff, ]
 
     # matrix of coefficients
     Amat <- rbind(EMat)
@@ -199,52 +199,13 @@ estim_coefs_env <- function (
     # b: envelopment + concavity + monotonicity            #
     # ==================================================== #
 
-    bvec <- c(y_ind[dea_eff], rep(0, nrow(Amat) - N_eff))
+    bvec <- c(y_ind, rep(0, nrow(Amat) - N))
 
     # ==================================================== #
     # directions of inequalities                           #
     # ==================================================== #
 
-    dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff))
-
-    # ==================================================== #
-    # Prediction: f(0) = 0                                 #
-    # ==================================================== #
-
-    if (ptto != FALSE) {
-
-      # f(0) = 0
-      if (!is.null(it_list) && !is.null(Bp_list)) {
-
-        origin_vec <- predict_origin (
-          it_list = it_list,
-          Bp_list = Bp_list,
-          n_bf = p,
-          N = N
-        )
-
-        # add origin_vec to Amat
-        Amat <- rbind(Amat, origin_vec)
-
-        # update right-hand terms
-        bvec <- c(bvec, if (ptto == "0") 0 else 1)
-
-        # update vector of directions
-        dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff - 1), "==")
-
-      } else {
-
-        # add f(0) = 0 to Amat
-        Amat <- rbind(Amat, origin_vec)
-
-        # update right-hand terms
-        bvec <- c(bvec, if (ptto == "0") 0 else 1)
-
-        # add f(0) = 0 to dirs
-        dirs <- c(rep("==", N_eff), rep(">=", nrow(Amat) - N_eff - 1), "==")
-      }
-
-    }
+    dirs <- c(rep("==", N), rep(">=", nrow(Amat) - N))
 
     # ==================================================== #
     # lower and upper bounds                               #
@@ -264,21 +225,192 @@ estim_coefs_env <- function (
       bounds = bnds
     )
 
-    coefs[, out] <- sols$solution[1:p]
+    if (sols[["status"]] == 0) {
+
+      coefs[, out] <- sols$solution[1:p]
+
+    } else {
+
+      coefs[, out] <- rep(0, p)
+
+    }
 
   }
 
   return(coefs)
+
+}
+
+#' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines: Envelopment Version with Contextual Variables
+#'
+#' @description
+#'
+#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model in its envelopment version using contextual variables. It solves a mathematical programming problem to determine the coefficients that best fit the observed data while respecting certain shape constraints such as monotonicity and/or concavity. The model aims to envelop the data points, particularly when estimating production functions or efficiency frontiers.
+#'
+#' @param B
+#' A \code{matrix} of linear basis functions derived from input variables.
+#'
+#' @param Z
+#' A \code{matrix} of linear basis functions derived from contextual variables.
+#'
+#' @param y_obs
+#' A \code{matrix} of the observed output data.
+#'
+#' @param dea_scores
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
+#' @param it_list
+#' A \code{list} containing the set of intervals by input.
+#'
+#' @param Bp_list
+#' A \code{list} containing the set of basis functions by input.
+#'
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
+#'
+#' @return
+#'
+#' A \code{vector} containing the estimated coefficients for the ACES model.
+
+estimate_coefficients_envelopment_contextual <- function (
+    B,
+    Z,
+    y_obs,
+    dea_scores,
+    it_list,
+    Bp_list,
+    shape
+) {
+
+  # monotonicity
+  mono <- shape[["mono"]]
+
+  # concavity
+  conc <- shape[["conc"]]
+
+  # dea weights
+  deaw <- as.matrix(1 / dea_scores)
+
+  # sample size
+  N <- nrow(B)
+
+  # number of basis functions (inputs)
+  pX <- ncol(B)
+
+  # number of basis function (contextual variables)
+  pZ <- ifelse(is.null(Z), 0, ncol(Z))
+
+  # number of outputs
+  nY <- ncol(y_obs)
+
+  # number of inputs
+  nX <- length(Bp_list)
+
+  # structure of coefficients
+  coefs <- matrix(NA, nrow = pX + pZ, ncol = nY)
+
+  for (out in 1:nY) {
+
+    # select an output
+    y_ind <- y_obs[, out]
+
+    # ==================================================== #
+    # vars: c(coef_0, coef_1, ..., coef_P, e_1, ... , e_n) #
+    # ==================================================== #
+
+    objVal <- c(rep(0, pX + pZ), deaw[, out])
+
+    # ==================================================== #
+    # A: envelopment + concavity + monotonicity            #
+    # ==================================================== #
+
+    # envelopment: y_hat - e = y
+    EMat <- cbind(B, diag(rep(- 1, N), N))
+
+    # matrix of coefficients
+    Amat <- rbind(EMat)
+
+    # generate non-decreasing monotonicity matrix
+    if (mono) {
+
+      MMat <- monotonocity_matrix (
+        it_list = it_list,
+        Bp_list = Bp_list,
+        N = N
+      )
+
+      # add MMat to Amat
+      Amat <- rbind(Amat, MMat)
+
+    }
+
+    # generate concavity matrix
+    if (conc) {
+
+      CMat <- concavity_matrix(
+        Bp_list = Bp_list,
+        N = N
+      )
+
+      # add CMat to Amat
+      Amat <- rbind(Amat, CMat)
+
+    }
+
+    # ==================================================== #
+    # b: envelopment + concavity + monotonicity            #
+    # ==================================================== #
+
+    bvec <- c(y_ind, rep(0, nrow(Amat) - N))
+
+    # ==================================================== #
+    # directions of inequalities                           #
+    # ==================================================== #
+
+    dirs <- c(rep("==", N), rep(">=", nrow(Amat) - N))
+
+    # ==================================================== #
+    # lower and upper bounds                               #
+    # ==================================================== #
+
+    bnds <- list(lower = list(ind = 1:p, val = rep(- Inf, p)))
+
+    # ==================================================== #
+    # solution of the optimization problem                 #
+    # ==================================================== #
+
+    sols <- Rglpk_solve_LP (
+      obj = objVal,
+      mat = Amat,
+      dir = dirs,
+      rhs = bvec,
+      bounds = bnds
+    )
+
+    if (sols[["status"]] == 0) {
+
+      coefs[, out] <- sols$solution[1:p]
+
+    } else {
+
+      coefs[, out] <- rep(0, p)
+
+    }
+
+  }
+
+  return(coefs)
+
 }
 
 #' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines Fitting: Stochastic Version
 #'
 #' @description
 #'
-#' This function solves a Quadratic Programming problem to obtain a vector of coefficients that impose the required shaped on the Adaptive Constrained Enveloping Splines estimator in the stochastic version
+#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model in its stochastic version. It solves a quadratic programming problem to determine the coefficients that best fit the observed data while respecting certain shape constraints such as monotonicity and/or concavity.
 #'
 #' @param B
-#' A \code{matrix} of linear basis functions.
+#' A \code{matrix} of linear basis functions derived from input variables.
 #'
 #' @param y_obs
 #' A \code{matrix} of the observed output data.
@@ -289,44 +421,28 @@ estim_coefs_env <- function (
 #' @param Bp_list
 #' A \code{list} containing the set of basis functions by input.
 #'
-#' @param mono
-#' A \code{logical} value indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
-#'
-#' @param conc
-#' A \code{logical} value indicating whether to enforce the constraint of concavity in the estimator.
-#'
-#' @param ptto
-#' A \code{logical} value indicating whether the estimator should satisfy f(0) = 0.
+#' @param shape
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @importFrom quadprog solve.QP
 #'
 #' @return
 #'
-#' A \code{vector} of estimated coefficients.
+#' A \code{vector} containing the estimated coefficients for the ACES model.
 
-estim_coefs_sto <- function (
+estimate_coefficients_stochastic <- function (
     B,
     y_obs,
     it_list,
     Bp_list,
-    mono,
-    conc,
-    ptto
+    shape
     ) {
 
-  # called from smoothing
-  if (ptto != FALSE && (is.null(it_list) && is.null(Bp_list))) {
+  # monotonicity
+  mono <- shape[["mono"]]
 
-    # f(0) = 0 vector of coefficients
-    origin_vec <- c(B[nrow(B), ], rep(0, nrow(B) - 1))
-
-    # B matrix
-    B <- B[1:(nrow(B) - 1), ]
-
-    # y_obs
-    y_obs <- as.matrix(y_obs[1:(length(y_obs) - 1)])
-
-  }
+  # concavity
+  conc <- shape[["conc"]]
 
   # sample size
   N <- nrow(B)
@@ -377,33 +493,6 @@ estim_coefs_sto <- function (
     FMat <- cbind(B, diag(rep(- 1, N), N))
     Amat <- FMat
 
-    # ==================================================== #
-    # Prediction: f(0) = 0                                 #
-    # ==================================================== #
-
-    if (ptto != FALSE) {
-
-      # f(0) = 0
-      if (!is.null(it_list) && !is.null(Bp_list)) {
-
-        origin_vec <- predict_origin (
-          it_list = it_list,
-          Bp_list = Bp_list,
-          n_bf = p,
-          N = N
-        )
-
-        # add origin_vec to Amat
-        Amat <- rbind(Amat, origin_vec)
-
-      } else {
-
-        # add f(0) = 0 to Amat
-        Amat <- rbind(Amat, origin_vec)
-
-      }
-    }
-
     # generate monotonicity matrix
     if (mono) {
 
@@ -433,7 +522,7 @@ estim_coefs_sto <- function (
     # b: fitting + concavity + monotonicity                #
     # ==================================================== #
 
-    if (ptto == "1") {
+    if (ppto_val) {
       bvec <- c(y_ind, 1, rep(0, nrow(Amat) - N - 1))
 
     } else {
@@ -445,25 +534,14 @@ estim_coefs_sto <- function (
     # solution of the optimization problem                 #
     # ==================================================== #
 
-    if (ptto != FALSE) {
-
-      sols <- solve.QP (
-        Dmat = Dmat, dvec = dvec,
-        Amat = t(Amat), bvec = bvec,
-        meq = N + 1
-      )
-
-    } else {
-
-      sols <- solve.QP (
-        Dmat = Dmat, dvec = dvec,
-        Amat = t(Amat), bvec = bvec,
-        meq = N
-      )
-
-    }
+    sols <- solve.QP (
+      Dmat = Dmat, dvec = dvec,
+      Amat = t(Amat), bvec = bvec,
+      meq = N
+    )
 
     coefs[, out] <- sols$solution[1:p]
+
   }
 
   return(coefs)

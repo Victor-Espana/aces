@@ -233,6 +233,7 @@ ddf <- function (
   nY <- ncol(tech_ymat)
 
   for (d in 1:eval_dmu) {
+
     objVal <- matrix(ncol = 1 + tech_dmu, nrow = 1)
     objVal[1] <- 1
 
@@ -269,6 +270,8 @@ ddf <- function (
         set.type(lps, columns = 1:tech_dmu + 1, type = c("binary"))
       }
     }
+
+    set.bounds(lps, lower = c(- Inf, rep(0, tech_dmu)))
 
     solve(lps)
     scores[d, ] <- get.objective(lps)
@@ -624,99 +627,11 @@ wam <- function (
   return(scores)
 }
 
-#' @title Conditional Efficiency Estimation
-#'
-#' @description This function computes efficiency scores assuming a zero-truncated normal distribution.
-#'
-#' @param data
-#' A \code{matrix} containing the variables in the model.
-#'
-#' @param y
-#' Column indexes of output variables in \code{data}.
-#'
-#' @param mean_pred
-#' A \code{vector} of mean predicted outputs.
-#'
-#' @param std_ineff
-#' A \code{numeric} indicating the Standard Deviation of the Inefficiency Term.
-#'
-#' @param std_error
-#' A \code{numeric} indicating the Standard Deviation of the Error Term.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure that the function will use when fitting the model.
-#'
-#' @return
-#'
-#' A \code{vector} of \code{"numeric"} scores computed through the Conditional Estimation.
-
-
-cond_eff <- function (
-    data,
-    y,
-    mean_pred,
-    std_ineff,
-    std_error,
-    error_type
-    ) {
-
-  # number of DMUs in the technology
-  scores <- rep(NaN, nrow(data))
-
-  # variance
-  sigma2 <- std_ineff ^ 2 + std_error ^ 2
-
-  # standard deviation
-  sigma <- sqrt(sigma2)
-
-  # variance_star
-  sigma2_star <- std_ineff ^ 2 * std_error ^ 2 / sigma2
-
-  # dev_star
-  sigma_star <- sqrt(sigma2_star)
-
-  # lambda
-  lambda <- std_ineff / std_error
-
-  # frontier estimation
-  y_front <- mean_pred + std_ineff * sqrt(2 / pi)
-
-  # composite error term
-  comp_err <- data[, y] - y_front
-
-  # mu_star
-  mu_star <- - comp_err * std_ineff ^ 2 / sigma2
-
-  # random variable for normal distribution
-  argnorm <- comp_err * lambda / sigma
-
-  # conditional mean (2) = (3) in Jondrow et al. (1981)
-  cond_mean <- mu_star + sigma_star * (dnorm(argnorm) / (1 - pnorm(argnorm)))
-
-  if (error_type == "mul") {
-    scores <- exp( - cond_mean)
-
-  } else {
-    scores <- 1 - cond_mean / y_front
-
-  }
-
-  # If sigma_u == 0: all firms are diagnosed as efficient
-  if (std_ineff == 0) {
-    scores <- rep(1, nrow(data))
-  }
-
-  return(scores)
-}
-
 #' @title Compute Efficiency Scores using an Adaptive Constrained Enveloping Splines model.
 #'
 #' @description
 #'
-#' This function calculates the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and a specific technology determined by the user.
-#'
-#' @param tech_data
-#' A \code{data.frame} or a \code{matrix} containing the observed DMUs to determine the technology.
+#' This function computes the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and an user-defined measure.
 #'
 #' @param eval_data
 #' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
@@ -726,6 +641,9 @@ cond_eff <- function (
 #'
 #' @param y
 #' Column indexes of output and netput variables in \code{tech_data} and \code{eval_data}.
+#'
+#' @param relevant
+#' A \code{logical} indicating if only relevant variables should be included in the technology definition.
 #'
 #' @param object
 #' An \code{aces} object.
@@ -750,9 +668,6 @@ cond_eff <- function (
 #' \item{\code{wam_mip}} The weighted additive model: measure of inefficiency proportions. Efficiency level at 0.
 #' \item{\code{wam_ram}} The weighted additive model: range adjusted measure of inefficiency. Efficiency level at 0.
 #' }
-#'
-#' @param convexity
-#' A \code{logical} value indicating if a convex technology is assumed. Only \code{TRUE} is available.
 #'
 #' @param returns
 #' Type of returns to scale:
@@ -790,14 +705,13 @@ cond_eff <- function (
 #' A \code{data.frame} with the efficiency scores computed through an Adaptive Constrained Enveloping Splines model.
 
 aces_scores <- function (
-    tech_data,
     eval_data,
     x,
     y,
+    relevant,
     object,
     method,
     measure = "rad_out",
-    convexity = TRUE,
     returns = "variable",
     direction = NULL,
     weights = NULL,
@@ -805,59 +719,17 @@ aces_scores <- function (
     ) {
 
   # Possible error messages:
-  display_errors (
-    caller = "aces_scores",
-    data = NULL,
-    x = NULL,
-    y = NULL,
-    y_type = NULL,
-    model_type = NULL,
-    error_type = object[[1]][["control"]][["error_type"]],
-    degree = NULL,
-    metric = NULL,
-    nterms = NULL,
-    err_red = NULL,
-    hd_cost = NULL,
-    minspan = NULL,
-    endspan = NULL,
-    kn_grid = NULL,
-    d = NULL,
-    wc = NULL,
-    wq = NULL,
+  display_errors_scores (
+    data = eval_data,
+    x = x,
+    y = y,
     object = object,
     measure = measure,
-    convexity = convexity,
     returns = returns,
     direction = direction,
+    weights = weights,
     digits = digits
-  )
-
-  # index of variables
-  # inputs are common in all the models
-  # outputs and netputs are common (but interchangeable) in all the models
-  # then, we can select just the first element of the ACES object.
-
-  var_indexes <- sort (
-    c (
-    object[[1]][["data"]][["x"]],
-    object[[1]][["data"]][["z"]],
-    object[[1]][["data"]][["y"]]
-    ))
-
-  # check if training and test names are the same
-  tr_names <- colnames(object[[1]][["data"]][["df"]])[var_indexes]
-  te_names <- colnames(tech_data[c(x, y)])
-  ev_names <- colnames(eval_data[c(x, y)])
-
-  # training and test names are different
-  check1 <- all(te_names %in% tr_names)
-
-  # training and evaluated names are different
-  check2 <- all(ev_names %in% tr_names)
-
-  if (!(check1 & check2)) {
-    stop("Different variable names in training, test or evaluated data.")
-  }
+    )
 
   # number of inputs
   nX <- length(x)
@@ -870,17 +742,36 @@ aces_scores <- function (
   # =================== #
 
   # matrix of inputs
-  tech_xmat <- as.matrix(tech_data[, x])
+  tech_xmat <- as.matrix(object[["technology"]][[method]][["xmat"]])
+
+  if (relevant) {
+
+    # set of knots
+    knots <- object[["methods"]][[method]][["knots"]]
+
+    # variable degree
+    xi_degree <- object[["control"]][["xi_degree"]]
+    colnames(xi_degree) <- names(object[["control"]][["kn_grid"]])
+
+    # check participating variables
+    participating_vars <- intersect(xi_degree[1, ], unique(knots$xi))
+
+    # names of participant variables
+    participating_vars_names <- colnames(xi_degree)[participating_vars]
+
+    # extract individual variables assuming interaction variable names use "_"
+    split_vars <- unique(unlist(strsplit(participating_vars_names, "_")))
+
+    # get the column indices for the unique variables
+    x <- sort(match(split_vars, colnames(xi_degree)))
+
+    # update technology
+    tech_xmat <- as.matrix(tech_xmat[, x])
+
+  }
 
   # matrix of outputs
-  y_hat <- predict (
-    object = object,
-    newdata = tech_data,
-    x = c(x),
-    method = method
-  )
-
-  tech_ymat <- as.data.frame(y_hat)
+  tech_ymat <- as.matrix(object[["technology"]][[method]][["ymat"]])
 
   # ======================= #
   # Data for evaluated DMUs #
@@ -899,7 +790,7 @@ aces_scores <- function (
       tech_ymat = tech_ymat,
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
-      convexity = convexity,
+      convexity = TRUE,
       returns = returns
       )
 
@@ -910,7 +801,7 @@ aces_scores <- function (
       tech_ymat = tech_ymat,
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
-      convexity = convexity,
+      convexity = TRUE,
       returns = returns
     )
 
@@ -924,7 +815,7 @@ aces_scores <- function (
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
       direction = direction,
-      convexity = convexity,
+      convexity = TRUE,
       returns = returns
     )
 
@@ -935,7 +826,7 @@ aces_scores <- function (
       tech_ymat = tech_ymat,
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
-      convexity = convexity,
+      convexity = TRUE,
       returns = returns
       )
 
@@ -946,7 +837,7 @@ aces_scores <- function (
       tech_ymat = tech_ymat,
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
-      convexity = convexity,
+      convexity = TRUE,
       returns = returns
     )
 
@@ -958,7 +849,7 @@ aces_scores <- function (
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
       weights = weights,
-      convexity = convexity,
+      convexity = TRUE,
       returns = returns
     )
   }
@@ -974,7 +865,7 @@ aces_scores <- function (
   colnames(scores) <- model
 
   # row names of the new data.frame
-  rownames(scores) <- row.names(tech_data)
+  rownames(scores) <- row.names(eval_data)
 
   return(round(scores, digits))
 

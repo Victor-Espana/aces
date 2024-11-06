@@ -7,17 +7,23 @@
 #' @param data
 #' A \code{matrix} containing the variables in the model.
 #'
+#' @param x
+#' Column indexes of input variables in \code{data}.
+#'
 #' @param y
 #' Column indexes of output variables in \code{data}.
+#'
+#' @param z
+#' Column indexes of contextual variables in \code{data}.
 #'
 #' @param xi_degree
 #' A \code{matrix} indicating the degree of each input variable.
 #'
-#' @param dea_eff
-#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
-#'
 #' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
+#' A \code{character} string specifying the nature of the production frontier.
+#'
+#' @param dea_scores
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
@@ -31,7 +37,7 @@
 #' @param shape
 #' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
-#' @param d
+#' @param kn_penalty
 #' An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.
 #'
 #' @return
@@ -40,19 +46,21 @@
 
 aces_pruning <- function (
     data,
+    x,
     y,
+    z,
     xi_degree,
-    dea_eff,
     model_type,
+    dea_scores,
     metric,
     forward_model,
     Bp_list,
     shape,
-    d
+    kn_penalty
     ) {
 
   # number of inputs
-  nX <- length(Bp_list)
+  nX <- length(x)
 
   # number of terms to drop
   terms <- length(forward_model[["basis"]]) - 1
@@ -69,15 +77,14 @@ aces_pruning <- function (
   coefs <- forward_model[["basis"]][[terms + 1]][["coefs"]]
 
   # measures of performance
-  LOF <- forward_model[["basis"]][[terms + 1]][["err"]]
+  LOF <- forward_model[["basis"]][[terms + 1]][["LOF"]]
 
   GCV <- compute_gcv (
     y_obs = data[, y, drop = F],
-    y_hat = B_mat %*% coefs,
-    metric = metric,
+    LOF = LOF,
     n_bf = ncol(B_mat),
-    d = d,
-    knots = knots,
+    kn_penalty = kn_penalty,
+    kn_list = knots,
     xi_degree = xi_degree
   )
 
@@ -184,9 +191,6 @@ aces_pruning <- function (
         # vector of coefficients
         coefs <- unname(apply(data[, y, drop = FALSE], 2, max))
 
-        # set of knots
-        knots <- NULL
-
         # prediction
         y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
 
@@ -197,16 +201,16 @@ aces_pruning <- function (
         LOF <- err_metric (
           y_obs = data[, y, drop = F],
           y_hat = y_hat,
-          metric = metric
+          metric = metric,
+          weight = 1 / dea_scores
         )
 
         GCV <- compute_gcv (
           y_obs = data[, y, drop = F],
-          y_hat = y_hat,
-          metric = metric,
+          LOF = LOF,
           n_bf = ncol(new_B),
-          d = d,
-          knots = 0,
+          kn_penalty = kn_penalty,
+          kn_list = NULL,
           xi_degree = NULL
           )
 
@@ -234,12 +238,49 @@ aces_pruning <- function (
         # =============== #
 
         new_B <- matrix(1, nrow = nrow(data))
-        for (v in 1:nX) {
+
+        for (v in x) {
+
           for (side in c("paired", "right", "left")) {
+
             for (l in 1:length(new_Bp_list[[v]][[side]])) {
+
               bf_jp <- new_Bp_list[[v]][[side]][[l]][["Bp"]]
               new_B <- cbind(new_B, bf_jp)
+
             }
+          }
+        }
+
+        if (!is.null(z)) {
+
+          # =============== #
+          # Update Z matrix #
+          # =============== #
+
+          new_Z <- matrix(1, nrow = nrow(data))
+
+          for (v in z) {
+
+            if (!is.null(Bp_list_aux[[v]][["paired"]])) {
+
+              for (l in 1:length(Bp_list_aux[[v]][["paired"]])) {
+
+                bf_jp <- Bp_list_aux[[v]][["paired"]][[l]][["Bp"]]
+                new_Z <- cbind(new_Z, bf_jp)
+
+              }
+            }
+          }
+
+          if (ncol(new_Z) > 1) {
+
+            new_Z <- new_Z[, 2:ncol(new_Z)]
+
+          } else {
+
+            new_Z <- NULL
+
           }
         }
 
@@ -252,8 +293,9 @@ aces_pruning <- function (
             coefs <- estimate_coefficients (
               model_type = model_type,
               B = new_B,
+              Z = new_Z,
               y_obs = data[, y, drop = F],
-              dea_eff = dea_eff,
+              dea_scores = dea_scores,
               it_list = new_it_list,
               Bp_list = new_Bp_list,
               shape = shape
@@ -289,16 +331,16 @@ aces_pruning <- function (
         LOF <- err_metric (
           y_obs = data[, y, drop = F],
           y_hat = y_hat,
-          metric = metric
+          metric = metric,
+          weight = 1 / dea_scores
         )
 
         GCV <- compute_gcv (
           y_obs = data[, y, drop = F],
-          y_hat = y_hat,
-          metric = metric,
+          LOF = LOF,
           n_bf = ncol(new_B),
-          d = d,
-          knots = knots,
+          kn_penalty = kn_penalty,
+          kn_list = knots,
           xi_degree = xi_degree
           )
       }
@@ -345,40 +387,36 @@ aces_pruning <- function (
 #'
 #' @description
 #'
-#' This function computes the generalized cross-validation for the backward algorithm in Adaptive Constrained Enveloping Splines.
+#' This function computes the generalized cross-validation for the backward algorithm in Adaptive Constrained Enveloping Splines (ACES).
 #'
 #' @param y_obs
-#' A \code{numeric} matrix of observed data.
+#' Vector of observed data.
 #'
-#' @param y_hat
-#' A \code{numeric} matrix of predicted values.
-#'
-#' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#' @param LOF
+#' A \code{numeric} value representing the lack-of-fit of the model. This term quantifies how well the model fits the data.
 #'
 #' @param n_bf
-#' A \code{integer} specifying the number of basis functions in the model.
+#' A \code{integer} specifying the number of basis functions used in the model.
 #'
-#' @param d
-#' A \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot.
+#' @param kn_penalty
+#' A \code{numeric} value representing the penalty applied for each knot in the model.
 #'
-#' @param knots
-#' A \code{list} specifying the set of knots.
+#' @param kn_list
+#'A \code{list} containing the set of knots used in the model.
 #'
 #' @param xi_degree
 #' A \code{matrix} indicating the degree of each input variable.
 #'
 #' @return
 #'
-#' The Generalized Cross-Validation (GCV) value.
+#'A \code{numeric} value representing the computed Generalized Cross-Validation (GCV) score.
 
 compute_gcv <- function (
     y_obs,
-    y_hat,
-    metric,
+    LOF,
     n_bf,
-    d,
-    knots,
+    kn_penalty,
+    kn_list,
     xi_degree
     ) {
 
@@ -388,25 +426,18 @@ compute_gcv <- function (
   # number of observations
   N <- nrow(y_obs)
 
-  # mean error
-  lof_num <- err_metric (
-    y_obs = y_obs,
-    y_hat = y_hat,
-    metric = metric
-    )
-
   # number of knots
-  if (is.list(knots)) {
+  if (is.list(kn_list)) {
 
     # transform knot list to a data.frame
-    knots_df <- do.call(rbind.data.frame, knots)
+    knots_df <- do.call(rbind.data.frame, kn_list)
 
     # knot dimension
-    knots_df$dimknot <- xi_degree[2, match(knots_df$xi, xi_degree[1, ])]
+    knots_df$dim_knot <- xi_degree[2, match(knots_df$xi, xi_degree[1, ])]
 
     if (nrow(knots_df) == 0) {
 
-      nknots <- 0
+      kn_num <- 0
 
     } else {
 
@@ -414,21 +445,22 @@ compute_gcv <- function (
       knots_df <- knots_df[!duplicated(knots_df[c("xi", "t")]), ]
 
       # number of knots
-      nknots <- nrow(knots_df)
+      kn_num <- sum(knots_df$dim_knot)
     }
 
   } else {
 
-    nknots <- knots
+    if (is.null(kn_list)) kn_num <- 0
+
+    kn_num <- sum(kn_list * xi_degree[2, ])
 
   }
 
   # cost-complexity measure
-  ccm_val <- n_bf + d * nknots
-  lof_den <- (1 - (ccm_val / (nY * N))) ^ 2
+  ccm_val <- (1 - ((n_bf + kn_penalty * kn_num) / (nY * N))) ^ 2
 
-  # GCV
-  GCV <- ifelse(ccm_val > nY * N, Inf, lof_num / lof_den)
+  # generalized cross-validation
+  GCV <- ifelse(ccm_val > nY * N, Inf, LOF / ccm_val)
 
   return(GCV)
 

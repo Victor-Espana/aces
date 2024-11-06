@@ -51,7 +51,7 @@ predict_origin <- function (
   for (v in 1:nX) {
 
     # verify bf_it0[[v]] is not NULL
-    if (is.null(bf_it0[[v]])) next
+    if (length(it_list[[v]]) == 0) next
 
     # basis for the v-th variable
     Bp_v <- Bp_list[[v]]
@@ -68,29 +68,34 @@ predict_origin <- function (
     # basis functions for the v-th variable
     origin_vec_v <- rep(0, 2 * n_pbf + n_rbf + n_lbf)
 
-    for (side in c("paired", "right", "left")) {
+    # exist an interval but not a left-side basis function
+    if (!is.null(bf_it0[[v]])) {
 
-      Bp_v_side <- Bp_v[[side]]
+      for (side in c("paired", "right", "left")) {
 
-      if (!is.null(Bp_v_side)) {
+        Bp_v_side <- Bp_v[[side]]
 
-        for (b in 1:length(Bp_v_side)) {
+        if (!is.null(Bp_v_side)) {
 
-          Bp_xi <- Bp_v_side[[b]][["Bp_xi"]]
-          t_val <- Bp_v_side[[b]][["t"]]
+          for (b in 1:length(Bp_v_side)) {
 
-          for (j in 1:length(bf_it0[[v]])) {
+            Bp_xi <- Bp_v_side[[b]][["Bp_xi"]]
+            t_val <- Bp_v_side[[b]][["t"]]
 
-            if (is.null(bf_it0[[v]][j])) next
+            for (j in 1:length(bf_it0[[v]])) {
 
-            if (bf_it0[[v]][j] %in% Bp_xi) {
+              if (is.null(bf_it0[[v]][j])) next
 
-              origin_vec_v[bf_it0[[v]][j]] <- t_val
+              if (bf_it0[[v]][j] %in% Bp_xi) {
 
+                origin_vec_v[bf_it0[[v]][j]] <- t_val
+
+              }
             }
           }
         }
       }
+
     }
 
     # add to vector of constraints
