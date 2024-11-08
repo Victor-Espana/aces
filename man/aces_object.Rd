@@ -2,32 +2,32 @@
 % Please edit documentation in R/ACES.R
 \name{aces_object}
 \alias{aces_object}
-\title{Create an aces Object}
+\title{Create an aces object}
 \usage{
 aces_object(
   data,
   x,
   y,
   z,
-  y_type,
-  model_type,
   error_type,
-  degree,
+  max_degree,
+  compl_cost,
+  xi_degree,
   metric,
   shape,
   nterms,
   err_red,
-  hd_cost,
   minspan,
   endspan,
   kn_grid,
-  d,
+  kn_penalty,
   wc,
   wq,
   aces_forward,
   aces,
   aces_cubic,
-  aces_quintic
+  aces_quintic,
+  technology
 )
 }
 \arguments{
@@ -37,25 +37,23 @@ aces_object(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{z}{Column indexes of netput variables in \code{data} (outputs evaluated as inputs).}
+\item{z}{Column indexes of contextual variables in \code{data}.}
 
-\item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
+\item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
+\item{max_degree}{Maximum degree of interaction between variables.}
 
-\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model.}
+\item{compl_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
 
-\item{degree}{Maximum degree of interaction between variables.}
+\item{xi_degree}{A \code{matrix} specifying the degree of each variable.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
 
 \item{nterms}{Maximum number of terms created before pruning.}
 
 \item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
-
-\item{hd_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
 
 \item{minspan}{Minimum number of observations between two adjacent knots.}
 
@@ -63,11 +61,11 @@ aces_object(
 
 \item{kn_grid}{Design of the grid of knots to perform ACES}
 
-\item{d}{Generalized Cross Validation (GCV) penalty per knot.}
+\item{kn_penalty}{Generalized Cross Validation (GCV) penalty per knot.}
 
-\item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure \insertCite{friedman1991}{aces}.}
+\item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure.}
 
-\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure \insertCite{chen1999}{aces}.}
+\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure.}
 
 \item{aces_forward}{A \code{list} containing the forward step of the Adaptive Constrained Enveloping Splines model.}
 
@@ -76,14 +74,12 @@ aces_object(
 \item{aces_cubic}{A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through cubic basis functions.}
 
 \item{aces_quintic}{A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through quintic basis functions.}
+
+\item{technology}{A \code{list} with the points that make up the technology set for each model.}
 }
 \value{
 An \code{aces} object.
 }
 \description{
 This function saves information about the Adaptive Constrained Enveloping Splines (ACES) model.
-}
-\references{
-\insertRef{friedman1991}{aces} \cr \cr
-\insertRef{chen1999}{aces}
 }

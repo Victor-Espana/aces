@@ -5,14 +5,13 @@
 \title{Compute Efficiency Scores using an Adaptive Constrained Enveloping Splines model.}
 \usage{
 aces_scores(
-  tech_data,
   eval_data,
   x,
   y,
+  relevant,
   object,
   method,
   measure = "rad_out",
-  convexity = TRUE,
   returns = "variable",
   direction = NULL,
   weights = NULL,
@@ -20,13 +19,13 @@ aces_scores(
 )
 }
 \arguments{
-\item{tech_data}{A \code{data.frame} or a \code{matrix} containing the observed DMUs to determine the technology.}
-
 \item{eval_data}{A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.}
 
 \item{x}{Column indexes of input variables in \code{tech_data} and \code{eval_data}.}
 
 \item{y}{Column indexes of output and netput variables in \code{tech_data} and \code{eval_data}.}
+
+\item{relevant}{A \code{logical} indicating if only relevant variables should be included in the technology definition.}
 
 \item{object}{An \code{aces} object.}
 
@@ -48,8 +47,6 @@ aces_scores(
 \item{\code{wam_mip}} The weighted additive model: measure of inefficiency proportions. Efficiency level at 0.
 \item{\code{wam_ram}} The weighted additive model: range adjusted measure of inefficiency. Efficiency level at 0.
 }}
-
-\item{convexity}{A \code{logical} value indicating if a convex technology is assumed. Only \code{TRUE} is available.}
 
 \item{returns}{Type of returns to scale:
 \itemize{
@@ -78,5 +75,5 @@ aces_scores(
 A \code{data.frame} with the efficiency scores computed through an Adaptive Constrained Enveloping Splines model.
 }
 \description{
-This function calculates the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and a specific technology determined by the user.
+This function computes the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and an user-defined measure.
 }

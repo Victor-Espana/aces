@@ -132,7 +132,7 @@ set_triplet_knots <- function (
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param dea_eff
+#' @param dea_scores
 #' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
 #'
 #' @param model_type
@@ -142,7 +142,7 @@ set_triplet_knots <- function (
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @param kn_grid
 #' A \code{data.frame} containing the set of knots from the backward step for smoothing.
@@ -150,8 +150,11 @@ set_triplet_knots <- function (
 #' @param kn_side_loc
 #' A \code{list} with the side knot locations for each input dimension.
 #'
-#' @param d
+#' @param kn_penalty
 #' Generalized Cross Validation (GCV) penalty per knot.
+#'
+#' @param xi_degree
+#' A \code{matrix} indicating the degree of each input variable.
 #'
 #' @param wc
 #' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure.A \code{numeric} value used for cubic smoothing \insertCite{friedman1991}{aces}. This parameter is defined as `v / p` and must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
@@ -168,19 +171,16 @@ cubic_aces <- function (
     data,
     x,
     y,
-    dea_eff,
+    dea_scores,
     model_type,
     metric,
     shape,
     kn_grid,
     kn_side_loc,
-    d,
+    kn_penalty,
+    xi_degree,
     wc
     ) {
-
-  if (shape[["ptto"]] != FALSE) {
-    data <- rbind(data, rep(0, ncol(data)))
-  }
 
   # number of inputs
   nX <- length(x)
@@ -283,7 +283,7 @@ cubic_aces <- function (
         model_type = model_type,
         B = B,
         y_obs = data[, y, drop = F],
-        dea_eff = dea_eff,
+        dea_scores = dea_scores,
         n_pair = n_pair,
         n_lsub = n_lsub,
         shape = shape
@@ -295,7 +295,7 @@ cubic_aces <- function (
         model_type = model_type,
         B = B[, c(1, paired, not_paired)],
         y = data[, y, drop = F],
-        dea_eff = dea_eff,
+        dea_scores = dea_scores,
         it_list = NULL,
         Bp_list = NULL,
         shape = shape
@@ -310,23 +310,25 @@ cubic_aces <- function (
       y_hat[, out] <- B %*% coefs[, out, drop = F]
     }
 
-    # compute lack-of-fit
-    GCV <- compute_gcv (
+    LOF <- err_metric (
       y_obs = data[, y, drop = F],
       y_hat = y_hat,
       metric = metric,
-      n_bf = ncol(B),
-      d = d,
-      knots = sum(lengths(cubic_knots))
+      weight = 1 / dea_scores
     )
 
-    if (shape[["ptto"]] != FALSE) {
-      B <- B[1:(nrow(B) - 1), ]
-    }
+    GCV <- compute_gcv (
+      y_obs = data[, y, drop = F],
+      LOF = LOF,
+      n_bf = ncol(B),
+      kn_penalty = kn_penalty,
+      kn_list = lengths(cubic_knots),
+      xi_degree = xi_degree
+    )
 
     # save results of the smooth model
     w_list[[l]][["Bmatx"]] <- B
-    w_list[[l]][["cubic_knots"]] <- cubic_knots
+    w_list[[l]][["knots"]] <- cubic_knots
     w_list[[l]][["coefs"]] <- coefs
     w_list[[l]][["GCV"]] <- GCV
     w_list[[l]][["w"]] <- wc[l]
@@ -453,7 +455,7 @@ create_cubic_basis <- function (
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param dea_eff
+#' @param dea_scores
 #' Indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
 #'
 #' @param model_type
@@ -463,7 +465,7 @@ create_cubic_basis <- function (
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
 #' @param kn_grid
 #' A \code{data.frame} containing the set of knots from the backward step for smoothing.
@@ -471,8 +473,11 @@ create_cubic_basis <- function (
 #' @param kn_side_loc
 #' A \code{list} with the side knot locations for each input dimension.
 #'
-#' @param d
+#' @param kn_penalty
 #' Generalized Cross Validation (GCV) penalty per knot.
+#'
+#' @param xi_degree
+#' A \code{matrix} indicating the degree of each input variable.
 #'
 #' @param wq
 #' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
@@ -491,19 +496,16 @@ quintic_aces <- function (
     data,
     x,
     y,
-    dea_eff,
+    dea_scores,
     model_type,
     metric,
     shape,
     kn_grid,
     kn_side_loc,
-    d,
+    kn_penalty,
+    xi_degree,
     wq
     ) {
-
-  if (shape[["ptto"]] != FALSE) {
-    data <- rbind(data, rep(0, ncol(data)))
-  }
 
   # sample size
   N <- nrow(data)
@@ -606,7 +608,7 @@ quintic_aces <- function (
         model_type = model_type,
         B = B,
         y_obs = data[, y, drop = F],
-        dea_eff = dea_eff,
+        dea_scores = dea_scores,
         n_pair = n_pair,
         n_lsub = n_lsub,
         shape = shape
@@ -618,7 +620,7 @@ quintic_aces <- function (
         model_type = model_type,
         B = B[, c(1, paired, not_paired)],
         y = data[, y, drop = F],
-        dea_eff = dea_eff,
+        dea_scores = dea_scores,
         it_list = NULL,
         Bp_list = NULL,
         shape = shape
@@ -633,23 +635,25 @@ quintic_aces <- function (
       y_hat[, out] <- B %*% coefs[, out, drop = F]
     }
 
-    # compute lack-of-fit
-    GCV <- compute_gcv (
+    LOF <- err_metric (
       y_obs = data[, y, drop = F],
       y_hat = y_hat,
       metric = metric,
-      n_bf = ncol(B),
-      d = d,
-      knots = sum(lengths(quintic_knots))
+      weight = 1 / dea_scores
     )
 
-    if (shape[["ptto"]] != FALSE) {
-      B <- B[1:(nrow(B) - 1), ]
-    }
+    GCV <- compute_gcv (
+      y_obs = data[, y, drop = F],
+      LOF = LOF,
+      n_bf = ncol(B),
+      kn_penalty = kn_penalty,
+      kn_list = lengths(quintic_knots),
+      xi_degree = xi_degree
+    )
 
     # save results of the smooth model
     w_list[[l]][["Bmatx"]] <- B
-    w_list[[l]][["quintic_knots"]] <- quintic_knots
+    w_list[[l]][["knots"]] <- quintic_knots
     w_list[[l]][["coefs"]] <- coefs
     w_list[[l]][["GCV"]] <- GCV
     w_list[[l]][["w"]] <- wq[l]

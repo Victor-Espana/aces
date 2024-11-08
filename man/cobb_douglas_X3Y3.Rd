@@ -16,10 +16,10 @@ cobb_douglas_X3Y3(N, border, noise, returns)
 \item{returns}{Returns to scale. \code{"CRS"} for Constant Return to Scale, \code{"DRS"} for Decreasing Return to Scale and \code{"IRS"} for Increasing Return to Scale.}
 }
 \value{
-A \code{data.frame} with the simulated data: 3 inputs (x1, x2, x3), 3 outputs (y1, y2, y3) and the theoretical frontier (yD1, yD2, yD3)
+A \code{data.frame} with the simulated data: 3 inputs (x1, x2, x3), 3 outputs (y1, y2, y3) and the theoretical frontier (yT1, yT2, yT3)
 }
 \description{
-This function is used to simulate a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Douglas Data Generation Process as in \insertCite{ahn2023;textual}{aces}.
+This function simulates a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Douglas Data Generation Process as in \insertCite{ahn2023;textual}{aces}.
 }
 \references{
 \insertRef{ahn2023}{aces}

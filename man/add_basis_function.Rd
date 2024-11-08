@@ -8,19 +8,21 @@ add_basis_function(
   data,
   x,
   y,
+  z,
   xi_degree,
-  dea_eff,
+  compl_cost,
   model_type,
+  dea_scores,
   metric,
   forward_model,
   Bp_list,
   shape,
   kn_list,
   kn_grid,
-  L,
-  Le,
+  span,
   err_min,
-  hd_cost
+  var_imp,
+  quick_aces
 )
 }
 \arguments{
@@ -30,35 +32,46 @@ add_basis_function(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
+\item{z}{Column indexes of contextual variables in \code{data}.}
+
 \item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
-\item{dea_eff}{An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.}
+\item{compl_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to justify adding a higher-degree basis function.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier.}
+
+\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{forward_model}{A \code{list} containing the current set of basis functions (\code{BF_set}) and the B matrix (\code{B}).}
+\item{forward_model}{A \code{list} containing the current state of the forward model, including the matrix of basis functions (\code{B}) and the set of selected basis functions (\code{BF_set}).}
 
-\item{Bp_list}{A \code{list} containing the current set of basis functions for each input variable.}
+\item{Bp_list}{A \code{list} containing the basis functions for each input variable, with detailed information about their structure and placement in the model.}
 
 \item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
 \item{kn_list}{A \code{list} containing the current set of selected knots for each input variable.}
 
-\item{kn_grid}{A \code{list} with the grid of knots to perform ACES.}
+\item{kn_grid}{A \code{list} containing the available grid of knots used to construct the basis functions for each input variable.}
 
-\item{L}{A \code{integer} value specifying the minimum number of observations between two adjacent knots.}
-
-\item{Le}{A \code{integer} value specifying the minimum number of observations before the first and after the final knot.}
+\item{span}{A \code{numeric} vector specifying the minimum number of observations between two adjacent knots (L) and the minimum number of observations before the first and after the final knot (Le).}
 
 \item{err_min}{A \code{numeric} value specifying the minimum error obtained by the forward algorithm in the current iteration.}
 
-\item{hd_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
+\item{var_imp}{A \code{matrix} tracking the best residual reduction for each variable (columns) in each iteration (rows).}
+
+\item{quick_aces}{A \code{logical} indicating whether to use the fast version of ACES.}
 }
 \value{
-An updated \code{list} containing the matrix of basis functions (\code{B}), an updated \code{list} with information of the basis functions (\code{BF_set}), an updated \code{list} of selected knots (\code{knots_list}) and the minimum error obtained (\code{err_min}).
+An updated \code{list} containing:
+\itemize{
+  \item \code{B}: The updated matrix of basis functions.
+  \item \code{BF_set}: The updated set of basis functions included in the model.
+  \item \code{kn_list}: The updated list of selected knots for each variable.
+  \item \code{err_min}: The updated minimum error achieved in the current iteration.
+  \item \code{var_imp}; The updated matrix of variable importance
+}
 }
 \description{
-This function adds the pair of basis functions that results in the largest reduction of the lack-of-fit criterion.
+This function adds a pair of basis functions to the Adaptive Constrained Enveloping Splines (ACES) model, selecting the pair that leads to the largest reduction in the lack-of-fit criterion. The function updates the model by incorporating these basis functions, adjusting the knots, and refining the error.
 }

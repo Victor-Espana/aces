@@ -6,52 +6,47 @@
 \usage{
 aces_algorithm(
   data,
-  inps,
-  outs,
-  nets,
-  y_type,
-  model_type,
+  x_vars,
+  y_vars,
+  z_vars,
+  quick_aces,
   error_type,
-  degree,
+  max_degree,
+  compl_cost,
   metric,
   shape,
   nterms,
   err_red,
-  hd_cost,
   minspan,
   endspan,
   kn_grid,
-  d,
-  wc,
-  wq
+  kn_penalty
 )
 }
 \arguments{
 \item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
 
-\item{inps}{Column indexes of input variables in \code{data}.}
+\item{x_vars}{Column indexes of input variables in \code{data}.}
 
-\item{outs}{Column indexes of output variables in \code{data}.}
+\item{y_vars}{Column indexes of output variables in \code{data}.}
 
-\item{nets}{Column indexes of netput (outputs evaluated as inputs) variables in \code{data}. These variables are treated as inputs during prediction computation and as outputs when computing efficiency scores.}
+\item{z_vars}{Column indexes of contextual variables in \code{data}.}
 
-\item{y_type}{A \code{character} string that determines the prediction approach for \code{y}.}
+\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function estimates.}
+\item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 
-\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model.}
+\item{max_degree}{Maximum degree of interaction between variables.}
 
-\item{degree}{Maximum degree of interaction between variables.}
+\item{compl_cost}{Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin (only for piece-wise linear version).}
 
-\item{nterms}{Maximum number of terms created before pruning.}
+\item{nterms}{Maximum number of terms created during the forward step.}
 
-\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
-
-\item{hd_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
+\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree BFs.}
 
 \item{minspan}{Minimum number of observations between two adjacent knots.}
 
@@ -59,19 +54,11 @@ aces_algorithm(
 
 \item{kn_grid}{Grid design for knots placement in ACES.}
 
-\item{d}{Penalty per knot for Generalized Cross Validation.}
-
-\item{wc}{Hyperparameter for side knot distances in the cubic smoothing procedure.}
-
-\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure.}
+\item{kn_penalty}{Penalty per knot for computing Generalized Cross Validation.}
 }
 \value{
 An \code{aces} object.
 }
 \description{
-This function implements the Adaptive Constrained Enveloping Splines (ACES) algorithm, which estimates a production frontier satisfying classical production theory axioms like monotonicity and concavity. It offers both stochastic and envelopment versions. These estimations are based on the adaptation of the Multivariate Adaptive Regression Splines (MARS) technique developed by \insertCite{friedman1991;textual}{aces}. For details, see \insertCite{espana2024;textual}{aces}
-}
-\references{
-\insertRef{friedman1991}{aces} \cr \cr
-\insertRef{espana2024}{aces} \cr \cr
+This function implements the Adaptive Constrained Enveloping Splines (ACES) algorithm.
 }

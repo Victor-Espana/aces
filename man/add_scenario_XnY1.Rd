@@ -12,10 +12,10 @@ add_scenario_XnY1(N, scenario)
 \item{scenario}{A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.}
 }
 \value{
-A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yD).
+A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
 }
 \description{
-This function is used to simulate a 1 output ~ nX inputs \code{data.frame} with an Additive Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
+This function simulates a 1 output ~ nX inputs \code{data.frame} with an Additive Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
 }
 \references{
 \insertRef{kuosmanen2010}{aces}

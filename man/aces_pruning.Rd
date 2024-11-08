@@ -6,27 +6,33 @@
 \usage{
 aces_pruning(
   data,
+  x,
   y,
+  z,
   xi_degree,
-  dea_eff,
   model_type,
+  dea_scores,
   metric,
   forward_model,
   Bp_list,
   shape,
-  d
+  kn_penalty
 )
 }
 \arguments{
 \item{data}{A \code{matrix} containing the variables in the model.}
 
+\item{x}{Column indexes of input variables in \code{data}.}
+
 \item{y}{Column indexes of output variables in \code{data}.}
+
+\item{z}{Column indexes of contextual variables in \code{data}.}
 
 \item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
-\item{dea_eff}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
+\item{model_type}{A \code{character} string specifying the nature of the production frontier.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
+\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
@@ -36,7 +42,7 @@ aces_pruning(
 
 \item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
-\item{d}{An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.}
+\item{kn_penalty}{An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.}
 }
 \value{
 A \code{list} containing a portfolio of Adaptive Constrained Enveloping Splines sub-models.

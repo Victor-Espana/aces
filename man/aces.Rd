@@ -2,27 +2,24 @@
 % Please edit documentation in R/ACES.R
 \name{aces}
 \alias{aces}
-\title{Fit an Adaptive Constrained Enveloping Splines (ACES) Model}
+\title{Fit an Adaptive Constrained Enveloping Splines (ACES) model}
 \usage{
 aces(
   data,
   x,
   y,
-  y_type = "ind",
-  model_type = "env",
+  z = NULL,
+  quick_aces = TRUE,
   error_type = "add",
-  RF = list(apply = FALSE, sample = nrow(data), models = 100, nvars =
-    ceiling(length(x)/3), oob_red = 0.001),
-  mul_BF = list(degree = 1, hd_cost = 0.05),
+  mul_BF = list(max_degree = 1, compl_cost = 0.05),
   metric = "mse",
-  shape = list(mono = TRUE, conc = TRUE, ptto = FALSE),
+  shape = list(mono = TRUE, conc = TRUE, ptto = FALSE, ),
   nterms = 50,
   err_red = 0.01,
   kn_grid = -1,
   minspan = -1,
   endspan = -1,
-  kn_penalty = 2,
-  smoothing = list(wc = seq(1, 2, length.out = 5), wq = seq(8/7, 1.5, length.out = 5))
+  kn_penalty = 2
 )
 }
 \arguments{
@@ -32,17 +29,9 @@ aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{y_type}{A \code{character} string specifying the nature of the production frontier to estimate. Options are:
-\itemize{
-  \item{\code{"ind"}}: Predict one output at a time, using the rest of the outputs as additional inputs (netputs). Netputs are treated as inputs for prediction and as outputs for efficiency estimation.
-  \item{\code{"all"}}: Predict all the outputs simultaneously with the original set of inputs.
-}}
+\item{z}{Column indexes of contextual variables in \code{data}.}
 
-\item{model_type}{A \code{character} string specifying the nature of the production frontier to estimate. Options are:
-\itemize{
-  \item{\code{"env"}}: Fit an enveloping production frontier.
-  \item{\code{"sto"}}: Fit a stochastic production frontier.
-}}
+\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{error_type}{A \code{character} string specifying the error structure to use. Options are:
 \itemize{
@@ -50,19 +39,10 @@ aces(
   \item{\code{"mul"}}: Multiplicative error structure.
 }}
 
-\item{RF}{A \code{list} indicating if a bootstrap aggregation methodology like Random Forest should be used. Items include:
+\item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 \itemize{
-  \item{\code{apply}}: A \code{logical} indicating if bagging should be applied.
-  \item{\code{sample}}: A \code{numeric} indicating the sample size for bagging.
-  \item{\code{models}}: A \code{numeric} indicating the number of models for bagging.
-  \item{\code{nvars}}: An \code{integer} indicating the number of variables randomly chosen at each split.
-  \item{\code{oob_red}}: A \code{numeric} specifying the minimum improvement ratio in the moving average of the out-of-bag error over a period of 10 compared to the previous period for the addition of a new model to the ensamble. Default is \code{0.001}.
-}}
-
-\item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a multivariate BF. Items include:
-\itemize{
-\item{\code{degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. Basis functions products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-\item{\code{hd_cost}}:  A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+\item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
+\item{\code{compl_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
 }}
 
 \item{metric}{A \code{list} specifying the lack-of-fit criterion to evaluate the model performance. Options are:
@@ -83,11 +63,16 @@ aces(
   \item{\code{ptto}}: A \code{logical} indicating if the estimator should satisfy \code{f(0) = 0}.
 }}
 
-\item{nterms}{A positive \code{integer} specifying the maximum number of terms created before pruning. Default is \code{50}.}
+\item{nterms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
 
-\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.}
+\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs. Default is \code{0.01}.}
 
-\item{kn_grid}{Either a \code{-1} (default) to use the original approach of \insertCite{friedman1991;textual}{aces} based on the observed data, or a a \code{list} with the grid of knots for performing ACES. Each element of the \code{list} contains a vector with the knots of one variable (e.g., the first element of the list contains the knot values of the first variable and so on).}
+\item{kn_grid}{Specifies the grid of knots to be used in the ACES algorithm. Accepts two options:
+\itemize{
+   \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
+   \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
+
+}}
 
 \item{minspan}{A \code{numeric} specifying the minimum number of observations between two adjacent knots. Options are:
 \itemize{
@@ -104,34 +89,28 @@ aces(
 }}
 
 \item{kn_penalty}{A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.}
-
-\item{smoothing}{Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{list} specifying conditions for the smoothing procedure. Items include:
-\itemize{
-\item{\code{wc}}:  A \code{numeric} value used for cubic smoothing \insertCite{friedman1991}{aces}. This parameter is defined as `v / p` and must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
-\item{\code{wq}}: A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
-}}
 }
 \value{
 An \code{aces} object.
 }
 \description{
-This function estimates a production frontier that satisfies classical production theory axioms, such as monotonicity and concavity. Both stochastic and deterministic versions are available. The estimations are based on the adaptation of the Multivariate Adaptive Regression Splines (MARS) technique developed by \insertCite{friedman1991;textual}{aces}. An adaptation of Random Forest \insertCite{breiman2001}{aces} is also included. For details, see \insertCite{espana2024;textual}{aces}
+This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
 }
 \details{
-This function generates a production frontier adhering to classical production theory axioms, such as monotonicity and concavity. Users can choose between enveloping or stochastic versions of the production functions. The algorithm comprises three main procedures:
+This function generates a production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The algorithm comprises three main procedures:
 
-1. A forward selection algorithm that creates a ser of linear basis functions, which may initially overfit the training data.
+Forward Selection Algorithm. This initial step constructs a set of linear BFs to model the production frontier. While it may initially overfit the training data by capturing complex patterns and interactions, it provides a comprehensive foundation for the model.
 
-2. A backward elimination algorithm that remove basis that do not significantly contribute to the model's performance.
+Backward Elimination Algorithm. To enhance model generalization and prevent overfitting, this procedure systematically removes BFs that do not significantly contribute to the model's performance. It retains only those functions that have a meaningful impact on predicting the output.
 
-3. Two smoothing procedures are available: one using cubic functions and another using quintic functions.
+Smoothing Procedures. After refining the set of BFs, the algorithm offers two smoothing options to produce a smooth and continuous production frontier:
 
-If the stochastic version is selected, the frontier's shape is estimated without imposing enveloping constraints on the observations. In the second stage, the expected value of inefficiency is estimated using the residuals obtained from the first stage.
+* Cubic Smoothing: Applies cubic functions to achieve a balance between flexibility and smoothness, suitable for capturing moderate curvature in the data.
+
+* Quintic Smoothing: Utilizes quintic functions for a higher degree of smoothness and continuity, ideal for modelling more complex relationships.
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr
 \insertRef{friedman1991}{aces} \cr \cr
-\insertRef{breiman2001}{aces} \cr \cr
-\insertRef{zhang1994}{aces} \cr \cr
-\insertRef{chen1999}{aces}
+\insertRef{zhang1994}{aces} \cr
 }
