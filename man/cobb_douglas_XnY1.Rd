@@ -12,9 +12,9 @@ cobb_douglas_XnY1(N, nX)
 \item{nX}{An integer representing the number of inputs. Possible values: \code{1}, \code{3}, \code{6}, \code{9}, \code{12} and \code{15}.}
 }
 \value{
-A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yD).
+A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yT).
 }
 \description{
-This function is used to simulate a 1 output ~ nX inputs \code{data.frame} with a Cobb-Douglas Data Generation Process.
+This function simulates a 1 output ~ nX inputs \code{data.frame} with a Cobb-Douglas Data Generation Process.
 }
 \keyword{internal}

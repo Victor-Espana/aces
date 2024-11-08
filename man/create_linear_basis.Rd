@@ -2,9 +2,9 @@
 % Please edit documentation in R/forward_algorithm.R
 \name{create_linear_basis}
 \alias{create_linear_basis}
-\title{Generate a New Pair of Linear Basis Functions}
+\title{Generate a Pair of Linear Basis Functions}
 \usage{
-create_linear_basis(data, var_idx, knot, B)
+create_linear_basis(data, var_idx, knot)
 }
 \arguments{
 \item{data}{A \code{matrix} containing the variables in the model.}
@@ -12,8 +12,6 @@ create_linear_basis(data, var_idx, knot, B)
 \item{var_idx}{Index of the input variable that creates the new pair of basis functions.}
 
 \item{knot}{Knot for creating the new pair of basis functions.}
-
-\item{B}{A \code{matrix} of basis functions on which the new pair of functions is added.}
 }
 \value{
 A \code{list} with the new pair of basis functions.

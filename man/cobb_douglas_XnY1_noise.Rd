@@ -16,10 +16,10 @@ cobb_douglas_XnY1_noise(N, nX, p, heteroskedasticity = FALSE)
 \item{heteroskedasticity}{A \code{"logical"} value indicating if heteroskedasticity should be introduced in the inefficiency term. Only available for 3 inputs (\code{nX = 3}).}
 }
 \value{
-A \code{data.frame} with the simulated data: 1 inputs (x1), 1 output (y) and the theoretical frontier (yD).
+A \code{data.frame} with the simulated data: 1 inputs (x1), 1 output (y) and the theoretical frontier (yT).
 }
 \description{
-This function is used to simulate a 1 output ~ nX input \code{data.frame} with a Cobb-Douglas Data Generation Process including statistical noise as in \insertCite{simar2011;textual}{aces}.
+This function simulates a 1 output ~ nX input \code{data.frame} with a Cobb-Douglas Data Generation Process including statistical noise as in \insertCite{simar2011;textual}{aces}.
 }
 \references{
 \insertRef{simar2011}{aces}
