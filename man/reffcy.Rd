@@ -44,7 +44,7 @@ reffcy(DGP, parms)
 A \code{data.frame} simulated with the selected Data Generation Process.
 }
 \description{
-This function is used to simulate a \code{data.frame} with some given Data Generation Process.
+This function simulates a \code{data.frame} with some given Data Generation Process.
 }
 \details{
 Please refer to the help manuals of the mentioned functions for usage examples and more detailed information on the parameters.

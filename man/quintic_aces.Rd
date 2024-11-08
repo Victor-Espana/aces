@@ -8,13 +8,14 @@ quintic_aces(
   data,
   x,
   y,
-  dea_eff,
+  dea_scores,
   model_type,
   metric,
   shape,
   kn_grid,
   kn_side_loc,
-  d,
+  kn_penalty,
+  xi_degree,
   wq
 )
 }
@@ -25,19 +26,21 @@ quintic_aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{dea_eff}{Indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
+\item{dea_scores}{Indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
 
 \item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
 
 \item{kn_grid}{A \code{data.frame} containing the set of knots from the backward step for smoothing.}
 
 \item{kn_side_loc}{A \code{list} with the side knot locations for each input dimension.}
 
-\item{d}{Generalized Cross Validation (GCV) penalty per knot.}
+\item{kn_penalty}{Generalized Cross Validation (GCV) penalty per knot.}
+
+\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
 \item{wq}{Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.}
 }
