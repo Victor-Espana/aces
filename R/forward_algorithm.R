@@ -116,7 +116,7 @@ add_basis_function <- function (
 
     iters <- nrow(var_imp) - 1
 
-    # weighted mean reduction for in error each variable: exponential decay
+    # weighted mean reduction for error in each variable: exponential decay
     weights <- 0.95 ^ (iters:1)
     weighted_reduction <- colSums(var_imp[1:iters, , drop = FALSE] * weights) / sum(weights)
 

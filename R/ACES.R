@@ -308,6 +308,58 @@ aces_algorithm <- function (
   nZ <- length(z)
   nY <- length(y)
 
+  # variable importance
+  var_imp <- matrix (
+    rep(0, nX + nZ),
+    nrow = 1
+  )
+  colnames(var_imp) <- colnames(data)[1:(nX + nZ)]
+
+  x_drop <- c()
+
+  # remove variables with low correlation
+  if (quick_aces) {
+
+    # Spearman’s Rank Correlation
+    spearman_corr <- cor(data, method = "spearman")[1:length(x), (length(x) + 1):ncol(data)]
+
+    # Kendall’s Tau
+    kendall_corr <- cor(data, method = "kendall")[1:length(x), (length(x) + 1):ncol(data)]
+
+    # compute threshold for removing variables
+    threshold_1 <- min(0.1, quantile(spearman_corr[spearman_corr > 0], probs = 0.2))
+    threshold_2 <- min(0.1, quantile(kendall_corr[kendall_corr > 0], probs = 0.2))
+
+    # iterate over the variables
+    for (j in 1:(nX + nZ)) {
+
+      # check for both Spearman and Kendall correlations
+      if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
+
+        var_imp[1, j] <- - 1
+
+      }
+    }
+
+    relevant_variables <- c()
+
+    for (col in colnames(var_imp)) {
+
+      if (var_imp[1, col] == 0) {
+
+        variables <- unlist(strsplit(col, "_"))
+        relevant_variables <- unique(c(relevant_variables, variables))
+
+      }
+    }
+
+    relevant_variables <- intersect(colnames(data), relevant_variables)
+
+    # inputs removed
+    x_drop <- x_vars[!which(colnames(data) %in% relevant_variables)]
+
+  }
+
   # table of scores
   table_scores <- matrix (
     ncol = nY + 1,
@@ -317,10 +369,12 @@ aces_algorithm <- function (
 
   dea_returns <- ifelse(shape[["conc"]], "variable", "constant")
 
+  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[-x_drop]
+
   table_scores[, 1] <- rad_out (
-    tech_xmat = as.matrix(DMUs[, x_vars]),
+    tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
-    eval_xmat = as.matrix(DMUs[, x_vars]),
+    eval_xmat = as.matrix(DMUs[, x_filtered]),
     eval_ymat = as.matrix(DMUs[, y_vars]),
     convexity = TRUE,
     returns = dea_returns
@@ -329,9 +383,9 @@ aces_algorithm <- function (
   for (out in 1:nY) {
 
     table_scores[, 1 + out] <- rad_out (
-      tech_xmat = as.matrix(DMUs[, x_vars]),
+      tech_xmat = as.matrix(DMUs[, x_filtered]),
       tech_ymat = as.matrix(DMUs[, y_vars[out]]),
-      eval_xmat = as.matrix(DMUs[, x_vars]),
+      eval_xmat = as.matrix(DMUs[, x_filtered]),
       eval_ymat = as.matrix(DMUs[, y_vars[out]]),
       convexity = TRUE,
       returns = dea_returns
@@ -459,38 +513,6 @@ aces_algorithm <- function (
 
   # initial error
   err_min <- err
-
-  # variable importance
-  var_imp <- matrix (
-    rep(0, nX + nZ),
-    nrow = 1
-  )
-  colnames(var_imp) <- colnames(data)[1:(nX + nZ)]
-
-  # remove variables with low correlation
-  if (quick_aces) {
-
-    # Spearman’s Rank Correlation
-    spearman_corr <- cor(data, method = "spearman")[1:length(x), (length(x) + 1):ncol(data)]
-
-    # Kendall’s Tau
-    kendall_corr <- cor(data, method = "kendall")[1:length(x), (length(x) + 1):ncol(data)]
-
-    # compute threshold for removing variables
-    threshold_1 <- min(0.1, quantile(spearman_corr[spearman_corr > 0], probs = 0.2))
-    threshold_2 <- min(0.1, quantile(kendall_corr[kendall_corr > 0], probs = 0.2))
-
-    # iterate over the variables
-    for (j in 1:(nX + nZ)) {
-
-      # check for both Spearman and Kendall correlations
-      if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
-
-        var_imp[1, j] <- - 1
-
-      }
-    }
-  }
 
   while(length(aces_forward[["bf_set"]]) + 2 < nterms) {
 

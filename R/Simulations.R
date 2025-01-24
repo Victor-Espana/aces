@@ -213,6 +213,7 @@ cobb_douglas_XnY1 <- function (
   }
 
   return(data)
+
 }
 
 #' @title 1 output ~ nX input Cobb-Douglas Data Generation Process with Noise
@@ -1001,7 +1002,7 @@ cobb_douglas_XnZnY1 <- function (
   }
 
   # theoretical frontier
-  data[, "yT1"] <- apply(data[, 1:nX], 1, function(row) prod(row ^ exp_x))
+  data[, "yT1"] <- apply(data[, 1:nX, drop = FALSE], 1, function(row) prod(row ^ exp_x))
 
   # inefficient term
   u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
