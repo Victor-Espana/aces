@@ -10,9 +10,6 @@
 #' @param B
 #' A \code{matrix} of linear basis functions derived from input variables.
 #'
-#' @param Z
-#' A \code{matrix} of linear basis functions derived from contextual variables.
-#'
 #' @param y_obs
 #' A \code{matrix} of the observed output data.
 #'
@@ -35,7 +32,6 @@
 estimate_coefficients <- function (
     model_type,
     B,
-    Z,
     y_obs,
     dea_scores,
     it_list,
@@ -45,30 +41,14 @@ estimate_coefficients <- function (
 
   if (model_type == "envelopment") {
 
-    if (is.null(Z)) {
-
-      coefs <- estimate_coefficients_envelopment (
-        B = B,
-        y_obs = y_obs,
-        dea_scores = dea_scores,
-        it_list = it_list,
-        Bp_list = Bp_list,
-        shape = shape
-      )
-
-    } else {
-
-      coefs <- estimate_coefficients_envelopment_contextual (
-        B = B,
-        Z = Z,
-        y_obs = y_obs,
-        dea_scores = dea_scores,
-        it_list = it_list,
-        Bp_list = Bp_list,
-        shape = shape
-      )
-
-    }
+    coefs <- estimate_coefficients_envelopment (
+      B = B,
+      y_obs = y_obs,
+      dea_scores = dea_scores,
+      it_list = it_list,
+      Bp_list = Bp_list,
+      shape = shape
+    )
 
   } else {
 
@@ -157,168 +137,6 @@ estimate_coefficients_envelopment <- function (
     # ==================================================== #
 
     objVal <- c(rep(0, p), deaw[, out])
-
-    # ==================================================== #
-    # A: envelopment + concavity + monotonicity            #
-    # ==================================================== #
-
-    # envelopment: y_hat - e = y
-    EMat <- cbind(B, diag(rep(- 1, N), N))
-
-    # matrix of coefficients
-    Amat <- rbind(EMat)
-
-    # generate non-decreasing monotonicity matrix
-    if (mono) {
-
-      MMat <- monotonocity_matrix (
-        it_list = it_list,
-        Bp_list = Bp_list,
-        N = N
-      )
-
-      # add MMat to Amat
-      Amat <- rbind(Amat, MMat)
-
-    }
-
-    # generate concavity matrix
-    if (conc) {
-
-      CMat <- concavity_matrix(
-        Bp_list = Bp_list,
-        N = N
-      )
-
-      # add CMat to Amat
-      Amat <- rbind(Amat, CMat)
-
-    }
-
-    # ==================================================== #
-    # b: envelopment + concavity + monotonicity            #
-    # ==================================================== #
-
-    bvec <- c(y_ind, rep(0, nrow(Amat) - N))
-
-    # ==================================================== #
-    # directions of inequalities                           #
-    # ==================================================== #
-
-    dirs <- c(rep("==", N), rep(">=", nrow(Amat) - N))
-
-    # ==================================================== #
-    # lower and upper bounds                               #
-    # ==================================================== #
-
-    bnds <- list(lower = list(ind = 1:p, val = rep(- Inf, p)))
-
-    # ==================================================== #
-    # solution of the optimization problem                 #
-    # ==================================================== #
-
-    sols <- Rglpk_solve_LP (
-      obj = objVal,
-      mat = Amat,
-      dir = dirs,
-      rhs = bvec,
-      bounds = bnds
-    )
-
-    if (sols[["status"]] == 0) {
-
-      coefs[, out] <- sols$solution[1:p]
-
-    } else {
-
-      coefs[, out] <- rep(0, p)
-
-    }
-
-  }
-
-  return(coefs)
-
-}
-
-#' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines: Envelopment Version with Contextual Variables
-#'
-#' @description
-#'
-#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model in its envelopment version using contextual variables. It solves a mathematical programming problem to determine the coefficients that best fit the observed data while respecting certain shape constraints such as monotonicity and/or concavity. The model aims to envelop the data points, particularly when estimating production functions or efficiency frontiers.
-#'
-#' @param B
-#' A \code{matrix} of linear basis functions derived from input variables.
-#'
-#' @param Z
-#' A \code{matrix} of linear basis functions derived from contextual variables.
-#'
-#' @param y_obs
-#' A \code{matrix} of the observed output data.
-#'
-#' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param it_list
-#' A \code{list} containing the set of intervals by input.
-#'
-#' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
-#'
-#' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
-#'
-#' @return
-#'
-#' A \code{vector} containing the estimated coefficients for the ACES model.
-
-estimate_coefficients_envelopment_contextual <- function (
-    B,
-    Z,
-    y_obs,
-    dea_scores,
-    it_list,
-    Bp_list,
-    shape
-) {
-
-  # monotonicity
-  mono <- shape[["mono"]]
-
-  # concavity
-  conc <- shape[["conc"]]
-
-  # dea weights
-  deaw <- as.matrix(1 / dea_scores)
-
-  # sample size
-  N <- nrow(B)
-
-  # number of basis functions (inputs)
-  pX <- ncol(B)
-
-  # number of basis function (contextual variables)
-  pZ <- ifelse(is.null(Z), 0, ncol(Z))
-
-  # number of outputs
-  nY <- ncol(y_obs)
-
-  # number of inputs
-  nX <- length(Bp_list)
-
-  # structure of coefficients
-  coefs <- matrix(NA, nrow = pX + pZ, ncol = nY)
-
-  for (out in 1:nY) {
-
-    # select an output
-    y_ind <- y_obs[, out]
-
-    # ==================================================== #
-    # vars: c(coef_0, coef_1, ..., coef_P, e_1, ... , e_n) #
-    # ==================================================== #
-
-    objVal <- c(rep(0, pX + pZ), deaw[, out])
 
     # ==================================================== #
     # A: envelopment + concavity + monotonicity            #

@@ -8,7 +8,6 @@ aces_object(
   data,
   x,
   y,
-  z,
   error_type,
   max_degree,
   compl_cost,
@@ -36,8 +35,6 @@ aces_object(
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
-
-\item{z}{Column indexes of contextual variables in \code{data}.}
 
 \item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 

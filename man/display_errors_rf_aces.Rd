@@ -8,7 +8,6 @@ display_errors_rf_aces(
   data,
   x,
   y,
-  z,
   quick_aces,
   error_type,
   learners,
@@ -30,8 +29,6 @@ display_errors_rf_aces(
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
-
-\item{z}{Column indexes of contextual variables in \code{data}.}
 
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 

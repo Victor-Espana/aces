@@ -8,7 +8,6 @@ aces(
   data,
   x,
   y,
-  z = NULL,
   quick_aces = TRUE,
   error_type = "add",
   mul_BF = list(max_degree = 1, compl_cost = 0.05),
@@ -28,8 +27,6 @@ aces(
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
-
-\item{z}{Column indexes of contextual variables in \code{data}.}
 
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 

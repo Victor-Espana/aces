@@ -4,7 +4,7 @@
 \alias{set_knots_grid}
 \title{Define the Grid of Knots}
 \usage{
-set_knots_grid(data, n_input_1, n_input_2, nZ, kn_grid, quick_aces, dea_scores)
+set_knots_grid(data, n_input_1, n_input_2, kn_grid, quick_aces, dea_scores)
 }
 \arguments{
 \item{data}{A \code{matrix} containing the variables in the model.}
@@ -12,8 +12,6 @@ set_knots_grid(data, n_input_1, n_input_2, nZ, kn_grid, quick_aces, dea_scores)
 \item{n_input_1}{Number of inputs (excluding interactions) and contextual variables.}
 
 \item{n_input_2}{Number of inputs (including interactions) and contextual variables.}
-
-\item{nZ}{Number of contextual variables}
 
 \item{kn_grid}{A \code{list} providing a custom grid of knots for each variable. If not supplied, the function automatically generates a grid of knots for each variable based on the data.}
 

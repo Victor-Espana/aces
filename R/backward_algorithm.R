@@ -13,9 +13,6 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param xi_degree
 #' A \code{matrix} indicating the degree of each input variable.
 #'
@@ -48,7 +45,6 @@ aces_pruning <- function (
     data,
     x,
     y,
-    z,
     xi_degree,
     model_type,
     dea_scores,
@@ -252,38 +248,6 @@ aces_pruning <- function (
           }
         }
 
-        if (!is.null(z)) {
-
-          # =============== #
-          # Update Z matrix #
-          # =============== #
-
-          new_Z <- matrix(1, nrow = nrow(data))
-
-          for (v in z) {
-
-            if (!is.null(Bp_list_aux[[v]][["paired"]])) {
-
-              for (l in 1:length(Bp_list_aux[[v]][["paired"]])) {
-
-                bf_jp <- Bp_list_aux[[v]][["paired"]][[l]][["Bp"]]
-                new_Z <- cbind(new_Z, bf_jp)
-
-              }
-            }
-          }
-
-          if (ncol(new_Z) > 1) {
-
-            new_Z <- new_Z[, 2:ncol(new_Z)]
-
-          } else {
-
-            new_Z <- NULL
-
-          }
-        }
-
         # ===================== #
         # Estimate coefficients #
         # ===================== #
@@ -293,7 +257,6 @@ aces_pruning <- function (
             coefs <- estimate_coefficients (
               model_type = model_type,
               B = new_B,
-              Z = new_Z,
               y_obs = data[, y, drop = F],
               dea_scores = dea_scores,
               it_list = new_it_list,

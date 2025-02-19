@@ -13,9 +13,6 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param xi_degree
 #' A \code{matrix} indicating the degree of each input variable.
 #'
@@ -73,7 +70,6 @@ add_basis_function <- function (
     data,
     x,
     y,
-    z,
     xi_degree,
     compl_cost,
     model_type,
@@ -91,10 +87,7 @@ add_basis_function <- function (
     ) {
 
   # number of inputs
-  nX <- ncol(data) - length(y) - length(z)
-
-  # number of contextual variables
-  nZ <- ncol(data) - length(x) - length(y)
+  nX <- ncol(data) - length(y)
 
   # set of basis functions
   bf_set <- forward_model[["bf_set"]]
@@ -125,7 +118,7 @@ add_basis_function <- function (
 
   }
 
-  for (xi in c(x, z)) {
+  for (xi in x) {
 
     # ================================ #
     # Create the set of eligible knots #
@@ -170,7 +163,7 @@ add_basis_function <- function (
 
       knots <- set_knots (
         data = data,
-        nX = nX + nZ,
+        nX = nX,
         var_idx = xi,
         minspan = span[1],
         endspan = span[2],
@@ -265,38 +258,6 @@ add_basis_function <- function (
         }
       }
 
-      if (!is.null(z)) {
-
-        # =============== #
-        # Update Z matrix #
-        # =============== #
-
-        new_Z <- matrix(1, nrow = nrow(data))
-
-        for (v in z) {
-
-          if (!is.null(Bp_list_aux[[v]][["paired"]])) {
-
-            for (l in 1:length(Bp_list_aux[[v]][["paired"]])) {
-
-              bf_jp <- Bp_list_aux[[v]][["paired"]][[l]][["Bp"]]
-              new_Z <- cbind(new_Z, bf_jp)
-
-            }
-          }
-        }
-
-        if (ncol(new_Z) > 1) {
-
-          new_Z <- new_Z[, 2:ncol(new_Z)]
-
-        } else {
-
-          new_Z <- NULL
-
-        }
-      }
-
       # ===================== #
       # Estimate coefficients #
       # ===================== #
@@ -304,7 +265,6 @@ add_basis_function <- function (
       coefs <- estimate_coefficients (
         model_type = model_type,
         B = new_B,
-        Z = new_Z,
         y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
         it_list = it_list,

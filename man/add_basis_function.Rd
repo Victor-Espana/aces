@@ -8,7 +8,6 @@ add_basis_function(
   data,
   x,
   y,
-  z,
   xi_degree,
   compl_cost,
   model_type,
@@ -31,8 +30,6 @@ add_basis_function(
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
-
-\item{z}{Column indexes of contextual variables in \code{data}.}
 
 \item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 

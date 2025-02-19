@@ -15,9 +15,6 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
@@ -122,7 +119,6 @@ aces <- function (
     data,
     x,
     y,
-    z = NULL,
     quick_aces = TRUE,
     error_type = "add",
     mul_BF = list (
@@ -148,7 +144,6 @@ aces <- function (
     data = data,
     x = x,
     y = y,
-    z = z,
     quick_aces = quick_aces,
     error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
@@ -170,7 +165,6 @@ aces <- function (
     data = data,
     x_vars = x,
     y_vars = y,
-    z_vars = z,
     quick_aces = quick_aces,
     error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
@@ -279,12 +273,11 @@ aces_algorithm <- function (
   # save a copy of the original data
   DMUs <- data
 
-  # data in [x, z, y] format with interaction of variables included
+  # data in [x, y] format with interaction of variables included
   data <- prepare_data (
     data = data,
     x = x_vars,
     y = y_vars,
-    z = z_vars,
     max_degree = max_degree,
     error_type = error_type
     )
@@ -292,28 +285,20 @@ aces_algorithm <- function (
   # samples size
   N <- nrow(data)
 
-  # set "x", "z" and "y" indexes in data
-  x <- 1:(ncol(data) - length(z_vars) - length(y_vars))
+  # set "x" and "y" indexes in data
+  x <- 1:(ncol(data) - length(y_vars))
+  y <- (length(x) + 1):ncol(data)
 
-  if (!is.null(z_vars)) {
-    z <- (length(x) + 1):(ncol(data) - length(y_vars))
-  } else {
-    z <- integer(0)
-  }
-
-  y <- (length(x) + length(z) + 1):ncol(data)
-
-  # set number of inputs, contextual variables and outputs
+  # set number of inputs and outputs
   nX <- length(x)
-  nZ <- length(z)
   nY <- length(y)
 
   # variable importance
   var_imp <- matrix (
-    rep(0, nX + nZ),
+    rep(0, nX),
     nrow = 1
   )
-  colnames(var_imp) <- colnames(data)[1:(nX + nZ)]
+  colnames(var_imp) <- colnames(data)[1:nX]
 
   x_drop <- c()
 
@@ -331,7 +316,7 @@ aces_algorithm <- function (
     threshold_2 <- min(0.1, quantile(kendall_corr[kendall_corr > 0], probs = 0.2))
 
     # iterate over the variables
-    for (j in 1:(nX + nZ)) {
+    for (j in 1:nX) {
 
       # check for both Spearman and Kendall correlations
       if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
@@ -467,17 +452,18 @@ aces_algorithm <- function (
   )
 
   # set of knots to save indexes of data used as knots
-  kn_list <- vector("list", nX + nZ)
+  kn_list <- vector("list", nX)
 
   # set of basis functions by variable
-  Bp_list <- vector("list", nX + nZ)
+  Bp_list <- vector("list", nX)
 
-  for (xi in 1:(nX + nZ)) {
+  for (xi in 1:nX) {
     Bp_list[[xi]] <- list (
       "paired" = NULL,
       "right" = NULL,
       "left" = NULL
       )
+
   }
 
   # set of basis functions (bf_set) and the matrix of basis functions (B)
@@ -492,9 +478,8 @@ aces_algorithm <- function (
   # set the grid of knots
   kn_grid <- set_knots_grid (
     data = data,
-    n_input_1 = length(x_vars) + length(z_vars),
-    n_input_2 = nX + nZ,
-    nZ = nZ,
+    n_input_1 = length(x_vars),
+    n_input_2 = nX,
     kn_grid = kn_grid,
     quick_aces = quick_aces,
     dea_scores = table_scores[, 1]
@@ -505,7 +490,7 @@ aces_algorithm <- function (
     kn_grid = kn_grid,
     minspan = minspan,
     endspan = endspan,
-    n_input = nX + nZ
+    n_input = nX
     )
 
   # list to save technologies created through ACES
@@ -521,7 +506,6 @@ aces_algorithm <- function (
       data = data,
       x = x,
       y = y,
-      z = z,
       xi_degree = xi_degree,
       compl_cost = compl_cost,
       model_type = "envelopment",
@@ -563,7 +547,7 @@ aces_algorithm <- function (
 
       # updated variable importance matrix
       var_imp <- B_bf_knt_err[[6]]
-      var_imp <- rbind(var_imp, rep(0, nX + nZ))
+      var_imp <- rbind(var_imp, rep(0, nX))
 
     } else {
 
@@ -632,7 +616,6 @@ aces_algorithm <- function (
       data = data,
       x = x,
       y = y,
-      z = z,
       xi_degree = xi_degree,
       model_type = "envelopment",
       dea_scores = dea_scores,
@@ -866,7 +849,6 @@ aces_algorithm <- function (
       data = DMUs,
       x = x_vars,
       y = y_vars,
-      z = z_vars,
       error_type = error_type,
       max_degree = max_degree,
       compl_cost = compl_cost,
@@ -905,9 +887,6 @@ aces_algorithm <- function (
 #'
 #' @param y
 #' Column indexes of output variables in \code{data}.
-#'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
 #'
 #' @param error_type
 #' A \code{character} string specifying the error structure when fitting the model.
@@ -974,7 +953,6 @@ aces_object <- function (
     data,
     x,
     y,
-    z,
     error_type,
     max_degree,
     compl_cost,
@@ -1002,10 +980,8 @@ aces_object <- function (
     "df" = data,
     "x" = x,
     "y" = y,
-    "z" = z,
     "xnames" = colnames(data)[x],
     "ynames" = colnames(data)[y],
-    "znames" = colnames(data)[z],
     "rownames" = rownames(data)
   )
 
@@ -1053,9 +1029,6 @@ aces_object <- function (
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param max_degree
 #'  Maximum degree of interaction between variables. It can be a \code{list} of input indexes for interactions or a \code{numeric} value determining the maximum degree of interaction.
 #'
@@ -1063,13 +1036,12 @@ aces_object <- function (
 #' A \code{character} string specifying the error structure when fitting the model.
 #'
 #' @return
-#' A \code{matrix} in a [x, z, y] format with variable interactions and / or transformations included.
+#' A \code{matrix} in a [x, y] format with variable interactions and / or transformations included.
 
 prepare_data <- function (
     data,
     x,
     y,
-    z,
     max_degree,
     error_type
     ) {
@@ -1126,7 +1098,7 @@ prepare_data <- function (
   }
 
   # 3. data correctly sorted
-  data <- data[, c(new_x, z, y)]
+  data <- data[, c(new_x, y)]
 
   return(as.matrix(data))
 
@@ -1371,9 +1343,6 @@ compute_span <- function (
 #' @param n_input_2
 #' Number of inputs (including interactions) and contextual variables.
 #'
-#' @param nZ
-#' Number of contextual variables
-#'
 #' @param kn_grid
 #' A \code{list} providing a custom grid of knots for each variable. If not supplied, the function automatically generates a grid of knots for each variable based on the data.
 #'
@@ -1390,7 +1359,6 @@ set_knots_grid <- function (
     data,
     n_input_1,
     n_input_2,
-    nZ,
     kn_grid,
     quick_aces,
     dea_scores
@@ -1415,7 +1383,7 @@ set_knots_grid <- function (
       for (v in seq_len(new_vars)) {
 
         # variable index
-        var_idx <- n_input_2 - nZ - new_vars + v
+        var_idx <- n_input_2 - new_vars + v
 
         # variable name
         var_name <- colnames(data)[var_idx]
@@ -1444,17 +1412,7 @@ set_knots_grid <- function (
       eff_dmus <- data[abs(dea_scores - 1) < 0.001, ]
 
       # grid of knots: inputs and interactions
-      kn_grid <- lapply(1:(n_input_2 - nZ), function(i) eff_dmus[, i])
-
-      if (nZ > 0) {
-
-        # grid of knots: contextual variables
-        kn_grid_2 <- lapply((length(kn_grid) + 1):n_input_2, function(i) data[, i])
-
-        # grid of knots
-        kn_grid <- append(kn_grid, kn_grid_2)
-
-      }
+      kn_grid <- lapply(1:n_input_2, function(i) eff_dmus[, i])
 
       for (j in 1:length(kn_grid)) {
 

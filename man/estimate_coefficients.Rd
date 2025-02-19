@@ -7,7 +7,6 @@
 estimate_coefficients(
   model_type,
   B,
-  Z,
   y_obs,
   dea_scores,
   it_list,
@@ -19,8 +18,6 @@ estimate_coefficients(
 \item{model_type}{A \code{character} string specifying the nature of the production frontier.}
 
 \item{B}{A \code{matrix} of linear basis functions derived from input variables.}
-
-\item{Z}{A \code{matrix} of linear basis functions derived from contextual variables.}
 
 \item{y_obs}{A \code{matrix} of the observed output data.}
 

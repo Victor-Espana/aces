@@ -12,9 +12,6 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
@@ -60,7 +57,6 @@ display_errors_aces <- function (
     data,
     x,
     y,
-    z,
     quick_aces,
     error_type,
     max_degree,
@@ -89,21 +85,14 @@ display_errors_aces <- function (
     message("Index values from y are not in data.")
   })
 
-  # z in data
-  if (!is.null(z)) {
-    tryCatch(data[, z], error = function(e) {
-      message("Index values from z are not in data.")
-    })
-  }
-
   # variables classes are valid
   if (!all(sapply(data[, c(x, y)], is.numeric))) {
     stop("data variables must be numeric. Please, check sapply(data, is.numeric))")
   }
 
   # NA values
-  if (any(is.na(data[, c(x, y, z)]))) {
-    data <- na.omit(data[, c(x, y, z)])
+  if (any(is.na(data[, c(x, y)]))) {
+    data <- na.omit(data[, c(x, y)])
     warning("Rows with NA values have been omitted .\n")
   }
 
@@ -157,8 +146,8 @@ display_errors_aces <- function (
   }
 
   # the kn_grid must have the same length that x
-  if (is.list(kn_grid) && length(kn_grid) != length(x) + length(z)) {
-    stop ("If kn_grid is entered, the length must be equal to length(x + z).")
+  if (is.list(kn_grid) && length(kn_grid) != length(x)) {
+    stop ("If kn_grid is entered, the length must be equal to length(x).")
   }
 
   # kn_penalty must be a semi-positive number
@@ -276,9 +265,6 @@ display_errors_scores <- function (
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
@@ -327,7 +313,6 @@ display_errors_rf_aces <- function (
     data,
     x,
     y,
-    z,
     quick_aces,
     error_type,
     learners,
@@ -358,21 +343,14 @@ display_errors_rf_aces <- function (
     message("Index values from y are not in data.")
   })
 
-  # z in data
-  if (!is.null(z)) {
-    tryCatch(data[, z], error = function(e) {
-      message("Index values from z are not in data.")
-    })
-  }
-
   # variables classes are valid
   if (!all(sapply(data[, c(x, y)], is.numeric))) {
     stop("data variables must be numeric. Please, check sapply(data, is.numeric))")
   }
 
   # NA values
-  if (any(is.na(data[, c(x, y, z)]))) {
-    data <- na.omit(data[, c(x, y, z)])
+  if (any(is.na(data[, c(x, y)]))) {
+    data <- na.omit(data[, c(x, y)])
     warning("Rows with NA values have been omitted .\n")
   }
 
@@ -441,8 +419,8 @@ display_errors_rf_aces <- function (
   }
 
   # the kn_grid must have the same length that x
-  if (is.list(kn_grid) && length(kn_grid) != length(x) + length(z)) {
-    stop ("If kn_grid is entered, the length must be equal to length(x + z).")
+  if (is.list(kn_grid) && length(kn_grid) != length(x)) {
+    stop ("If kn_grid is entered, the length must be equal to length(x).")
   }
 }
 
