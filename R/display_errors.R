@@ -24,7 +24,7 @@
 #' @param max_degree
 #' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
 #'
-#' @param compl_cost
+#' @param inter_cost
 #' A \code{numeric} value specifying the minimum percentage of improvement over the best 1-degree BF to incorporate a higher degree BF.
 #'
 #' @param metric
@@ -60,7 +60,7 @@ display_errors_aces <- function (
     quick_aces,
     error_type,
     max_degree,
-    compl_cost,
+    inter_cost,
     metric,
     nterms,
     err_red,
@@ -125,9 +125,9 @@ display_errors_aces <- function (
     stop("err_red must be between 0 and 1.")
   }
 
-  # compl_cost must be between 0 and 1
-  if (!(compl_cost >= 0 && compl_cost <= 1)) {
-    stop("compl_cost must be between 0 and 1.")
+  # inter_cost must be between 0 and 1
+  if (!(inter_cost >= 0 && inter_cost <= 1)) {
+    stop("inter_cost must be between 0 and 1.")
   }
 
   # minspan must -2, -1 or a positive integer
@@ -283,7 +283,7 @@ display_errors_scores <- function (
 #' @param max_degree
 #' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
 #'
-#' @param compl_cost
+#' @param inter_cost
 #' A \code{numeric} value specifying the minimum percentage of improvement over the best 1-max_degree basis function to incorporate a higher max_degree basis function.
 #'
 #' @param metric
@@ -319,7 +319,7 @@ display_errors_rf_aces <- function (
     nvars,
     sample_size,
     max_degree,
-    compl_cost,
+    inter_cost,
     metric,
     nterms,
     err_red,
@@ -368,9 +368,9 @@ display_errors_rf_aces <- function (
     stop("learners must be greater than 0.")
   }
 
-  # nvars must be lower than the number of inputs
-  if (nvars > length(x)) {
-    stop("nvars must be lower than the number of inputs.")
+  # nvars must be greater than 1 and lower than the number of inputs
+  if (nvars > length(x) || nvars < 1) {
+    stop("nvars must be greater than 1 and lower than the number of inputs.")
   }
 
   # sample size must be lower training size
@@ -398,9 +398,9 @@ display_errors_rf_aces <- function (
     stop("err_red must be between 0 and 1.")
   }
 
-  # compl_cost must be between 0 and 1
-  if (!(compl_cost >= 0 && compl_cost <= 1)) {
-    stop("compl_cost must be between 0 and 1.")
+  # inter_cost must be between 0 and 1
+  if (!(inter_cost >= 0 && inter_cost <= 1)) {
+    stop("inter_cost must be between 0 and 1.")
   }
 
   # minspan must -2, -1 or a positive integer

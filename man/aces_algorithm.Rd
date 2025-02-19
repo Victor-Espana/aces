@@ -12,7 +12,7 @@ aces_algorithm(
   quick_aces,
   error_type,
   max_degree,
-  compl_cost,
+  inter_cost,
   metric,
   shape,
   nterms,
@@ -38,7 +38,7 @@ aces_algorithm(
 
 \item{max_degree}{Maximum degree of interaction between variables.}
 
-\item{compl_cost}{Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.}
+\item{inter_cost}{Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.}
 

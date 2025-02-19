@@ -29,7 +29,7 @@
 #' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 #' \itemize{
 #' \item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-#' \item{\code{compl_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+#' \item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
 #' }
 #'
 #' @param metric
@@ -87,17 +87,7 @@
 #'
 #' @details
 #'
-#' This function generates a production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The algorithm comprises three main procedures:
-#'
-#' Forward Selection Algorithm. This initial step constructs a set of linear BFs to model the production frontier. While it may initially overfit the training data by capturing complex patterns and interactions, it provides a comprehensive foundation for the model.
-#'
-#' Backward Elimination Algorithm. To enhance model generalization and prevent overfitting, this procedure systematically removes BFs that do not significantly contribute to the model's performance. It retains only those functions that have a meaningful impact on predicting the output.
-#'
-#' Smoothing Procedures. After refining the set of BFs, the algorithm offers two smoothing options to produce a smooth and continuous production frontier:
-#'
-#' * Cubic Smoothing: Applies cubic functions to achieve a balance between flexibility and smoothness, suitable for capturing moderate curvature in the data.
-#'
-#' * Quintic Smoothing: Utilizes quintic functions for a higher degree of smoothness and continuity, ideal for modelling more complex relationships.
+#' See ...
 #'
 #' @references
 #'
@@ -123,7 +113,7 @@ aces <- function (
     error_type = "add",
     mul_BF = list (
       "max_degree" = 1,
-      "compl_cost" = 0.05
+      "inter_cost" = 0.05
     ),
     metric = "mse",
     shape = list (
@@ -147,7 +137,7 @@ aces <- function (
     quick_aces = quick_aces,
     error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
-    compl_cost = mul_BF[["compl_cost"]],
+    inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
     nterms = nterms,
     err_red = err_red,
@@ -168,7 +158,7 @@ aces <- function (
     quick_aces = quick_aces,
     error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
-    compl_cost = mul_BF[["compl_cost"]],
+    inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
     shape = list (
       "mono" = shape[["mono"]],
@@ -216,7 +206,7 @@ aces <- function (
 #' @param max_degree
 #' Maximum degree of interaction between variables.
 #'
-#' @param compl_cost
+#' @param inter_cost
 #' Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.
 #'
 #' @param metric
@@ -259,7 +249,7 @@ aces_algorithm <- function (
     quick_aces,
     error_type,
     max_degree,
-    compl_cost,
+    inter_cost,
     metric,
     shape,
     nterms,
@@ -306,14 +296,19 @@ aces_algorithm <- function (
   if (quick_aces) {
 
     # Spearman’s Rank Correlation
-    spearman_corr <- cor(data, method = "spearman")[1:length(x), (length(x) + 1):ncol(data)]
+    spearman_corr <- cor(data, method = "spearman")
+    spearman_corr <- spearman_corr[1:length(x), (length(x) + 1):ncol(data)]
 
     # Kendall’s Tau
-    kendall_corr <- cor(data, method = "kendall")[1:length(x), (length(x) + 1):ncol(data)]
+    kendall_corr <- cor(data, method = "kendall")
+    kendall_corr <- kendall_corr[1:length(x), (length(x) + 1):ncol(data)]
 
     # compute threshold for removing variables
-    threshold_1 <- min(0.1, quantile(spearman_corr[spearman_corr > 0], probs = 0.2))
-    threshold_2 <- min(0.1, quantile(kendall_corr[kendall_corr > 0], probs = 0.2))
+    t1_quantile <- quantile(spearman_corr[spearman_corr > 0], probs = 0.2)
+    threshold_1 <- min(0.1, t1_quantile)
+
+    t2_quantile <- quantile(kendall_corr[kendall_corr > 0], probs = 0.2)
+    threshold_2 <- min (0.1, t2_quantile)
 
     # iterate over the variables
     for (j in 1:nX) {
@@ -354,7 +349,7 @@ aces_algorithm <- function (
 
   dea_returns <- ifelse(shape[["conc"]], "variable", "constant")
 
-  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[-x_drop]
+  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
 
   table_scores[, 1] <- rad_out (
     tech_xmat = as.matrix(DMUs[, x_filtered]),
@@ -462,8 +457,7 @@ aces_algorithm <- function (
       "paired" = NULL,
       "right" = NULL,
       "left" = NULL
-      )
-
+    )
   }
 
   # set of basis functions (bf_set) and the matrix of basis functions (B)
@@ -507,7 +501,7 @@ aces_algorithm <- function (
       x = x,
       y = y,
       xi_degree = xi_degree,
-      compl_cost = compl_cost,
+      inter_cost = inter_cost,
       model_type = "envelopment",
       dea_scores = dea_scores,
       metric = metric,
@@ -851,7 +845,7 @@ aces_algorithm <- function (
       y = y_vars,
       error_type = error_type,
       max_degree = max_degree,
-      compl_cost = compl_cost,
+      inter_cost = inter_cost,
       xi_degree = xi_degree,
       metric = metric,
       shape = shape,
@@ -894,7 +888,7 @@ aces_algorithm <- function (
 #' @param max_degree
 #' Maximum degree of interaction between variables.
 #'
-#' @param compl_cost
+#' @param inter_cost
 #' Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.
 #'
 #' @param xi_degree
@@ -955,7 +949,7 @@ aces_object <- function (
     y,
     error_type,
     max_degree,
-    compl_cost,
+    inter_cost,
     xi_degree,
     metric,
     shape,
@@ -988,7 +982,7 @@ aces_object <- function (
   object[["control"]] <- list (
     "error_type" = error_type,
     "max_degree" = max_degree,
-    "compl_cost" = compl_cost,
+    "inter_cost" = inter_cost,
     "xi_degree" = xi_degree,
     "metric" = metric,
     "shape" = shape,

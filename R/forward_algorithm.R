@@ -16,7 +16,7 @@
 #' @param xi_degree
 #' A \code{matrix} indicating the degree of each input variable.
 #'
-#' @param compl_cost
+#' @param inter_cost
 #' A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to justify adding a higher-degree basis function.
 #'
 #' @param model_type
@@ -71,7 +71,7 @@ add_basis_function <- function (
     x,
     y,
     xi_degree,
-    compl_cost,
+    inter_cost,
     model_type,
     dea_scores,
     metric,
@@ -311,7 +311,7 @@ add_basis_function <- function (
 
         } else if (xi_degree[2, xi] > 1) {
 
-          required_reduction <- err_min[1] * (1 - compl_cost)
+          required_reduction <- err_min[1] * (1 - inter_cost)
 
           add <- err[1] < required_reduction
 

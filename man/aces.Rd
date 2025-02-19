@@ -10,7 +10,7 @@ aces(
   y,
   quick_aces = TRUE,
   error_type = "add",
-  mul_BF = list(max_degree = 1, compl_cost = 0.05),
+  mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
   shape = list(mono = TRUE, conc = TRUE, ptto = FALSE, ),
   nterms = 50,
@@ -39,7 +39,7 @@ aces(
 \item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 \itemize{
 \item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-\item{\code{compl_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+\item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
 }}
 
 \item{metric}{A \code{list} specifying the lack-of-fit criterion to evaluate the model performance. Options are:
@@ -94,17 +94,7 @@ An \code{aces} object.
 This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
 }
 \details{
-This function generates a production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The algorithm comprises three main procedures:
-
-Forward Selection Algorithm. This initial step constructs a set of linear BFs to model the production frontier. While it may initially overfit the training data by capturing complex patterns and interactions, it provides a comprehensive foundation for the model.
-
-Backward Elimination Algorithm. To enhance model generalization and prevent overfitting, this procedure systematically removes BFs that do not significantly contribute to the model's performance. It retains only those functions that have a meaningful impact on predicting the output.
-
-Smoothing Procedures. After refining the set of BFs, the algorithm offers two smoothing options to produce a smooth and continuous production frontier:
-
-* Cubic Smoothing: Applies cubic functions to achieve a balance between flexibility and smoothness, suitable for capturing moderate curvature in the data.
-
-* Quintic Smoothing: Utilizes quintic functions for a higher degree of smoothness and continuity, ideal for modelling more complex relationships.
+See ...
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr

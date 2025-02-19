@@ -8,11 +8,10 @@ rf_aces_algorithm(
   data,
   x_vars,
   y_vars,
-  z_vars,
   quick_aces,
   error_type,
   max_degree,
-  compl_cost,
+  inter_cost,
   metric,
   shape,
   nterms,
@@ -30,15 +29,13 @@ rf_aces_algorithm(
 
 \item{y_vars}{Column indexes of output variables in \code{data}.}
 
-\item{z_vars}{Column indexes of contextual variables in \code{data}.}
-
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 
 \item{max_degree}{Maximum degree of interaction between variables.}
 
-\item{compl_cost}{Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.}
+\item{inter_cost}{Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.}
 

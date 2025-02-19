@@ -10,7 +10,7 @@ aces_object(
   y,
   error_type,
   max_degree,
-  compl_cost,
+  inter_cost,
   xi_degree,
   metric,
   shape,
@@ -40,7 +40,7 @@ aces_object(
 
 \item{max_degree}{Maximum degree of interaction between variables.}
 
-\item{compl_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
+\item{inter_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
 
 \item{xi_degree}{A \code{matrix} specifying the degree of each variable.}
 

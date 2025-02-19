@@ -13,9 +13,6 @@
 #' @param x
 #' Column indexes of input variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param method
 #' Model for prediction:
 #' \itemize{
@@ -35,7 +32,6 @@ predict.aces <- function (
     object,
     newdata,
     x,
-    z = NULL,
     method = "aces"
     ) {
 
@@ -61,7 +57,6 @@ predict.aces <- function (
     data = newdata,
     x = x,
     y = NULL,
-    z = z,
     max_degree = object[["control"]][["max_degree"]],
     error_type = error_type
   )
@@ -381,9 +376,6 @@ predict.rf_aces <- function (
 #' @param x
 #' Column indexes of input variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param method
 #' Model for prediction:
 #' \itemize{
@@ -411,7 +403,6 @@ predict.s_aces <- function (
     object,
     newdata,
     x,
-    z = NULL,
     method = "aces",
     stochastic_pred = FALSE
 ) {
@@ -445,7 +436,6 @@ predict.s_aces <- function (
     data = newdata,
     x = x,
     y = NULL,
-    z = z,
     max_degree = object[["control"]][["max_degree"]],
     error_type = error_type
   )

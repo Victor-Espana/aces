@@ -15,9 +15,6 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
@@ -32,7 +29,7 @@
 #' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 #' \itemize{
 #' \item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-#' \item{\code{compl_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+#' \item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
 #' }
 #'
 #' @param metric
@@ -96,18 +93,11 @@
 #'
 #' @details
 #'
-#' This function generates a production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The algorithm comprises two main procedures:
-#'
-#' Forward Selection Algorithm. This initial step constructs a set of linear basis functions to model the production frontier based on the Random Forest foundations.
-#'
-#' Smoothing Procedures. After the forward step, the algorithm offers two smoothing options to produce a smooth and continuous production frontier:
-#'
-#' * Cubic Smoothing: Applies cubic functions to achieve a balance between flexibility and smoothness, suitable for capturing moderate curvature in the data.
-#'
-#' * Quintic Smoothing: Utilizes quintic functions for a higher degree of smoothness and continuity, ideal for modelling more complex relationships.
+#' See ...
 #'
 #' @references
 #'
+#' \insertRef{espana2024rf}{aces} \cr \cr
 #' \insertRef{espana2024}{aces} \cr \cr
 #' \insertRef{friedman1991}{aces} \cr \cr
 #' \insertRef{breiman2001}{aces} \cr \cr
@@ -119,7 +109,7 @@
 #'
 #' @return
 #'
-#' An \code{aces} object.
+#' An \code{rf_aces} object.
 #'
 #' @export
 
@@ -127,13 +117,12 @@ rf_aces <- function (
     data,
     x,
     y,
-    z = NULL,
     quick_aces = TRUE,
     model_type = "env",
     error_type = "add",
     mul_BF = list (
       "max_degree" = 1,
-      "compl_cost" = 0.05
+      "inter_cost" = 0.05
     ),
     metric = "mse",
     shape = list (
@@ -156,14 +145,13 @@ rf_aces <- function (
     data = data,
     x = x,
     y = y,
-    z = z,
     quick_aces = quick_aces,
     error_type = error_type,
     learners = learners,
     nvars = nvars,
     sample_size = sample_size,
     max_degree = mul_BF[["max_degree"]],
-    compl_cost = mul_BF[["compl_cost"]],
+    inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
     nterms = nterms,
     err_red = err_red,
@@ -217,11 +205,10 @@ rf_aces <- function (
       data = data_bag,
       x_vars = x,
       y_vars = y,
-      z_vars = z,
       quick_aces = quick_aces,
       error_type = error_type,
       max_degree = mul_BF[["max_degree"]],
-      compl_cost = mul_BF[["compl_cost"]],
+      inter_cost = mul_BF[["inter_cost"]],
       metric = metric,
       shape = list (
         "mono" = shape[["mono"]],
@@ -409,9 +396,6 @@ rf_aces <- function (
 #' @param y_vars
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z_vars
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
@@ -421,7 +405,7 @@ rf_aces <- function (
 #' @param max_degree
 #' Maximum degree of interaction between variables.
 #'
-#' @param compl_cost
+#' @param inter_cost
 #' Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.
 #'
 #' @param metric
@@ -460,11 +444,10 @@ rf_aces_algorithm <- function (
     data,
     x_vars,
     y_vars,
-    z_vars,
     quick_aces,
     error_type,
     max_degree,
-    compl_cost,
+    inter_cost,
     metric,
     shape,
     nterms,
@@ -483,7 +466,6 @@ rf_aces_algorithm <- function (
     data = data,
     x = x_vars,
     y = y_vars,
-    z = z_vars,
     max_degree = max_degree,
     error_type = error_type
   )
@@ -492,20 +474,69 @@ rf_aces_algorithm <- function (
   N <- nrow(data)
 
   # set "x", "z" and "y" indexes in data
-  x <- 1:(ncol(data) - length(z_vars) - length(y_vars))
+  x <- 1:(ncol(data) - length(y_vars))
+  y <- (length(x) + 1):ncol(data)
 
-  if (!is.null(z_vars)) {
-    z <- (length(x) + 1):(ncol(data) - length(y_vars))
-  } else {
-    z <- integer(0)
-  }
-
-  y <- (length(x) + length(z) + 1):ncol(data)
-
-  # set number of inputs, contextual variables and outputs
+  # set number of inputs and outputs
   nX <- length(x)
-  nZ <- length(z)
   nY <- length(y)
+
+  # variable importance
+  var_imp <- matrix (
+    rep(0, nX),
+    nrow = 1
+  )
+  colnames(var_imp) <- colnames(data)[1:nX]
+
+  x_drop <- c()
+
+  # remove variables with low correlation
+  if (quick_aces) {
+
+    # Spearman’s Rank Correlation
+    spearman_corr <- cor(data, method = "spearman")
+    spearman_corr <- spearman_corr[1:length(x), (length(x) + 1):ncol(data)]
+
+    # Kendall’s Tau
+    kendall_corr <- cor(data, method = "kendall")
+    kendall_corr <- kendall_corr[1:length(x), (length(x) + 1):ncol(data)]
+
+    # compute threshold for removing variables
+    t1_quantile <- quantile(spearman_corr[spearman_corr > 0], probs = 0.2)
+    threshold_1 <- min(0.1, t1_quantile)
+
+    t2_quantile <- quantile(kendall_corr[kendall_corr > 0], probs = 0.2)
+    threshold_2 <- min (0.1, t2_quantile)
+
+    # iterate over the variables
+    for (j in 1:nX) {
+
+      # check for both Spearman and Kendall correlations
+      if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
+
+        var_imp[1, j] <- - 1
+
+      }
+    }
+
+    relevant_variables <- c()
+
+    for (col in colnames(var_imp)) {
+
+      if (var_imp[1, col] == 0) {
+
+        variables <- unlist(strsplit(col, "_"))
+        relevant_variables <- unique(c(relevant_variables, variables))
+
+      }
+    }
+
+    relevant_variables <- intersect(colnames(data), relevant_variables)
+
+    # inputs removed
+    x_drop <- x_vars[!which(colnames(data) %in% relevant_variables)]
+
+  }
 
   # table of scores
   table_scores <- matrix (
@@ -612,12 +643,12 @@ rf_aces_algorithm <- function (
   )
 
   # set of knots to save indexes of data used as knots
-  kn_list <- vector("list", nX + nZ)
+  kn_list <- vector("list", nX)
 
   # set of basis functions by variable
-  Bp_list <- vector("list", nX + nZ)
+  Bp_list <- vector("list", nX)
 
-  for (xi in 1:(nX + nZ)) {
+  for (xi in 1:nX) {
     Bp_list[[xi]] <- list (
       "paired" = NULL,
       "right" = NULL,
@@ -626,7 +657,7 @@ rf_aces_algorithm <- function (
   }
 
   # set of basis functions (bf_set) and the matrix of basis functions (B)
-  aces_forward <- list (
+  rf_aces <- list (
     "bf_set" = list(bf),
     "B" = matrix(rep(1, N))
   )
@@ -637,9 +668,8 @@ rf_aces_algorithm <- function (
   # set the grid of knots
   kn_grid <- set_knots_grid (
     data = data,
-    n_input_1 = length(x_vars) + length(z_vars),
-    n_input_2 = nX + nZ,
-    nZ = nZ,
+    n_input_1 = length(x_vars),
+    n_input_2 = nX,
     kn_grid = kn_grid,
     quick_aces = quick_aces,
     dea_scores = table_scores[, 1]
@@ -650,54 +680,18 @@ rf_aces_algorithm <- function (
     kn_grid = kn_grid,
     minspan = minspan,
     endspan = endspan,
-    n_input = nX + nZ
+    n_input = nX
   )
 
-  # list to save technologies created through ACES
+  # list to save technologies created through RF-ACES
   technology <- list()
 
   # initial error
   err_min <- err
 
-  # variable importance
-  var_imp <- matrix (
-    rep(0, nX + nZ),
-    nrow = 1
-  )
-  colnames(var_imp) <- colnames(data)[1:(nX + nZ)]
-
-  # remove variables with low correlation
-  if (quick_aces) {
-
-    # Spearman’s Rank Correlation
-    spearman_corr <- cor(data, method = "spearman")[1:length(x), (length(x) + 1):ncol(data)]
-
-    # Kendall’s Tau
-    kendall_corr <- cor(data, method = "kendall")[1:length(x), (length(x) + 1):ncol(data)]
-
-    # compute threshold for removing variables
-    threshold_1 <- min(0.1, quantile(spearman_corr[spearman_corr > 0], probs = 0.2))
-    threshold_2 <- min(0.1, quantile(kendall_corr[kendall_corr > 0], probs = 0.2))
-
-    # iterate over the variables
-    for (j in 1:(nX + nZ)) {
-
-      # check for both Spearman and Kendall correlations
-      if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
-
-        var_imp[1, j] <- - 1
-
-      }
-    }
-  }
-
-  browser()
-
   while(length(rf_aces[["bf_set"]]) + 2 < nterms) {
 
-    # negative GRSq
     last_bf <- rf_aces[["bf_set"]][[length(rf_aces[["bf_set"]])]]
-    if (last_bf[["GRSq"]] < 0) break
 
     while (last_bf[["id"]] == 1) {
 
@@ -710,18 +704,19 @@ rf_aces_algorithm <- function (
         x = random_x,
         y = y,
         xi_degree = xi_degree,
+        inter_cost = inter_cost,
+        model_type = "envelopment",
         dea_scores = dea_scores,
-        model_type = model_type,
         metric = metric,
         forward_model = rf_aces,
         Bp_list = Bp_list,
         shape = shape,
         kn_list = kn_list,
         kn_grid = kn_grid,
-        L = L,
-        Le = Le,
+        span = c(L_Le[[1]], L_Le[[2]]),
         err_min = err,
-        hd_cost = hd_cost
+        var_imp = var_imp,
+        quick_aces = quick_aces
       )
 
       if (is.list(B_bf_knt_err)) break
@@ -739,18 +734,19 @@ rf_aces_algorithm <- function (
         x = random_x,
         y = y,
         xi_degree = xi_degree,
+        inter_cost = inter_cost,
+        model_type = "envelopment",
         dea_scores = dea_scores,
-        model_type = model_type,
         metric = metric,
         forward_model = rf_aces,
         Bp_list = Bp_list,
         shape = shape,
         kn_list = kn_list,
         kn_grid = kn_grid,
-        L = L,
-        Le = Le,
+        span = c(L_Le[[1]], L_Le[[2]]),
         err_min = err,
-        hd_cost = hd_cost
+        var_imp = var_imp,
+        quick_aces = quick_aces
       )
 
     }
@@ -831,11 +827,12 @@ rf_aces_algorithm <- function (
 
   # generate technology
   technology[["rf_aces"]] <- generate_technology (
-    tech_xmat = dmus[, inps],
-    tech_ymat1 = dmus[, outs],
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces[["Bmatx"]] %*% rf_aces[["coefs"]],
     error_type = error_type,
-    table_scores = table_scores
+    table_scores = table_scores,
+    ptto = shape[["ptto"]]
   )
 
   # ======================= #
@@ -884,11 +881,12 @@ rf_aces_algorithm <- function (
 
   # generate technology
   technology[["rf_aces_cubic"]] <- generate_technology (
-    tech_xmat = dmus[, inps],
-    tech_ymat1 = dmus[, outs],
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_cubic[["Bmatx"]] %*% rf_aces_cubic[["coefs"]],
     error_type = error_type,
-    table_scores = table_scores
+    table_scores = table_scores,
+    ptto = shape[["ptto"]]
   )
 
   rf_aces_quintic <- quintic_aces (
@@ -907,11 +905,12 @@ rf_aces_algorithm <- function (
 
   # generate technology
   technology[["rf_aces_quintic"]] <- generate_technology (
-    tech_xmat = dmus[, inps],
-    tech_ymat1 = dmus[, outs],
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_quintic[["Bmatx"]] %*% rf_aces_quintic[["coefs"]],
     error_type = error_type,
-    table_scores = table_scores
+    table_scores = table_scores,
+    ptto = shape[["ptto"]]
   )
 
   # =========== #
@@ -920,8 +919,8 @@ rf_aces_algorithm <- function (
 
   RF_ACES <- aces_object (
     data = DMUs,
-    x = inps,
-    y = outs,
+    x = x_vars,
+    y = y_vars,
     model_type = model_type,
     error_type = error_type,
     degree = degree,

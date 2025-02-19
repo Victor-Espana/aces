@@ -8,11 +8,10 @@ rf_aces(
   data,
   x,
   y,
-  z = NULL,
   quick_aces = TRUE,
   model_type = "env",
   error_type = "add",
-  mul_BF = list(max_degree = 1, compl_cost = 0.05),
+  mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
   shape = list(mono = TRUE, conc = TRUE, ptto = FALSE),
   learners = 100,
@@ -32,8 +31,6 @@ rf_aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{z}{Column indexes of contextual variables in \code{data}.}
-
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{error_type}{A \code{character} string specifying the error structure to use. Options are:
@@ -45,7 +42,7 @@ rf_aces(
 \item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 \itemize{
 \item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-\item{\code{compl_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+\item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
 }}
 
 \item{metric}{A \code{list} specifying the lack-of-fit criterion to evaluate the model performance. Options are:
@@ -98,23 +95,16 @@ rf_aces(
 }}
 }
 \value{
-An \code{aces} object.
+An \code{rf_aces} object.
 }
 \description{
 This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces} and Random Forest, introduced by \insertCite{breiman2001;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces} and \insertCite{espana2024rf;textual}{aces}.
 }
 \details{
-This function generates a production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The algorithm comprises two main procedures:
-
-Forward Selection Algorithm. This initial step constructs a set of linear basis functions to model the production frontier based on the Random Forest foundations.
-
-Smoothing Procedures. After the forward step, the algorithm offers two smoothing options to produce a smooth and continuous production frontier:
-
-* Cubic Smoothing: Applies cubic functions to achieve a balance between flexibility and smoothness, suitable for capturing moderate curvature in the data.
-
-* Quintic Smoothing: Utilizes quintic functions for a higher degree of smoothness and continuity, ideal for modelling more complex relationships.
+See ...
 }
 \references{
+\insertRef{espana2024rf}{aces} \cr \cr
 \insertRef{espana2024}{aces} \cr \cr
 \insertRef{friedman1991}{aces} \cr \cr
 \insertRef{breiman2001}{aces} \cr \cr

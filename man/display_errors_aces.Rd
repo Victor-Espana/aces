@@ -11,7 +11,7 @@ display_errors_aces(
   quick_aces,
   error_type,
   max_degree,
-  compl_cost,
+  inter_cost,
   metric,
   nterms,
   err_red,
@@ -34,7 +34,7 @@ display_errors_aces(
 
 \item{max_degree}{A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.}
 
-\item{compl_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1-degree BF to incorporate a higher degree BF.}
+\item{inter_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1-degree BF to incorporate a higher degree BF.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.}
 

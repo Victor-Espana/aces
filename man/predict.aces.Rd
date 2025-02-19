@@ -4,7 +4,7 @@
 \alias{predict.aces}
 \title{Model Prediction for Adaptive Constrained Enveloping Splines (ACES).}
 \usage{
-\method{predict}{aces}(object, newdata, x, z = NULL, method = "aces")
+\method{predict}{aces}(object, newdata, x, method = "aces")
 }
 \arguments{
 \item{object}{An \code{aces} object.}
@@ -12,8 +12,6 @@
 \item{newdata}{A \code{data.frame} containing the input and netput variables to predict on.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
-
-\item{z}{Column indexes of contextual variables in \code{data}.}
 
 \item{method}{Model for prediction:
 \itemize{
