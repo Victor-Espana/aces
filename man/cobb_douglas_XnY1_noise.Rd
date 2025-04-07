@@ -24,4 +24,3 @@ This function simulates a 1 output ~ nX input \code{data.frame} with a Cobb-Doug
 \references{
 \insertRef{simar2011}{aces}
 }
-\keyword{internal}

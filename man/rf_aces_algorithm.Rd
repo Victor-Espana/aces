@@ -14,8 +14,8 @@ rf_aces_algorithm(
   inter_cost,
   metric,
   shape,
-  nterms,
-  nvars,
+  max_feats,
+  max_terms,
   err_red,
   minspan,
   endspan,
@@ -39,11 +39,11 @@ rf_aces_algorithm(
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin (only for piece-wise linear version).}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
-\item{nterms}{Maximum number of terms created before pruning.}
+\item{max_feats}{An \code{integer} indicating the number of variables randomly chosen at each split.}
 
-\item{nvars}{An \code{integer} indicating the number of variables randomly chosen at each split.}
+\item{max_terms}{Maximum number of terms created before pruning.}
 
 \item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
 

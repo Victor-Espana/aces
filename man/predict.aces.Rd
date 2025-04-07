@@ -15,10 +15,10 @@
 
 \item{method}{Model for prediction:
 \itemize{
-\item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+\item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
+\item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
+\item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines.
+\item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines.
 }}
 }
 \value{

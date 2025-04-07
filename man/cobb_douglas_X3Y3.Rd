@@ -24,4 +24,3 @@ This function simulates a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Do
 \references{
 \insertRef{ahn2023}{aces}
 }
-\keyword{internal}

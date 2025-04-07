@@ -10,13 +10,13 @@ display_errors_rf_aces(
   y,
   quick_aces,
   error_type,
-  learners,
-  nvars,
-  sample_size,
   max_degree,
   inter_cost,
   metric,
-  nterms,
+  learners,
+  bag_size,
+  max_feats,
+  max_terms,
   err_red,
   minspan,
   endspan,
@@ -34,19 +34,19 @@ display_errors_rf_aces(
 
 \item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model. It can be either: \code{"add"} or \code{"mul"}.}
 
-\item{learners}{An \code{integer} indicating the number of models for bagging.}
-
-\item{nvars}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
-
-\item{sample_size}{An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.}
-
 \item{max_degree}{A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.}
 
 \item{inter_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1-max_degree basis function to incorporate a higher max_degree basis function.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.}
 
-\item{nterms}{A positive \code{integer} specifying the maximum number of terms created before pruning.}
+\item{learners}{An \code{integer} indicating the number of models for bagging.}
+
+\item{bag_size}{An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.}
+
+\item{max_feats}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
+
+\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created before pruning.}
 
 \item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-max_degree basis functions.}
 

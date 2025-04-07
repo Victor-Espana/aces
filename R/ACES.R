@@ -52,7 +52,7 @@
 #'   \item{\code{ptto}}: A \code{logical} indicating if the estimator should satisfy \code{f(0) = 0}.
 #' }
 #'
-#' @param nterms
+#' @param max_terms
 #' A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.
 #'
 #' @param err_red
@@ -85,10 +85,6 @@
 #' @param kn_penalty
 #' A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.
 #'
-#' @details
-#'
-#' See ...
-#'
 #' @references
 #'
 #' \insertRef{espana2024}{aces} \cr \cr
@@ -119,9 +115,9 @@ aces <- function (
     shape = list (
       "mono" = TRUE,
       "conc" = TRUE,
-      "ptto" = FALSE,
+      "ptto" = FALSE
       ),
-    nterms = 50,
+    max_terms = 50,
     err_red = 0.01,
     kn_grid = - 1,
     minspan = - 1,
@@ -139,7 +135,7 @@ aces <- function (
     max_degree = mul_BF[["max_degree"]],
     inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
-    nterms = nterms,
+    max_terms = max_terms,
     err_red = err_red,
     minspan = minspan,
     endspan = endspan,
@@ -165,7 +161,7 @@ aces <- function (
       "conc" = shape[["conc"]],
       "ptto" = shape[["ptto"]]
     ),
-    nterms = nterms,
+    max_terms = max_terms,
     err_red = err_red,
     minspan = minspan,
     endspan = endspan,
@@ -194,9 +190,6 @@ aces <- function (
 #' @param y_vars
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param z_vars
-#' Column indexes of contextual variables in \code{data}.
-#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
@@ -213,9 +206,9 @@ aces <- function (
 #' A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin (only for piece-wise linear version).
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
-#' @param nterms
+#' @param max_terms
 #' Maximum number of terms created during the forward step.
 #'
 #' @param err_red
@@ -245,14 +238,13 @@ aces_algorithm <- function (
     data,
     x_vars,
     y_vars,
-    z_vars,
     quick_aces,
     error_type,
     max_degree,
     inter_cost,
     metric,
     shape,
-    nterms,
+    max_terms,
     err_red,
     minspan,
     endspan,
@@ -493,7 +485,7 @@ aces_algorithm <- function (
   # initial error
   err_min <- err
 
-  while(length(aces_forward[["bf_set"]]) + 2 < nterms) {
+  while(length(aces_forward[["bf_set"]]) + 2 < max_terms) {
 
     # add 2 new basis functions to the model:
     B_bf_knt_err <- add_basis_function (
@@ -805,7 +797,7 @@ aces_algorithm <- function (
       tech_ymat2 = aces_cubic[["Bmatx"]] %*% aces_cubic[["coefs"]],
       error_type = error_type,
       table_scores = table_scores,
-      ptto = FALSE
+      ptto = shape[["ptto"]]
     )
 
     # GCVs of quintic models
@@ -832,7 +824,7 @@ aces_algorithm <- function (
       tech_ymat2 = aces_quintic[["Bmatx"]] %*% aces_quintic[["coefs"]],
       error_type = error_type,
       table_scores = table_scores,
-      ptto = FALSE
+      ptto = shape[["ptto"]]
     )
 
     # =========== #
@@ -849,7 +841,7 @@ aces_algorithm <- function (
       xi_degree = xi_degree,
       metric = metric,
       shape = shape,
-      nterms = ncol(aces_forward[["Bmatx"]]),
+      max_terms = ncol(aces_forward[["Bmatx"]]),
       err_red = err_red,
       minspan = minspan,
       endspan = endspan,
@@ -900,7 +892,7 @@ aces_algorithm <- function (
 #' @param shape
 #' A \code{list} indicating whether to impose monotonicity and/or concavity.
 #'
-#' @param nterms
+#' @param max_terms
 #' Maximum number of terms created before pruning.
 #'
 #' @param err_red
@@ -953,7 +945,7 @@ aces_object <- function (
     xi_degree,
     metric,
     shape,
-    nterms,
+    max_terms,
     err_red,
     minspan,
     endspan,
@@ -986,7 +978,7 @@ aces_object <- function (
     "xi_degree" = xi_degree,
     "metric" = metric,
     "shape" = shape,
-    "nterms" = nterms,
+    "max_terms" = max_terms,
     "err_red" = err_red,
     "minspan" = minspan,
     "endspan" = endspan,

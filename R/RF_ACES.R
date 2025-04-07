@@ -55,13 +55,20 @@
 #' @param learners
 #' An \code{integer} indicating the number of models for bagging.
 #'
-#' @param nvars
-#' An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.
-#'
-#' @param sample_size
+#' @param bag_size
 #' An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.
 #'
-#' @param nterms
+#' @param max_feats
+#' An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.
+#'
+#' @param early_stopping
+#' A \code{list} specifying the early stopping criteria based on the out-of-bag (OOB) error to unnecessary training by stopping when the OOB error no longer improves. The list should contain the following elements:
+#' \itemize{
+#'   \item{\code{ma_window}}: An \code{integer} specifying the size of the moving average window used to smooth the OOB error. A larger value makes the stopping condition more stable but less reactive to short-term fluctuations. Default is 10.
+#'   \item{\code{tolerance}}: An \code{integer} indicating the number of consecutive iterations without significant improvement in the OOB error before stopping the training. Higher values make the model more tolerant to small fluctuations. Default is 5.
+#' }
+#'
+#' @param max_terms
 #' A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.
 #'
 #' @param err_red
@@ -72,7 +79,6 @@
 #' \itemize{
 #'    \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
 #'    \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
-#'
 #' }
 #'
 #' @param minspan
@@ -91,10 +97,6 @@
 #' \item{\code{endspan = +m}}: A user-specified positive integer.
 #' }
 #'
-#' @details
-#'
-#' See ...
-#'
 #' @references
 #'
 #' \insertRef{espana2024rf}{aces} \cr \cr
@@ -109,7 +111,7 @@
 #'
 #' @return
 #'
-#' An \code{rf_aces} object.
+#' A \code{rf_aces} object.
 #'
 #' @export
 
@@ -118,7 +120,6 @@ rf_aces <- function (
     x,
     y,
     quick_aces = TRUE,
-    model_type = "env",
     error_type = "add",
     mul_BF = list (
       "max_degree" = 1,
@@ -131,9 +132,13 @@ rf_aces <- function (
       "ptto" = FALSE
       ),
     learners = 100,
-    nvars = length(x) / 3,
-    sample_size = nrow(data),
-    nterms = 50,
+    bag_size = nrow(data),
+    max_feats = length(x) / 3,
+    early_stopping = list (
+      "ma_window" = 10,
+      "tolerance" = 5
+    ),
+    max_terms = 50,
     err_red = 0.01,
     kn_grid = - 1,
     minspan = - 1,
@@ -147,13 +152,13 @@ rf_aces <- function (
     y = y,
     quick_aces = quick_aces,
     error_type = error_type,
-    learners = learners,
-    nvars = nvars,
-    sample_size = sample_size,
     max_degree = mul_BF[["max_degree"]],
     inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
-    nterms = nterms,
+    learners = learners,
+    bag_size = bag_size,
+    max_feats = max_feats,
+    max_terms = max_terms,
     err_red = err_red,
     minspan = minspan,
     endspan = endspan,
@@ -174,10 +179,9 @@ rf_aces <- function (
   oob_pred <- vector("list", learners)
 
   # moving-average for the out-of-bag
-  oob_vec <- c()
-  mov_avg_oob_05 <- c()
-  mov_avg_oob_10 <- c()
-  mov_avg_oob_25 <- c()
+  oob_trend <- c()
+  ma_window <- early_stopping[["ma_window"]]
+  tolerance <- early_stopping[["tolerance"]]
 
   stopping_condition_counter <- 0
 
@@ -189,7 +193,7 @@ rf_aces <- function (
     # index of samples in the model
     sample_bag <- sample (
       1:nrow(data),
-      size = sample_size,
+      size = bag_size,
       replace = TRUE
     )
 
@@ -199,7 +203,7 @@ rf_aces <- function (
     # out of bag data for the m-model
     inb_idxs <- 1:nrow(data) %in% sample_bag
     oob_idxs <- which(!(1:nrow(data) %in% sample_bag))
-    data_oob <- data[!inb_idxs, ]
+    data_oob <- data[oob_idxs, ]
 
     RF_ACES[[m]] <- rf_aces_algorithm (
       data = data_bag,
@@ -215,169 +219,195 @@ rf_aces <- function (
         "conc" = shape[["conc"]],
         "ptto" = shape[["ptto"]]
       ),
-      nterms = nterms,
-      nvars = nvars,
+      max_feats = max_feats,
+      max_terms = max_terms,
       err_red = err_red,
       minspan = minspan,
       endspan = endspan,
       kn_grid = kn_grid
-      )
+    )
 
-      # predictions
-      Bmatx <- RF_ACES[[m]][["methods"]][["rf_aces"]][["Bmatx"]]
-      coefs <- RF_ACES[[m]][["methods"]][["rf_aces"]][["coefs"]]
-      y_hat <- Bmatx %*% coefs
+    # predictions
+    Bmatx <- RF_ACES[[m]][["methods"]][["rf_aces"]][["Bmatx"]]
+    coefs <- RF_ACES[[m]][["methods"]][["rf_aces"]][["coefs"]]
+    y_hat <- Bmatx %*% coefs
 
-      # select out-of-bag indexes
-      y_hat <- y_hat[oob_idxs, ]
+    # select out-of-bag indices
+    y_hat <- y_hat[oob_idxs, ]
 
-      oob_pred[[m]] <- matrix (
-        c (
-          "y_hat" = y_hat,
-          "idx" = oob_idxs
-          ),
-        ncol = nY + 1
-      )
+    oob_pred[[m]] <- matrix (
+      c (
+        "y_hat" = y_hat,
+        "idx" = oob_idxs
+        ),
+      ncol = length(y) + 1
+    )
 
-      # OOB performance
-      oob_mse <- compute_oob (
-        data = data,
-        y = y,
-        oob_idxs = oob_idxs,
-        oob_pred = oob_pred,
-        model = m
-      )
+    # OOB performance
+    oob_mse <- compute_oob (
+      data = data,
+      y = y,
+      oob_idxs = oob_idxs,
+      oob_pred = oob_pred,
+      model = m
+    )
 
-      # out-of-bag error
-      RF_ACES[[m]][["OOB"]] <- oob_mse
+    # out-of-bag error
+    RF_ACES[[m]][["OOB"]] <- oob_mse
 
-      # early stopping RF-ACES based on moving average
-      oob_vec <- c(oob_vec, RF_ACES[[m]][["OOB"]])
-      mov_avg_oob_05 <- c(mov_avg_oob_05, mean(tail(oob_vec, 05)))
-      mov_avg_oob_10 <- c(mov_avg_oob_10, mean(tail(oob_vec, 10)))
-      mov_avg_oob_25 <- c(mov_avg_oob_25, mean(tail(oob_vec, 25)))
+    # early stopping RF-ACES based on moving average
+    oob_trend <- c(oob_trend, oob_mse)
 
-      if (m > min(nrow(data), 200) && oob_vec[m] >= oob_vec[m - 1]) {
+    if (m > ma_window) {
 
-        stopping_condition_counter <- ifelse (
-          oob_vec[m] >= mov_avg_oob_05[m] * (1 - RF[["oob_red"]]) &
-          oob_vec[m] >= mov_avg_oob_10[m] * (1 - RF[["oob_red"]]) &
-          oob_vec[m] >= mov_avg_oob_25[m] * (1 - RF[["oob_red"]]),
-          stopping_condition_counter + 1,
-          0
-        )
+      # compute moving average over the last `ma_window` iterations
+      oob_ma <- mean(tail(oob_trend, ma_window))
 
-        if (stopping_condition_counter == 5) {
+      # current oob greater than moving average over last oob
+      if (oob_mse >= oob_ma) {
+        stopping_condition_counter <- stopping_condition_counter + 1
 
-          cat("\n")
-          print(paste("Out-of-bag error stabilized after", m, "models"))
-          break
+      } else {
+        stopping_condition_counter <- 0
 
-        }
       }
     }
 
-    # random-forest hyperparameters
-    rf_list = list (
-      "apply" = RF[["apply"]],
-      "sample" = RF[["sample"]],
-      "models" = m,
-      "nvars" = RF[["nvars"]],
-      "oob_red" = RF[["oob_red"]]
+    if (stopping_condition_counter == tolerance) {
+
+      cat("\n")
+      print(paste("Out-of-bag error stabilized after", m, "models"))
+      break
+    }
+
+  }
+
+  # random-forest hyperparameters
+  rf_list = list (
+    learners = learners,
+    bag_size = bag_size,
+    max_feats = max_feats,
+    early_stopping = early_stopping
+  )
+
+  RF_ACES <- list("forest" = RF_ACES[1:m])
+
+  # ========== #
+  # Technology #
+  # ========== #
+
+  xmat_rf_aces <- xmat_rf_aces_cubic <- xmat_rf_aces_quintic <- NULL
+  ymat_rf_aces <- ymat_rf_aces_cubic <- ymat_rf_aces_quintic <- NULL
+
+  # save technology for Random Forest
+  for (i in seq_along(RF_ACES[["forest"]])) {
+
+    xmat_rf_aces <- rbind (
+      xmat_rf_aces,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["xmat"]]
+      )
+
+    ymat_rf_aces <- rbind (
+      ymat_rf_aces,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["ymat"]]
     )
 
-    ACES <- RF_ACES[1:m]
-
-    for (j in seq_along(ACES)) {
-
-      ACES[[j]][["control"]] <- append (
-        ACES[[j]][["control"]],
-        list("RF" = rf_list)
-      )
-
-    }
-
-    models <- list()
-
-    for (i in 1:length(ACES)) {
-
-      models[[i]] <- ACES[[i]]
-
-    }
-
-    ACES <- list(models = models)
-
-    # free up memory
-    rm(RF_ACES, models)
-
-    xmat_rf_aces <- xmat_rf_aces_cubic <- xmat_rf_aces_quintic <- NULL
-    ymat_rf_aces <- ymat_rf_aces_cubic <- ymat_rf_aces_quintic <- NULL
-
-    # save technology for Random Forest
-    for (model in ACES[["models"]]) {
-
-      xmat_rf_aces <- rbind (
-        xmat_rf_aces,
-        model[["technology"]][["rf_aces"]][["xmat"]]
-        )
-
-      ymat_rf_aces <- rbind (
-        ymat_rf_aces,
-        model[["technology"]][["rf_aces"]][["ymat"]]
-      )
-
-      xmat_rf_aces_cubic <- rbind (
-        xmat_rf_aces_cubic,
-        model[["technology"]][["rf_aces_cubic"]][["xmat"]]
-      )
-
-      ymat_rf_aces_cubic <- rbind (
-        ymat_rf_aces_cubic,
-        model[["technology"]][["rf_aces_cubic"]][["ymat"]]
-      )
-
-      xmat_rf_aces_quintic <- rbind (
-        xmat_rf_aces_quintic,
-        model[["technology"]][["rf_aces_quintic"]][["xmat"]]
-      )
-
-      ymat_rf_aces_quintic <- rbind (
-        ymat_rf_aces_quintic,
-        model[["technology"]][["rf_aces_quintic"]][["ymat"]]
-      )
-
-    }
-
-    input_cols <- names(data)[1:length(x)]
-    output_cols <- names(data)[(length(x) + 1):(length(x) + length(y))]
-
-    colnames(xmat_rf_aces) <- colnames(xmat_rf_aces_cubic) <- colnames(xmat_rf_aces_quintic) <- input_cols
-    colnames(ymat_rf_aces) <- colnames(ymat_rf_aces_cubic) <- colnames(ymat_rf_aces_quintic) <- output_cols
-
-    rf_aces_technology <- data.frame(xmat_rf_aces, ymat_rf_aces) %>%
-      group_by(across(all_of(input_cols))) %>%
-      summarise(across(all_of(output_cols), mean, .names = "{col}"), .groups = 'drop')
-
-    rf_aces_cubic_technology <- data.frame(xmat_rf_aces_cubic, ymat_rf_aces_cubic) %>%
-      group_by(across(all_of(input_cols))) %>%
-      summarise(across(all_of(output_cols), mean, .names = "{col}"), .groups = 'drop')
-
-    rf_aces_quintic_technology <- data.frame(xmat_rf_aces_quintic, ymat_rf_aces_quintic) %>%
-      group_by(across(all_of(input_cols))) %>%
-      summarise(across(all_of(output_cols), mean, .names = "{col}"), .groups = 'drop')
-
-    ACES[["technology"]] <- list (
-      "rf_aces" = rf_aces_technology,
-      "rf_aces_cubic" = rf_aces_cubic_technology,
-      "rf_aces_quintic" = rf_aces_quintic_technology
+    xmat_rf_aces_cubic <- rbind (
+      xmat_rf_aces_cubic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["xmat"]]
     )
 
+    ymat_rf_aces_cubic <- rbind (
+      ymat_rf_aces_cubic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["ymat"]]
+    )
 
+    xmat_rf_aces_quintic <- rbind (
+      xmat_rf_aces_quintic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["xmat"]]
+    )
+
+    ymat_rf_aces_quintic <- rbind (
+      ymat_rf_aces_quintic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["ymat"]]
+    )
+
+  }
+
+  inp_cols <- names(data)[1:length(x)]
+  out_cols <- names(data)[(length(x) + 1):(length(x) + length(y))]
+
+  colnames(xmat_rf_aces) <- colnames(xmat_rf_aces_cubic) <- colnames(xmat_rf_aces_quintic) <- inp_cols
+  colnames(ymat_rf_aces) <- colnames(ymat_rf_aces_cubic) <- colnames(ymat_rf_aces_quintic) <- out_cols
+
+  rf_aces_technology <- data.frame(xmat_rf_aces, ymat_rf_aces) %>%
+    group_by(across(all_of(inp_cols))) %>%
+    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = 'drop')
+
+  rf_aces_cubic_technology <- data.frame(xmat_rf_aces_cubic, ymat_rf_aces_cubic) %>%
+    group_by(across(all_of(inp_cols))) %>%
+    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = 'drop')
+
+  rf_aces_quintic_technology <- data.frame(xmat_rf_aces_quintic, ymat_rf_aces_quintic) %>%
+    group_by(across(all_of(inp_cols))) %>%
+    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = 'drop')
+
+  RF_ACES[["technology"]] <- list (
+    "rf_aces" = list (
+      "xmat" = as.matrix(rf_aces_technology[, x]),
+      "ymat" = as.matrix(rf_aces_technology[, y])
+    ),
+    "rf_aces_cubic" = list (
+      "xmat" = as.matrix(rf_aces_cubic_technology[, x]),
+      "ymat" = as.matrix(rf_aces_cubic_technology[, y])
+    ),
+    "rf_aces_quintic" = list (
+      "xmat" = as.matrix(rf_aces_quintic_technology[, x]),
+      "ymat" = as.matrix(rf_aces_quintic_technology[, y])
+    )
+  )
+
+  # ====== #
+  # Object #
+  # ====== #
+
+  RF_ACES[["data"]] <- list (
+    "df" = data,
+    "x" = x,
+    "y" = y,
+    "xnames" = colnames(data)[x],
+    "ynames" = colnames(data)[y],
+    "rownames" = rownames(data)
+  )
+
+  RF_ACES[["control"]] <- list (
+    "error_type" = error_type,
+    "max_degree" = mul_BF[["max_degree"]],
+    "inter_cost" = mul_BF[["inter_cost"]],
+    "xi_degree" = RF_ACES[["models"]][[1]][["control"]][["xi_degree"]],
+    "metric" = metric,
+    "shape" = shape,
+    "learners" = rf_list[["learners"]],
+    "bag_size" = rf_list[["bag_size"]],
+    "max_feats" = rf_list[["max_feats"]],
+    "early_stopping" = rf_list[["early_stopping"]],
+    "max_terms" = max_terms,
+    "err_red" = err_red,
+    "minspan" = minspan,
+    "endspan" = endspan,
+    "kn_grid" = NULL,
+    "kn_penalty" = NULL,
+    "wc" = NULL,
+    "wq" = NULL
+  )
+
+  # change the order
+  RF_ACES <- RF_ACES[c("data", "control", "forest", "technology")]
 
   # type of object
-  class(ACES) <- ifelse(RF[["apply"]], "rf_aces", "aces")
+  class(RF_ACES) <- "rf_aces"
 
-  return(ACES)
+  return(RF_ACES)
 
 }
 
@@ -412,13 +442,13 @@ rf_aces <- function (
 #' A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin (only for piece-wise linear version).
+#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
 #'
-#' @param nterms
-#' Maximum number of terms created before pruning.
-#'
-#' @param nvars
+#' @param max_feats
 #' An \code{integer} indicating the number of variables randomly chosen at each split.
+#'
+#' @param max_terms
+#' Maximum number of terms created before pruning.
 #'
 #' @param err_red
 #' Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.
@@ -450,8 +480,8 @@ rf_aces_algorithm <- function (
     inter_cost,
     metric,
     shape,
-    nterms,
-    nvars,
+    max_feats,
+    max_terms,
     err_red,
     minspan,
     endspan,
@@ -476,6 +506,10 @@ rf_aces_algorithm <- function (
   # set "x", "z" and "y" indexes in data
   x <- 1:(ncol(data) - length(y_vars))
   y <- (length(x) + 1):ncol(data)
+
+  # maximum features before and after interaction variables
+  max_feats <- max_feats / length(x_vars)
+  max_feats <- max_feats * length(x)
 
   # set number of inputs and outputs
   nX <- length(x)
@@ -689,14 +723,14 @@ rf_aces_algorithm <- function (
   # initial error
   err_min <- err
 
-  while(length(rf_aces[["bf_set"]]) + 2 < nterms) {
+  while(length(rf_aces[["bf_set"]]) + 2 < max_terms) {
 
     last_bf <- rf_aces[["bf_set"]][[length(rf_aces[["bf_set"]])]]
 
     while (last_bf[["id"]] == 1) {
 
       # random input for bagging
-      random_x <- sample(x, nvars)
+      random_x <- sample(x, max_feats)
 
       # add 2 new basis functions to the model:
       B_bf_knt_err <- add_basis_function (
@@ -726,7 +760,7 @@ rf_aces_algorithm <- function (
     if (last_bf[["id"]] != 1) {
 
       # random input for bagging
-      random_x <- sample(x, nvars)
+      random_x <- sample(x, max_feats)
 
       # add 2 new basis functions to the model:
       B_bf_knt_err <- add_basis_function (
@@ -842,15 +876,19 @@ rf_aces_algorithm <- function (
   # select a model to be smoothed
   rf_aces_smoothed <- rf_aces
 
-  # data.frame of knots
-  kn_smoothed <- rf_aces_smoothed[["knots"]]
-  kn_smoothed$side <- "R"
+  # distance between knots in smooth models
+  wc <- seq(1, 2, length.out = 5)
+  wq <- seq(8 / 7, 1.5, length.out = 5)
 
-  kn_smoothed_left <- kn_smoothed
+  # data.frame of knots
+  kn_smoothed_right <- rf_aces_smoothed[["knots"]]
+  kn_smoothed_right$side <- "R"
+
+  kn_smoothed_left <- rf_aces_smoothed[["knots"]]
   kn_smoothed_left$side <- "L"
 
   kn_smoothed <- rbind (
-    kn_smoothed,
+    kn_smoothed_right,
     kn_smoothed_left
   )
 
@@ -870,12 +908,13 @@ rf_aces_algorithm <- function (
     x = x,
     y = y,
     dea_scores = dea_scores,
-    model_type = model_type,
+    model_type = "envelopment",
     metric = metric,
     shape = shape,
     kn_grid = kn_smoothed,
     kn_side_loc = kn_side_loc,
-    d = 0,
+    kn_penalty = 1,
+    xi_degree = xi_degree,
     wc = wc
   )
 
@@ -894,12 +933,13 @@ rf_aces_algorithm <- function (
     x = x,
     y = y,
     dea_scores = dea_scores,
-    model_type = model_type,
+    model_type = "envelopment",
     metric = metric,
     shape = shape,
     kn_grid = kn_smoothed,
     kn_side_loc = kn_side_loc,
-    d = 0,
+    kn_penalty = 1,
+    xi_degree = xi_degree,
     wq = wq
   )
 
@@ -921,25 +961,33 @@ rf_aces_algorithm <- function (
     data = DMUs,
     x = x_vars,
     y = y_vars,
-    model_type = model_type,
     error_type = error_type,
-    degree = degree,
+    max_degree = max_degree,
+    inter_cost = inter_cost,
+    xi_degree = xi_degree,
     metric = metric,
     shape = shape,
-    nterms = ncol(rf_aces[["Bmatx"]]),
+    max_terms = ncol(rf_aces[["Bmatx"]]),
     err_red = err_red,
-    hd_cost = hd_cost,
     minspan = minspan,
     endspan = endspan,
     kn_grid = kn_grid,
-    d = NULL,
-    wc = wc,
-    wq = wq,
+    kn_penalty = NULL,
+    wc = rf_aces_cubic[["w"]],
+    wq = rf_aces_quintic[["w"]],
     aces_forward = rf_aces,
     aces = NULL,
     aces_cubic = rf_aces_cubic,
     aces_quintic = rf_aces_quintic,
     technology = technology
+  )
+
+  RF_ACES[["data"]] <- NULL
+
+  RF_ACES[["control"]] <- list (
+    "xi_degree" = RF_ACES[["control"]][["xi_degree"]],
+    "wc" = RF_ACES[["control"]][["wc"]],
+    "wq" = RF_ACES[["control"]][["wq"]]
   )
 
   RF_ACES[["methods"]][["aces"]] <- NULL
@@ -950,6 +998,7 @@ rf_aces_algorithm <- function (
   )
 
   return(RF_ACES)
+
 }
 
 #' @title Compute Out-of-Bag Error in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
@@ -992,7 +1041,7 @@ compute_oob <- function (
     oob_idxs,
     oob_pred,
     model
-) {
+    ) {
 
   # number of outputs
   nY <- length(y)
@@ -1015,9 +1064,12 @@ compute_oob <- function (
   # calculate the mean prediction for each index
   model_pred <- do.call(rbind, model_pred)
 
-  # calculate the OOB mean squared error
+  # calculate the OOB-MSE: index
   oob_idxs <- as.numeric(rownames(model_pred))
-  oob_mse <- sum((data[oob_idxs, y] - model_pred[, 1:nY, drop = F]) ^ 2) / (length(oob_idxs) * nY)
+
+  # calculate the OOB-MSE: value
+  oob_mse <- sum((data[oob_idxs, y] - model_pred[, 1:nY, drop = F]) ^ 2) /
+    (length(oob_idxs) * nY)
 
   return(oob_mse)
 
@@ -1054,7 +1106,7 @@ compute_variable_importance <- function (
     y,
     object,
     repeats = 1
-) {
+  ) {
 
   # ACES meta-data
   control_features <- object[[1]][[1]][["control"]]
@@ -1079,7 +1131,7 @@ compute_variable_importance <- function (
 
   RF_sample <- RF_features[["sample"]]
   RF_models <- RF_features[["models"]]
-  RF_nvars <- RF_features[["nvars"]]
+  RF_max_feats <- RF_features[["max_feats"]]
   RF_oob_red <- RF_features[["oob_red"]]
 
   # number of estimated technologies
@@ -1153,7 +1205,7 @@ compute_variable_importance <- function (
             "apply" = TRUE,
             "sample" = RF_sample,
             "models" = RF_models,
-            "nvars" = RF_nvars,
+            "max_feats" = RF_max_feats,
             "oob_red" = RF_oob_red
           ),
           mul_BF = list (
@@ -1166,7 +1218,7 @@ compute_variable_importance <- function (
             "con" = con,
             "ori" = ori
           ),
-          nterms = nrow(data),
+          max_terms = nrow(data),
           err_red = err_red,
           kn_grid = - 1,
           minspan = minspan,

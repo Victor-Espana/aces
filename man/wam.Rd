@@ -17,7 +17,7 @@ wam(tech_xmat, tech_ymat, eval_xmat, eval_ymat, weights, convexity, returns)
 
 \item{weights}{Weights for the additive model:
 \itemize{
-\item{\code{"WAM"}} Weighted Additive Model.
+\item{\code{"ONE"}} Weighted Additive Model.
 \item{\code{"MIP"}} Measure of Inefficiency Proportions.
 \item{\code{"NOR"}} Normalized Weighted Additive Model.
 \item{\code{"RAM"}} Range Adjusted Measure.

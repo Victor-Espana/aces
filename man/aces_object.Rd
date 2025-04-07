@@ -14,7 +14,7 @@ aces_object(
   xi_degree,
   metric,
   shape,
-  nterms,
+  max_terms,
   err_red,
   minspan,
   endspan,
@@ -48,7 +48,7 @@ aces_object(
 
 \item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
 
-\item{nterms}{Maximum number of terms created before pruning.}
+\item{max_terms}{Maximum number of terms created before pruning.}
 
 \item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
 

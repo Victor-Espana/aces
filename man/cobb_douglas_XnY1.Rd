@@ -17,4 +17,3 @@ A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the the
 \description{
 This function simulates a 1 output ~ nX inputs \code{data.frame} with a Cobb-Douglas Data Generation Process.
 }
-\keyword{internal}

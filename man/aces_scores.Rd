@@ -10,7 +10,7 @@ aces_scores(
   y,
   relevant,
   object,
-  method,
+  method = "aces",
   measure = "rad_out",
   returns = "variable",
   direction = NULL,
@@ -21,52 +21,51 @@ aces_scores(
 \arguments{
 \item{eval_data}{A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.}
 
-\item{x}{Column indexes of input variables in \code{tech_data} and \code{eval_data}.}
+\item{x}{Column indexes of input variables in \code{eval_data}.}
 
-\item{y}{Column indexes of output and netput variables in \code{tech_data} and \code{eval_data}.}
+\item{y}{Column indexes of output variables in \code{eval_data}.}
 
 \item{relevant}{A \code{logical} indicating if only relevant variables should be included in the technology definition.}
 
 \item{object}{An \code{aces} object.}
 
-\item{method}{Model prediction used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
+\item{method}{Model prediction method used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
 \itemize{
-\item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces"}}: Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines model.
+\item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
+\item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
+\item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
+\item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
 }}
 
 \item{measure}{Mathematical programming model to calculate scores:
 \itemize{
-\item{\code{rad_out}} The output-oriented radial measure. Efficiency level at 1. (default)
-\item{\code{rad_inp}} The input-oriented radial measure. Efficiency level at 1.
-\item{\code{ddf}}     The directional distance function. Efficiency level at 0.
-\item{\code{rsl_out}} The output-oriented Russell measure. Efficiency level at 1.
-\item{\code{rsl_inp}} The input-oriented Russell measure. Efficiency level at 1.
-\item{\code{wam_mip}} The weighted additive model: measure of inefficiency proportions. Efficiency level at 0.
-\item{\code{wam_ram}} The weighted additive model: range adjusted measure of inefficiency. Efficiency level at 0.
+\item{\code{rad_out}} The output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+\item{\code{rad_inp}} The input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+\item{\code{ddf}}     The directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
+\item{\code{rsl_out}} The output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+\item{\code{rsl_inp}} The input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+\item{\code{wam}}     A weighted additive model.
 }}
 
 \item{returns}{Type of returns to scale:
 \itemize{
-\item{\code{"variable"}} Variable returns to scale (default).
 \item{\code{"constant"}} Constant returns to scale.
+\item{\code{"variable"}} Variable returns to scale (default).
 }}
 
-\item{direction}{Only applied if \code{measure = "ddf"}. Direction of the vector to project on the frontier:
+\item{direction}{Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}.
 \itemize{
-\item{\code{"mean"}} Projection vector given by the average value of inputs and outputs of all DMUs. Applied if \code{direction = NULL}.
+\item{\code{"mean"}}  Projection vector given by the average value of inputs and outputs of all DMUs. Applied if \code{direction = NULL}.
 \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
 }}
 
-\item{weights}{Only applied if \code{measure = "wam"}. Weights for the additive model:
+\item{weights}{Weights for the additive model. Only applied if \code{measure = "wam"}.
 \itemize{
-\item{\code{"WAM"}} Weighted Additive Model.
-\item{\code{"MIP"}} Measure of Inefficiency Proportions.
-\item{\code{"NOR"}} Normalized Weighted Additive Model.
-\item{\code{"RAM"}} Range Adjusted Measure.
-\item{\code{"BAM"}} Bounded Adjusted Measure.
+\item{\code{"ONE"}} Weighted Additive Model proposed by \insertCite{charnes1985;textual}{aces}.
+\item{\code{"MIP"}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
+\item{\code{"NOR"}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
+\item{\code{"RAM"}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
+\item{\code{"BAM"}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
 }}
 
 \item{digits}{Number of decimal places to which efficiency scores are rounded.}
@@ -75,5 +74,15 @@ aces_scores(
 A \code{data.frame} with the efficiency scores computed through an Adaptive Constrained Enveloping Splines model.
 }
 \description{
-This function computes the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and an user-defined measure.
+This function computes the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and an user-defined measure. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
+}
+\references{
+\insertRef{espana2024}{aces} \cr \cr
+\insertRef{banker1984}{aces} \cr \cr
+\insertRef{chambers1998}{aces} \cr \cr
+\insertRef{fare1978}{aces} \cr \cr
+\insertRef{charnes1985}{aces} \cr \cr
+\insertRef{cooper1999}{aces} \cr \cr
+\insertRef{lovell1995}{aces} \cr \cr
+\insertRef{cooper2011}{aces}
 }

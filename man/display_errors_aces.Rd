@@ -13,7 +13,7 @@ display_errors_aces(
   max_degree,
   inter_cost,
   metric,
-  nterms,
+  max_terms,
   err_red,
   minspan,
   endspan,
@@ -38,7 +38,7 @@ display_errors_aces(
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.}
 
-\item{nterms}{A positive \code{integer} specifying the maximum number of terms created during the forward step.}
+\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during the forward step.}
 
 \item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs.}
 

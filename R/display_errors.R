@@ -30,7 +30,7 @@
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.
 #'
-#' @param nterms
+#' @param max_terms
 #' A positive \code{integer} specifying the maximum number of terms created during the forward step.
 #'
 #' @param err_red
@@ -62,7 +62,7 @@ display_errors_aces <- function (
     max_degree,
     inter_cost,
     metric,
-    nterms,
+    max_terms,
     err_red,
     minspan,
     endspan,
@@ -115,9 +115,9 @@ display_errors_aces <- function (
     stop(paste(metric, "is not available. Please, check help(\"aces\")"))
   }
 
-  # nterms must be a positive integer
-  if (!is.numeric(nterms) || nterms <= 0 || floor(nterms) != nterms) {
-    stop("nterms must be a positive integer.")
+  # max_terms must be a positive integer
+  if (!is.numeric(max_terms) || max_terms <= 0 || floor(max_terms) != max_terms) {
+    stop("max_terms must be a positive integer.")
   }
 
   # err_red must be between 0 and 1
@@ -225,9 +225,9 @@ display_errors_scores <- function (
     stop("Different variable names in training and evaluated data.")
   }
 
-  # object must be an aces, s_aces or rf_aces object
-  if (!inherits(object, c("aces", "s_aces", "rf_aces"))) {
-    stop(paste(deparse(substitute(object)), "must be an aces, s_aces or rf_aces object."))
+  # object must be an aces or rf_aces object
+  if (!inherits(object, c("aces", "rf_aces"))) {
+    stop(paste(deparse(substitute(object)), "must be an aces or rf_aces object."))
   }
 
   # returns must be valid
@@ -241,7 +241,7 @@ display_errors_scores <- function (
   }
 
   # weights must be valid
-  if (!is.null(weights) && !weights %in% c("WAM", "MIP", "NOR", "RAM", "BAM")) {
+  if (!is.null(weights) && !weights %in% c("ONE", "MIP", "NOR", "RAM", "BAM")) {
     stop(paste(weights, "is not available. Please, check help(\"aces_scores\")"))
   }
 
@@ -271,15 +271,6 @@ display_errors_scores <- function (
 #' @param error_type
 #' A \code{character} string specifying the error structure that the function will use when fitting the model. It can be either: \code{"add"} or \code{"mul"}.
 #'
-#' @param learners
-#' An \code{integer} indicating the number of models for bagging.
-#'
-#' @param nvars
-#' An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.
-#'
-#' @param sample_size
-#' An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.
-#'
 #' @param max_degree
 #' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
 #'
@@ -289,7 +280,16 @@ display_errors_scores <- function (
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.
 #'
-#' @param nterms
+#' @param learners
+#' An \code{integer} indicating the number of models for bagging.
+#'
+#' @param bag_size
+#' An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.
+#'
+#' @param max_feats
+#' An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.
+#'
+#' @param max_terms
 #' A positive \code{integer} specifying the maximum number of terms created before pruning.
 #'
 #' @param err_red
@@ -315,13 +315,13 @@ display_errors_rf_aces <- function (
     y,
     quick_aces,
     error_type,
-    learners,
-    nvars,
-    sample_size,
     max_degree,
     inter_cost,
     metric,
-    nterms,
+    learners,
+    bag_size,
+    max_feats,
+    max_terms,
     err_red,
     minspan,
     endspan,
@@ -368,13 +368,13 @@ display_errors_rf_aces <- function (
     stop("learners must be greater than 0.")
   }
 
-  # nvars must be greater than 1 and lower than the number of inputs
-  if (nvars > length(x) || nvars < 1) {
-    stop("nvars must be greater than 1 and lower than the number of inputs.")
+  # max_feats must be greater than 1 and lower than the number of inputs
+  if (max_feats > length(x) || max_feats < 1) {
+    stop("max_feats must be greater than 1 and lower than the number of inputs.")
   }
 
   # sample size must be lower training size
-  if (sample_size > nrow(data)) {
+  if (bag_size > nrow(data)) {
     stop("sample size must be lower training size.")
   }
 
@@ -388,9 +388,9 @@ display_errors_rf_aces <- function (
     stop(paste(metric, "is not available. Please, check help(\"aces\")"))
   }
 
-  # nterms must be a positive integer
-  if (!is.numeric(nterms) || nterms <= 0 || floor(nterms) != nterms) {
-    stop("nterms must be a positive integer.")
+  # max_terms must be a positive integer
+  if (!is.numeric(max_terms) || max_terms <= 0 || floor(max_terms) != max_terms) {
+    stop("max_terms must be a positive integer.")
   }
 
   # err_red must be between 0 and 1

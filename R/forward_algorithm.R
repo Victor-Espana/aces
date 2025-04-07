@@ -245,7 +245,7 @@ add_basis_function <- function (
 
       new_B <- matrix(1, nrow = nrow(data))
 
-      for (v in x) {
+      for (v in 1:length(Bp_list_aux)) {
 
         if (!is.null(Bp_list_aux[[v]][["paired"]])) {
 

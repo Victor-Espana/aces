@@ -20,4 +20,3 @@ This function simulates a 1 output ~ nX inputs \code{data.frame} with a Multipli
 \references{
 \insertRef{kuosmanen2010}{aces}
 }
-\keyword{internal}

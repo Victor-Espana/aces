@@ -22,4 +22,3 @@ This function simulates a 2 outputs ~ 2 inputs \code{data.frame} with a Translog
 \references{
 \insertRef{santin2009}{aces}
 }
-\keyword{internal}

@@ -1,114 +1,3 @@
-#' @title Random Sample for Efficiency Analysis
-#'
-#' @description
-#'
-#' This function simulates a \code{data.frame} with some given Data Generation Process.
-#'
-#' @param DGP
-#' Data Generation Process:
-#' \itemize {
-#'    \item{\code{"cobb_douglas_XnY1"}}: Cobb-Douglas Data Generation Process for a XnY1 scenario.
-#'    See \code{help("cobb_douglas_XnY1")}.
-#'    \item{\code{"cobb_douglas_X1Y1_noise"}}: Cobb-Douglas Data Generation Process for a X1Y1 scenario with noise.
-#'    See \code{help("cobb_douglas_X1Y1")}.
-#'    \item{\code{"translog_X2Y2"}}: Translog Data Generation Process for a X2Y2 scenario.
-#'    See \code{help("translog_X2Y2")}.
-#'    \item{\code{"add_scenario_XnY1"}}: Additive Data Generation Process for a XnY1 scenario.
-#'    See \code{help("add_scenario_XnY1")}.
-#'    \item{\code{"mult_scenario_XnY1"}}: Multiplicative Data Generation Process for a XnY1 scenario.
-#'    See \code{help("mult_scenario_XnY1")}.
-#'    \item{\code{cobb_douglas_X3Y3}}: Cobb-Douglas Data Generation Process for a X3Y3 scenario.
-#'    See \code{help("cobb_douglas_X3Y3")}.
-#'  }
-#'
-#' @param parms
-#' A \code{list} containing the parameters for the simulation functions.
-#' \itemize{
-#'    \item{\code{"N"}}: An integer representing the sample size.
-#'    \item{\code{"nX"}}: An integer representing the number of inputs.
-#'    Applicable  for the \code{cobb_douglas_XnY1(N, nX)} function.
-#'    \item{\code{"border"}}: Proportion of DMUs in the frontier.
-#'    Applicable  for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
-#'    \item{\code{"noise"}}: \code{logical} indicating presence of random noise.
-#'    Applicable  for the \code{translog_X2Y2(N, border, noise)} and the \code{cobb_douglas_X3Y3(N, border, noise, returns)} functions.
-#'    \item{\code{"scenario"}}: Determine the type of Data Generation Process.
-#'    Applicable  for the \code{add_scenario_XnY1(N, scenario)} and the \code{mult_scenario_XnY1(N, scenario)} functions.
-#'    \item{\code{"returns"}}: Returns to scale.
-#'    Applicable  for the \code{cobb_douglas_X3Y3(N, border, noise, returns)} function.
-#'    \item{\code{"p"}}: Signal-to-noise ratio.
-#'    Applicable  for the \code{cobb_douglas_X1Y1_noise(N, p)} function.
-#'  }
-#'
-#' @details
-#' Please refer to the help manuals of the mentioned functions for usage examples and more detailed information on the parameters.
-#'
-#'
-#' @return
-#'
-#' A \code{data.frame} simulated with the selected Data Generation Process.
-#'
-#' @export
-
-reffcy <- function (
-    DGP, parms
-    ) {
-
-  if (DGP == "cobb_douglas_XnY1") {
-
-    data <- cobb_douglas_XnY1 (
-      N = parms[["N"]],
-      nX = parms[["nX"]]
-      )
-
-  } else if (DGP == "cobb_douglas_XnY1_noise") {
-
-    data <- cobb_douglas_XnY1_noise (
-      N = parms[["N"]],
-      nX = parms[["nX"]],
-      p = parms[["p"]]
-    )
-
-  } else if (DGP == "cobb_douglas_X3Y3") {
-
-    data <- cobb_douglas_X3Y3 (
-      N = parms[["N"]],
-      border = parms[["border"]],
-      noise = parms[["noise"]],
-      returns = parms[["returns"]]
-    )
-
-  } else if (DGP == "translog_X2Y2") {
-
-    data <- translog_X2Y2 (
-      N = parms[["N"]],
-      border = parms[["border"]],
-      noise = parms[["noise"]]
-    )
-
-  } else if (DGP == "add_scenario_XnY1") {
-
-    data <- add_scenario_XnY1 (
-      N = parms[["N"]],
-      scenario = parms[["scenario"]]
-    )
-
-  } else if (DGP == "mult_scenario_XnY1") {
-
-    data <- mult_scenario_XnY1 (
-      N = parms[["N"]],
-      scenario = parms[["scenario"]]
-    )
-
-  } else (
-
-    stop(paste(DGP, "not availble."))
-
-  )
-
-  return(data)
-
-}
-
 #' @title 1 output ~ nX inputs Cobb-Douglas Data Generation Process
 #'
 #' @description
@@ -126,8 +15,7 @@ reffcy <- function (
 #' @return
 #' A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yT).
 #'
-#' @keywords internal
-
+#'
 cobb_douglas_XnY1 <- function (
     N,
     nX
@@ -244,7 +132,6 @@ cobb_douglas_XnY1 <- function (
 #'
 #' \insertRef{simar2011}{aces}
 #'
-#' @keywords internal
 
 cobb_douglas_XnY1_noise <- function (
     N,
@@ -316,376 +203,6 @@ cobb_douglas_XnY1_noise <- function (
   data[, "y"]  <- data[, "yT"] * exp(- u) * exp(v)
 
   return(data)
-}
-
-#' @title 2 outputs ~ 2 inputs Translog Data Generation Process
-#'
-#' @description
-#' This function simulates a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
-#'
-#'
-#' @param N
-#' An integer representing the sample size.
-#'
-#' @param border
-#' Proportion of DMUs in the frontier.
-#'
-#' @param noise
-#' A \code{logical} indicating whether to add random noise.
-#'
-#' @importFrom stats runif rnorm
-#' @importFrom Rdpack reprompt
-#'
-#' @return
-#' A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yT1, yT2).
-#'
-#' @references
-#' \insertRef{santin2009}{aces}
-#'
-#' @keywords internal
-
-translog_X2Y2 <- function (
-    N,
-    border,
-    noise
-    ) {
-
-  nX <- 2
-  nY <- 2
-
-  colnames <- c(paste("x", 1:nX, sep = ""), paste("y", 1:nY, sep = ""))
-
-  data <- matrix(
-    ncol = length(colnames),
-    nrow = N,
-    dimnames = list(NULL, colnames)
-  ) %>% as.data.frame()
-
-  # Input generation
-  data[, 1] <- runif(N, 5, 50)
-  data[, 2] <- runif(N, 5, 50)
-
-  z <- runif(N, - 1.5, 1.5)
-
-  ln_x1 <- log(data[, "x1"])
-  ln_x2 <- log(data[, "x2"])
-
-  op1 <- - 1 + 0.5 * z + 0.25 * (z ^ 2) - 1.5 * ln_x1
-
-  op2 <- - 0.6 * ln_x2 + 0.20 * (ln_x1 ^ 2) + 0.05 * (ln_x2 ^ 2) - 0.1 * ln_x1 * ln_x2
-
-  op3 <- + 0.05 * ln_x1 * z - 0.05 * ln_x2 * z
-
-  ln_y1_ast <- - (op1 + op2 + op3)
-
-  # theoretical frontier
-  data[, c("y1", "yT1")] <- exp(ln_y1_ast)
-  data[, c("y2", "yT2")] <- exp(ln_y1_ast + z)
-
-  if (border < 1) {
-
-    # output generation
-    index <- sample(1:N, N * (1 - border))
-    N_sample <- length(index)
-    half_normal <- exp(abs(rnorm(N_sample, 0, 0.3 ** (1 / 2))))
-
-    if (noise) {
-
-      normal1 <- exp(rnorm(N_sample, 0, 0.01 ** (1 / 2)))
-      normal2 <- exp(rnorm(N_sample, 0, 0.01 ** (1 / 2)))
-
-      data[index, "y1"] <- data[index, "yT1"] / (half_normal * normal1)
-      data[index, "y2"] <- data[index, "yT2"] / (half_normal * normal2)
-
-    } else {
-
-      data[index, "y1"] <- data[index, "yT1"] / half_normal
-      data[index, "y2"] <- data[index, "yT2"] / half_normal
-
-    }
-  }
-
-  return(data)
-}
-
-#' @title 1 output ~ nX inputs Additive Data Generation Process
-#'
-#' @description
-#' This function simulates a 1 output ~ nX inputs \code{data.frame} with an Additive Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
-#'
-#'
-#' @param N
-#' An integer representing the sample size.
-#'
-#' @param scenario
-#' A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.
-#'
-#' @importFrom dplyr %>% filter
-#' @importFrom stats runif rnorm
-#' @importFrom Rdpack reprompt
-#'
-#' @return
-#' A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
-#'
-#' @references
-#' \insertRef{kuosmanen2010}{aces}
-#'
-#' @keywords internal
-
-add_scenario_XnY1 <- function (
-    N,
-    scenario
-    ) {
-
-  if(!(scenario %in% c("A", "B", "C", "D", "E", "F"))){
-    stop(paste(scenario, "is not allowed"))
-  }
-
-  if (scenario %in% c("A", "B")) {
-
-    nX <- 1
-
-  } else if (scenario %in% c("C", "E")) {
-
-    nX <- 2
-
-  } else {
-
-    nX <- 3
-
-  }
-
-  colnames <- c(paste("x", 1:nX, sep = ""), "y")
-
-  data <- matrix (
-    ncol = length(colnames),
-    nrow = N,
-    dimnames = list(NULL, colnames)
-  ) %>% as.data.frame()
-
-  # input generation
-  for (x in 1:nX){
-    data[, x] <- runif(n = N, min = 1, max = 10)
-  }
-
-  # inefficiency generation
-  u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
-
-  if (scenario == "A") {
-
-    # input
-    x1 <- data[, "x1"]
-
-    # theoretical frontier
-    data[, "yT"] <- log(x1) + 3
-
-    # output
-    data[, "y"] <- data[, "yT"] - u
-
-  } else if (scenario == "B") {
-
-    # input
-    x1 <- data[, "x1"]
-
-    # theoretical frontier
-    data[, "yT"] <- 3 + sqrt(x1) + log(x1)
-
-    # output
-    data[, "y"] <- data[, "yT"] - u
-
-  } else if (scenario == "C") {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-
-    # theoretical frontier
-    data[, "yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
-
-    # output
-    data[, "y"] <- data[, "yT"] - u
-
-  } else if (scenario == "D") {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-    x3 <- data[, "x3"]
-
-    # theoretical frontier
-    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
-
-    # output
-    data["y"] <- data["yT"] - u
-
-  } else if (scenario == "E") {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-
-    # theoretical frontier
-    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
-
-    # output
-    data["y"] <- data["yT"] - u
-
-  } else {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-    x3 <- data[, "x3"]
-
-    # theoretical frontier
-    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
-
-    # output
-    data["y"] <- data["yT"]  - u
-  }
-
-  data <- data %>% filter(y >= 0)
-
-  return(data)
-
-}
-
-#' @title 1 output ~ nX inputs Multiplicative Data Generation Process
-#'
-#' @description
-#' This function simulates a 1 output ~ nX inputs \code{data.frame} with a Multiplicative Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
-#'
-#' @param N
-#' An integer representing the sample size.
-#'
-#' @param scenario
-#' A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.
-#'
-#' @importFrom dplyr %>% filter
-#' @importFrom stats runif rnorm
-#' @importFrom Rdpack reprompt
-#'
-#' @return
-#' A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
-#'
-#' @references
-#' \insertRef{kuosmanen2010}{aces}
-#'
-#' @keywords internal
-
-mult_scenario_XnY1 <- function (
-    N,
-    scenario
-    ) {
-
-  if(!(scenario %in% c("A", "B", "C", "D", "E", "F"))){
-    stop(paste(scenario, "is not allowed"))
-  }
-
-  if (scenario %in% c("A", "B")) {
-
-    nX <- 1
-
-  } else if (scenario %in% c("C", "E")) {
-
-    nX <- 2
-
-  } else {
-
-    nX <- 3
-
-  }
-
-  colnames <- c(paste("x", 1:nX, sep = ""), "y")
-
-  data <- matrix(
-    ncol = length(colnames),
-    nrow = N,
-    dimnames = list(NULL, colnames)
-  ) %>% as.data.frame()
-
-  # input generation
-  for (x in 1:nX){
-    data[, x] <- runif(n = N, min = 1, max = 10)
-  }
-
-  # inefficiency generation
-  u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
-
-  if (scenario == "A") {
-
-    # input
-    x1 <- data[, "x1"]
-
-    # theoretical frontier
-    data[, "yT"] <- log(x1) + 3
-
-    # output
-    data[, "y"]  <- y / (1 + u)
-
-  } else if (scenario == "B") {
-
-    # input
-    x1 <- data[, "x1"]
-
-    # theoretical frontier
-    data[, "yT"] <- 3 + sqrt(x1) + log(x1)
-
-    # output
-    data[, "y"]  <- y / (1 + u)
-
-  } else if (scenario == "C") {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-
-    # theoretical frontier
-    data[, "yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
-
-    # output
-    data[, "y"]  <- y / (1 + u)
-
-  } else if (scenario == "D") {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-    x3 <- data[, "x3"]
-
-    # theoretical frontier
-    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
-
-    # output
-    data["y"]  <- y / (1 + u)
-
-  } else if (scenario == "E") {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-
-    # theoretical frontier
-    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
-
-    # output
-    data["y"]  <- y / (1 + u)
-
-  } else {
-
-    # inputs
-    x1 <- data[, "x1"]
-    x2 <- data[, "x2"]
-    x3 <- data[, "x3"]
-
-    # theoretical frontier
-    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
-
-    # output
-    data["y"]  <- y / (1 + u)
-  }
-
-  return(data)
 
 }
 
@@ -716,14 +233,13 @@ mult_scenario_XnY1 <- function (
 #' @references
 #' \insertRef{ahn2023}{aces}
 #'
-#' @keywords internal
 
 cobb_douglas_X3Y3 <- function (
     N,
     border,
     noise,
     returns
-    ) {
+) {
 
   # number of inputs
   nX <- 3
@@ -735,7 +251,7 @@ cobb_douglas_X3Y3 <- function (
     paste("x", 1:nX, sep = ""),
     paste("y", 1:nY, sep = ""),
     paste("yT", 1:nY, sep = "")
-    )
+  )
 
   data <- matrix(
     ncol = length(colnames),
@@ -802,7 +318,7 @@ cobb_douglas_X3Y3 <- function (
 
 }
 
-#' @title 1 output ~ nX relevant inputs Cobb-Douglas Data Generation Process
+#' @title 1 output ~ nX relevant inputs and nH irrelevant inputs Cobb-Douglas Data Generation Process
 #'
 #' @description
 #' This function simulates a dataset with one output, \code{nX} relevant inputs, and \code{nH} irrelevant inputs using a Cobb-Douglas production function. Relevant inputs can have specified correlations as in \insertCite{nataraja2011;textual}{aces}, and irrelevant inputs are constructed as linear combinations of relevant inputs and random noise as in \insertCite{peyrache2020;textual}{aces}.
@@ -845,16 +361,15 @@ cobb_douglas_X3Y3 <- function (
 #' \insertRef{nataraja2011}{aces} \cr \cr
 #' \insertRef{peyrache2020}{aces}
 #'
-#' @keywords internal
 
-cobb_douglas_XnZnY1 <- function (
+cobb_douglas_XnHnY1 <- function (
     N,
     nX,
     nH,
     exp_x,
     rho_x,
     rho_h
-    ) {
+) {
 
   # input validation
   if (!is.numeric(N) || length(N) != 1 || N <= 0 || N != as.integer(N)) {
@@ -1009,6 +524,528 @@ cobb_douglas_XnZnY1 <- function (
 
   # observed output
   data[, "y1"] <- data[, "yT1"] * exp(- u)
+
+  return(data)
+
+}
+
+#' @title 1 output ~ nX inputs Additive Data Generation Process
+#'
+#' @description
+#' This function simulates a 1 output ~ nX inputs \code{data.frame} with an Additive Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
+#'
+#'
+#' @param N
+#' An integer representing the sample size.
+#'
+#' @param scenario
+#' A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.
+#'
+#' @importFrom dplyr %>% filter
+#' @importFrom stats runif rnorm
+#' @importFrom Rdpack reprompt
+#'
+#' @return
+#' A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
+#'
+#' @references
+#' \insertRef{kuosmanen2010}{aces}
+#'
+
+add_scenario_XnY1 <- function (
+    N,
+    scenario
+) {
+
+  if(!(scenario %in% c("A", "B", "C", "D", "E", "F"))){
+    stop(paste(scenario, "is not allowed"))
+  }
+
+  if (scenario %in% c("A", "B")) {
+
+    nX <- 1
+
+  } else if (scenario %in% c("C", "E")) {
+
+    nX <- 2
+
+  } else {
+
+    nX <- 3
+
+  }
+
+  colnames <- c(paste("x", 1:nX, sep = ""), "y")
+
+  data <- matrix (
+    ncol = length(colnames),
+    nrow = N,
+    dimnames = list(NULL, colnames)
+  ) %>% as.data.frame()
+
+  # input generation
+  for (x in 1:nX){
+    data[, x] <- runif(n = N, min = 1, max = 10)
+  }
+
+  # inefficiency generation
+  u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
+
+  if (scenario == "A") {
+
+    # input
+    x1 <- data[, "x1"]
+
+    # theoretical frontier
+    data[, "yT"] <- log(x1) + 3
+
+    # output
+    data[, "y"] <- data[, "yT"] - u
+
+  } else if (scenario == "B") {
+
+    # input
+    x1 <- data[, "x1"]
+
+    # theoretical frontier
+    data[, "yT"] <- 3 + sqrt(x1) + log(x1)
+
+    # output
+    data[, "y"] <- data[, "yT"] - u
+
+  } else if (scenario == "C") {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+
+    # theoretical frontier
+    data[, "yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
+
+    # output
+    data[, "y"] <- data[, "yT"] - u
+
+  } else if (scenario == "D") {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+    x3 <- data[, "x3"]
+
+    # theoretical frontier
+    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
+
+    # output
+    data["y"] <- data["yT"] - u
+
+  } else if (scenario == "E") {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+
+    # theoretical frontier
+    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
+
+    # output
+    data["y"] <- data["yT"] - u
+
+  } else {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+    x3 <- data[, "x3"]
+
+    # theoretical frontier
+    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
+
+    # output
+    data["y"] <- data["yT"]  - u
+  }
+
+  data <- data %>% filter(y >= 0)
+
+  return(data)
+
+}
+
+#' @title 1 output ~ nX inputs Multiplicative Data Generation Process
+#'
+#' @description
+#' This function simulates a 1 output ~ nX inputs \code{data.frame} with a Multiplicative Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
+#'
+#' @param N
+#' An integer representing the sample size.
+#'
+#' @param scenario
+#' A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.
+#'
+#' @importFrom dplyr %>% filter
+#' @importFrom stats runif rnorm
+#' @importFrom Rdpack reprompt
+#'
+#' @return
+#' A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
+#'
+#' @references
+#' \insertRef{kuosmanen2010}{aces}
+#'
+
+mult_scenario_XnY1 <- function (
+    N,
+    scenario
+) {
+
+  if(!(scenario %in% c("A", "B", "C", "D", "E", "F"))){
+    stop(paste(scenario, "is not allowed"))
+  }
+
+  if (scenario %in% c("A", "B")) {
+
+    nX <- 1
+
+  } else if (scenario %in% c("C", "E")) {
+
+    nX <- 2
+
+  } else {
+
+    nX <- 3
+
+  }
+
+  colnames <- c(paste("x", 1:nX, sep = ""), "y")
+
+  data <- matrix(
+    ncol = length(colnames),
+    nrow = N,
+    dimnames = list(NULL, colnames)
+  ) %>% as.data.frame()
+
+  # input generation
+  for (x in 1:nX){
+    data[, x] <- runif(n = N, min = 1, max = 10)
+  }
+
+  # inefficiency generation
+  u <- abs(rnorm(n = N, mean = 0, sd = 0.4))
+
+  if (scenario == "A") {
+
+    # input
+    x1 <- data[, "x1"]
+
+    # theoretical frontier
+    data[, "yT"] <- log(x1) + 3
+
+    # output
+    data[, "y"]  <- y / (1 + u)
+
+  } else if (scenario == "B") {
+
+    # input
+    x1 <- data[, "x1"]
+
+    # theoretical frontier
+    data[, "yT"] <- 3 + sqrt(x1) + log(x1)
+
+    # output
+    data[, "y"]  <- y / (1 + u)
+
+  } else if (scenario == "C") {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+
+    # theoretical frontier
+    data[, "yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
+
+    # output
+    data[, "y"]  <- y / (1 + u)
+
+  } else if (scenario == "D") {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+    x3 <- data[, "x3"]
+
+    # theoretical frontier
+    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
+
+    # output
+    data["y"]  <- y / (1 + u)
+
+  } else if (scenario == "E") {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+
+    # theoretical frontier
+    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
+
+    # output
+    data["y"]  <- y / (1 + u)
+
+  } else {
+
+    # inputs
+    x1 <- data[, "x1"]
+    x2 <- data[, "x2"]
+    x3 <- data[, "x3"]
+
+    # theoretical frontier
+    data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
+
+    # output
+    data["y"]  <- y / (1 + u)
+  }
+
+  return(data)
+
+}
+
+#' @title 2 outputs ~ 2 inputs Translog Data Generation Process
+#'
+#' @description
+#' This function simulates a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
+#'
+#' @param N
+#' An integer representing the sample size.
+#'
+#' @param border
+#' Proportion of DMUs in the frontier.
+#'
+#' @param noise
+#' A \code{logical} indicating whether to add random noise.
+#'
+#' @importFrom stats runif rnorm
+#' @importFrom Rdpack reprompt
+#'
+#' @return
+#' A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yT1, yT2).
+#'
+#' @references
+#' \insertRef{santin2009}{aces}
+#'
+
+translog_X2Y2 <- function (
+    N,
+    border,
+    noise
+    ) {
+
+  nX <- 2
+  nY <- 2
+
+  colnames <- c(paste("x", 1:nX, sep = ""), paste("y", 1:nY, sep = ""))
+
+  data <- matrix(
+    ncol = length(colnames),
+    nrow = N,
+    dimnames = list(NULL, colnames)
+  ) %>% as.data.frame()
+
+  # Input generation
+  data[, 1] <- runif(N, 5, 50)
+  data[, 2] <- runif(N, 5, 50)
+
+  z <- runif(N, - 1.5, 1.5)
+
+  ln_x1 <- log(data[, "x1"])
+  ln_x2 <- log(data[, "x2"])
+
+  op1 <- - 1 + 0.5 * z + 0.25 * (z ^ 2) - 1.5 * ln_x1
+
+  op2 <- - 0.6 * ln_x2 + 0.20 * (ln_x1 ^ 2) + 0.05 * (ln_x2 ^ 2) - 0.1 * ln_x1 * ln_x2
+
+  op3 <- + 0.05 * ln_x1 * z - 0.05 * ln_x2 * z
+
+  ln_y1_ast <- - (op1 + op2 + op3)
+
+  # theoretical frontier
+  data[, c("y1", "yT1")] <- exp(ln_y1_ast)
+  data[, c("y2", "yT2")] <- exp(ln_y1_ast + z)
+
+  if (border < 1) {
+
+    # output generation
+    index <- sample(1:N, N * (1 - border))
+    N_sample <- length(index)
+    half_normal <- exp(abs(rnorm(N_sample, 0, 0.3 ** (1 / 2))))
+
+    if (noise) {
+
+      normal1 <- exp(rnorm(N_sample, 0, 0.01 ** (1 / 2)))
+      normal2 <- exp(rnorm(N_sample, 0, 0.01 ** (1 / 2)))
+
+      data[index, "y1"] <- data[index, "yT1"] / (half_normal * normal1)
+      data[index, "y2"] <- data[index, "yT2"] / (half_normal * normal2)
+
+    } else {
+
+      data[index, "y1"] <- data[index, "yT1"] / half_normal
+      data[index, "y2"] <- data[index, "yT2"] / half_normal
+
+    }
+  }
+
+  return(data)
+
+}
+
+#' @title 2 outputs ~ 2 inputs Constant Elasticity of Transformation - Cobb-Douglas Data Generation Process
+#'
+#' @description
+#'
+#' This function simulates a 2 outputs ~ 2 inputs \code{data.frame} using a Data Generation Process (DGP) based on
+#' Constant Elasticity of Transformation (CET) on the output side and Cobb-Douglas (CD) on the input side as in \insertCite{fare1994;textual}{aces}.
+#'
+#' The dataset consists of \code{N} observations divided into four groups with equal proportions:
+#' \itemize{
+#'   \item \strong{Small-size producers}: \eqn{h(u) = 25}, \eqn{f(x) = 25}, \eqn{\delta = 0.898}
+#'   \item \strong{Medium-size producers (Lower bound)}: \eqn{h(u) = 50}, \eqn{f(x) = 50}, \eqn{\delta = 1.000}
+#'   \item \strong{Medium-size producers (Upper bound)}: \eqn{h(u) = 75}, \eqn{f(x) = 75}, \eqn{\delta = 1.000}
+#'   \item \strong{Large-size producers}: \eqn{h(u) = 100}, \eqn{f(x) = 100}, \eqn{\delta = 0.927}
+#' }
+#'
+#' This structure ensures the artificial technology exhibits regions of increasing, constant, and decreasing returns to scale.
+#'
+#' @param N
+#' An integer representing the sample size.
+#'
+#' @param border
+#' Proportion of DMUs in the frontier.
+#'
+#' @param noise
+#' A \code{logical} indicating whether to add random noise.
+#'
+#' @references
+#' \insertRef{fare1994}{aces}
+#'
+#' @return
+#' A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2), the theoretical frontier (yT1, yT2).
+#'
+#' @export
+
+cet_cd_X2Y2 <- function (
+    N,
+    border,
+    noise
+    ) {
+
+  # define producer groups and their parameters
+  groups <- data.frame (
+    f = c(25, 50, 75, 100),
+    h = c(25, 50, 75, 100),
+    min_value_x = c(20, 30, 50, 90),
+    max_value_x = c(60, 80, 100, 230),
+    min_value_y = c(10, 15, 25, 45),
+    max_value_y = c(35, 70, 100, 135),
+    delta = c(0.898, 1.000, 1.000, 0.927),
+    proportion = c(0.25, 0.25, 0.25, 0.25)
+  )
+
+  # assign each observation to a group based on proportions
+  group_assignments <- sample (
+    1:nrow(groups),
+    size = N,
+    replace = TRUE,
+    prob = groups$proportion
+    )
+
+  # initialize the data frame
+  data <- data.frame(
+    x1 = numeric(N),
+    x2 = numeric(N),
+    y1 = numeric(N),
+    y2 = numeric(N),
+    yT1 = numeric(N),
+    yT2 = numeric(N),
+    fx = numeric(N),
+    hy = numeric(N)
+  )
+
+  # generate inputs and outputs for each group
+  for (i in 1:nrow(groups)) {
+
+    # input parameters for group
+    delta <- groups[i, "delta"]
+    min_value_x <- groups[i, "min_value_x"]
+    max_value_x <- groups[i, "max_value_x"]
+    fx <- groups[i, "f"]
+
+    # output parameters for group
+    hy <- groups[i, "h"]
+    min_value_y <- groups[i, "min_value_y"]
+    max_value_y <- groups[i, "max_value_y"]
+
+    # indices of observations belonging to the group
+    idx_group <- which(group_assignments == i)
+
+    # generate x1
+    data$x1[idx_group] <- runif (
+      length(idx_group),
+      min = min_value_x,
+      max = max_value_x
+      )
+
+    # generate x2
+    data$x2[idx_group] <- (fx / data$x1[idx_group] ^ (0.5 * delta)) ^ (1 / (0.5 * delta))
+
+    # generate yT1
+    data$yT1[idx_group] <- runif (
+      length(idx_group),
+      min = min_value_y,
+      max = max_value_y
+    )
+
+    # generate yT2
+    data$yT2[idx_group] <- sqrt(2 * hy ^ 2 - data$yT1[idx_group] ^ 2)
+
+    # generate y1
+    data$y1[idx_group] <- data$yT1[idx_group]
+
+    # generate y2
+    data$y2[idx_group] <- data$yT2[idx_group]
+
+    # Log-linear Cobb-Douglas
+    data$fx[idx_group] <- (sqrt(data$x1[idx_group]) * sqrt(data$x2[idx_group])) ^ delta
+
+  }
+
+  # generate inefficiency
+  if (border < 1) {
+
+    # output generation: inefficiency
+    idx_ineff <- sample(1:N, N * (1 - border))
+
+    # generate inefficiency
+    half_normal <- exp(abs(rnorm(length(idx_ineff), 0, 0.3 ** (1 / 2))))
+
+    if (noise) {
+
+      normal1 <- exp(rnorm(length(idx_ineff), 0, 0.01 ** (1 / 2)))
+      normal2 <- exp(rnorm(length(idx_ineff), 0, 0.01 ** (1 / 2)))
+
+      data[idx_ineff, "y1"] <- data[idx_ineff, "yT1"] / (half_normal * normal1)
+      data[idx_ineff, "y2"] <- data[idx_ineff, "yT2"] / (half_normal * normal2)
+
+    } else {
+
+      data[idx_ineff, "y1"] <- data[idx_ineff, "yT1"] / half_normal
+      data[idx_ineff, "y2"] <- data[idx_ineff, "yT2"] / half_normal
+
+    }
+  }
+
+  # Constant Elasticity of Transformation
+  data$hy <- sqrt((1 / 2) * data$y1 ^ 2 + (1 / 2) * data$y2 ^ 2)
+
+  data <- round(data, 4)
 
   return(data)
 

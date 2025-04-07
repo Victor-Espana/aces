@@ -1,456 +1,140 @@
-library("plotly")
-library("latex2exp")
-library("ggplot2")
-library("tictoc")
-library("Benchmarking")
-
+devtools::load_all()
 devtools::document()
-devtools::load_all()
+library("ggplot2")
 
-# ============================================================================ #
-#                           Evaluación escenarios                              #
-# ============================================================================ #
-
-set.seed(123)
-
-for (i in 1:20) {
-
-  print(i)
-
-  data <- reffcy (
-    DGP = "cobb_douglas_XnY1_noise",
-    parms = list (
-      N = 100,
-      nX = 1,
-      p = 1,
-      heteroskedasticity = FALSE
-    )
-  )
-
-  data$eff <- data[, "y"] / data[, "yD"]
-
-  x <- 1
-  y <- 2
-
-  # modelo
-  ACES1 <- aces (
-    data = data,
-    x = x,
-    y = y,
-    y_type = "individual",
-    model_type = "stochastic",
-    error_type = "mul",
-    bagging = list (
-      apply = FALSE,
-      sample = nrow(data),
-      models = 10,
-      nvars = ceiling(length(x) / 3)
-      ),
-    degree = 1,
-    hd_cost = 0.05,
-    metric = "mse",
-    shape = list (
-      monotonicity = T,
-      concavity = T,
-      origin = F
-    ),
-    nterms = 100,
-    err_red = 0,
-    minspan = 1,
-    endspan = 1,
-    kn_grid = - 1,
-    d = 1,
-    wc = seq(1, 2, length.out = 5),
-    wq = seq(8 / 7, 1.5, length.out = 5)
-  )
-
-  data$f_aces_moments <- predict (
-    object = ACES1,
-    newdata = data,
-    x = x,
-    method = "aces_forward",
-    stochastic_pred = "moments"
-  )$y_pred
-
-  data$f_aces_pse <- predict (
-    object = ACES1,
-    newdata = data,
-    x = x,
-    method = "aces_forward",
-    stochastic_pred = "pseudolikelihood"
-  )$y_pred
-
-  mean_aces <- predict (
-    object = ACES1,
-    newdata = data,
-    x = x,
-    method = "aces_forward",
-    stochastic_pred = "mean"
-  )$y_pred
-
-  data$aces_moments <- predict (
-    object = ACES1,
-    newdata = data,
-    x = x,
-    method = "aces",
-    stochastic_pred = "moments"
-  )$y_pred
-
-  data$aces_pse <- predict (
-    object = ACES1,
-    newdata = data,
-    x = x,
-    method = "aces",
-    stochastic_pred = "pseudolikelihood"
-  )$y_pred
-
-  stoned_fitting_mom <- stoned (
-    X = as.matrix(data[, x]),
-    Y = as.matrix(data[, y]),
-    RTS = "vrs",
-    MULT = 1,
-    METHOD = "MM"
-  )
-
-  mean_stoned <- stoned_fitting_mom[["yhat"]]
-
-  stoned_fitting_pse <- stoned (
-    X = as.matrix(data[, x]),
-    Y = as.matrix(data[, y]),
-    RTS = "vrs",
-    MULT = 1,
-    METHOD = "PSL"
-  )
-
-  data$stoned_mom <- stoned_fitting_mom[["front"]][, 1]
-  data$stoned_pse <- stoned_fitting_pse[["front"]][, 1]
-
-  # mean error aces
-  print(paste("Mean err ACES:", mean((mean_aces - data[, y]) ^ 2)))
-
-  # mean error stoned
-  print(paste("Mean err StoNED:", mean((mean_stoned - data[, y]) ^ 2)))
-
-  err_f_aces_mom <- mean((data[, 3] - data[, 5]) ^ 2)
-  err_f_aces_pse <- mean((data[, 3] - data[, 6]) ^ 2)
-  err_b_aces_mom <- mean((data[, 3] - data[, 7]) ^ 2)
-  err_b_aces_pse <- mean((data[, 3] - data[, 8]) ^ 2)
-  err_stoned_mom <- mean((data[, 3] - data[, 9]) ^ 2)
-  err_stoned_pse <- mean((data[, 3] - data[, 10]) ^ 2)
-
-  print (
-    paste (
-      "aces_f_mom:", round(err_f_aces_mom, 4),
-      "aces_f_pse:", round(err_f_aces_pse, 4),
-      "aces_mom:", round(err_b_aces_mom, 4),
-      "aces_pse:", round(err_b_aces_pse, 4),
-      "stoned_mom:", round(err_stoned_mom, 4),
-      "stoned_pse:", round(err_stoned_pse, 4)
-    )
-  )
-}
-
-data$aces_mean <- predict (
-  object = ACES1,
-  newdata = data,
-  x = x,
-  method = "aces",
-  stochastic_pred = "moments"
-)$y_pred
-
-ggplot(data) +
-  # geom_point(aes(x = x1, y = y)) +
-  geom_line(aes(x = 1:100, y = aces_mean), color = "red") +
-  geom_point(aes(x = 1:100, y = aces_mean), color = "red") +
-  # geom_line(aes(x = 1:100, y = stoned_mom), color = "blue") +
-  # geom_point(aes(x = 1:100, y = stoned_mom), color = "blue") +
-  geom_line(aes(x = 1:100, y = yD), color = "green") +
-  geom_point(aes(x = 1:100, y = yD), color = "green") +
-  theme_bw()
-
-ggplot(data) +
-  geom_point(aes(x = x1, y = y)) +
-  geom_line(aes(x = x1, y = yD, color = "DGP"), linewidth = 1) +
-  geom_line(aes(x = x1, y = aces_mean, color = "aces_mom"), linewidth = 1) +
-  # geom_line(aes(x = x1, y = stoned, color = "stoned"), linewidth = 1) +
-  theme_bw() +
-  guides(color = guide_legend(title = "model")) +
-  theme(legend.position = c(0.8, 0.2))
-
-scores <- aces_scores (
-  tech_data = data,
-  eval_data = data,
-  x = x,
-  y = y,
-  object = ACES1,
-  method = "aces",
-  proximity = ifelse(length(y) == 1, Inf, 0.05),
-  measure = "rad_out",
-  convexity = TRUE,
-  returns = "variable",
-  direction = NULL,
-  weights = NULL,
-  digits = 3
+data <- cobb_douglas_XnY1 (
+  N = 100,
+  nX = 3
 )
 
-data$y_hat1 <- scores$dea_vrt_rad_out * data[, 2]
+x <- 1:3
+y <- 4
 
-# ============================================================================ #
-#                                   X2 ~ Y2                                    #
-# ============================================================================ #
-
-data <- reffcy(
-  DGP = "translog_X2Y2",
-  parms = list(
-    N = 100,
-    border = 0.1,
-    noise = FALSE
-  )
-)
-
-x <- 1:2
-y <- 3:4
-
-# bootstrap iterations
-n_bootstrap <- 10
-
-# matrix to save predictions
-bootstrap_predictions_y1 <- matrix(NA, nrow = nrow(data), ncol = n_bootstrap)
-bootstrap_predictions_y2 <- matrix(NA, nrow = nrow(data), ncol = n_bootstrap)
-
-# crear barra de progreso
-library(progress)
-pb <- progress_bar$new(
-  format = "Bootstrap [:bar] :percent en :elapsed",
-  total = n_bootstrap,
-  clear = FALSE,
-  width = 60
-)
-
-# bootstrap loop
-for (i in 1:n_bootstrap) {
-
-  # make bootstrap sample
-  bootstrap_sample <- data[sample(1:nrow(data), replace = TRUE), ]
-
-  # ACES model
-  ACES <- aces (
-    data = bootstrap_sample,
-    x = x,
-    y = y,
-    y_type = "ind",
-    model_type = "env",
-    error_type = "mul",
-    RF = list(
-      "apply" = FALSE,
-      "sample" = nrow(bootstrap_sample),
-      "models" = 50,
-      "nvars" = 1,
-      "oob_red" = 0.001
-    ),
-    mul_BF = list (
-      "degree" = 2,
-      "hd_cost" = 0.05
-    ),
-    metric = "mse",
-    shape = list (
-      "mon" = TRUE,
-      "con" = TRUE,
-      "pto" = FALSE
-    ),
-    nterms = nrow(bootstrap_sample),
-    err_red = 0.005,
-    kn_grid = - 1,
-    minspan = - 1,
-    endspan = 0,
-    kn_penalty = 1,
-    smoothing = list(
-      "wc" = seq(1, 2, length.out = 5),
-      "wq" = seq(8 / 7, 1.5, length.out = 5)
-    )
-  )
-
-  # Predecir con el modelo ajustado en la muestra original
-  predictions <- predict (
-    object = ACES,
-    newdata = data,
-    x = x,
-    method = "aces"
-  )
-
-  # save predictions
-  bootstrap_predictions_y1[, i] <- predictions[, "y1_pred"]
-  bootstrap_predictions_y2[, i] <- predictions[, "y2_pred"]
-
-  # update progress bar
-  pb$tick()
-}
-
-
-# Calcular estadísticos de las predicciones (por ejemplo, promedio y desviación estándar)
-pred_summary <- data %>%
-  mutate(
-    y1_pred_mean = apply(bootstrap_predictions_y1, 1, mean),
-    y2_pred_mean = apply(bootstrap_predictions_y2, 1, mean),
-  )
-
-
-# ============================================================================ #
-#                                 RandomForest                                 #
-# ============================================================================ #
-
-devtools::load_all()
-
-data <- reffcy (
-  DGP = "translog_X2Y2",
-  parms = list (
-    N = 25,
-    border = 0.1,
-    noise = FALSE
-  ))
-
-x <- 1:2
-y <- 3:4
-
-ACES <- aces (
+# ACES
+model <- aces (
   data = data,
   x = x,
   y = y,
-  y_type = "ind",
-  model_type = "env",
+  quick_aces = FALSE,
   error_type = "add",
-  RF = list (
-    "apply" = FALSE,
-    "sample" = nrow(data),
-    "models" = 200,
-    "nvars" = 1,
-    "oob_red" = 0.001
-  ),
   mul_BF = list (
-    "degree" = 2,
-    "hd_cost" = 0
+    "max_degree" = 2,
+    "inter_cost" = 0.05
   ),
   metric = "mse",
   shape = list (
-    "mon" = T,
-    "con" = T,
-    "pto" = F
+    "mono" = T,
+    "conc" = T,
+    "ptto" = F
   ),
-  nterms = nrow(data),
-  err_red = 0.005,
+  max_terms = nrow(data),
+  err_red = 0.01,
   kn_grid = - 1,
   minspan = - 1,
-  endspan = 0,
-  kn_penalty = 1,
-  smoothing = list (
-    "wc" = seq(1, 2, length.out = 5),
-    "wq" = seq(8 / 7, 1.5, length.out = 5)
-  )
+  endspan = - 1
 )
 
-data[, c("y1_pred2RF", "y2_pred2RF")] <- predict (
-  object = ACES,
-  newdata = data,
+y_hat <- predict (
+  object = model,
+  newdata = rbind(data, rep(0, 5)),
   x = x,
-  method = "aces_forward"
+  method = "aces"
+)$y_pred
+
+round(tail(y_hat), 3)
+
+aces_scores (
+  eval_data = data,
+  x = x,
+  y = y,
+  relevant = FALSE,
+  object = model,
+  method = "aces",
+  measure = "wam",
+  returns = "variable",
+  direction = NULL,
+  weights = "NOR",
+  digits = 3
 )
 
-compute_variable_importance (
+# RF-ACES
+tic()
+model <- rf_aces (
   data = data,
   x = x,
   y = y,
-  object = ACES,
-  repeats = 1
+  quick_aces = FALSE,
+  error_type = "add",
+  mul_BF = list (
+    "max_degree" = 2,
+    "inter_cost" = 0.05
+  ),
+  metric = "mse",
+  shape = list (
+    "mono" = T,
+    "conc" = T,
+    "ptto" = F
+  ),
+  learners = 50,
+  bag_size = nrow(data),
+  max_feats = length(x) / 3,
+  early_stopping = list (
+    "ma_window" = 20,
+    "tolerance" = 10
+  ),
+  max_terms = nrow(data),
+  err_red = 0.01,
+  kn_grid = - 1,
+  minspan = - 1,
+  endspan = 0
+)
+toc()
+
+data$y_hat <- predict (
+  object = model,
+  newdata = data,
+  x = x,
+  method = "rf_aces"
+)$y_pred
+
+# aces_scores
+# rf_scores
+# interval rf
+
+# S-ACES
+model <- s_aces (
+  data = data,
+  x = x,
+  y = y,
+  z = z,
+  quick_aces = TRUE,
+  error_type = "add",
+  mul_BF = list (
+    "max_degree" = 1,
+    "compl_cost" = 0.05
+  ),
+  metric = "mse",
+  shape = list (
+    "mono" = T,
+    "conc" = F,
+    "ptto" = F
+  ),
+  nterms = nrow(data),
+  err_red = 0.01,
+  kn_grid = - 1,
+  minspan = - 1,
+  endspan = 0,
+  kn_penalty = 1
 )
 
-# OOB
-oob <- c()
-for (j in 1:60) {
-  oob <- c(oob, ACES[[1]][[j]][[1]][["OOB"]])
-}
-
-oob_data <- data.frame (
-  model = 1:60,
-  oob_err = oob
-)
-
-ggplot(oob_data) +
-  geom_point(aes(x = model, y = oob_err), color = "#FFABAB") +
-  geom_line(aes(x = model, y = oob_err), color = "#85E3FF") +
-  theme_bw() +
-  theme (
-    axis.title.x = element_text(
-      size = 12, face = "bold", color = "#921F30",
-      margin = margin(t = 10)),
-    axis.title.y = element_text(
-      size = 12, face = "bold", color = "#921F30",
-      margin = margin(r = 10)),
-    axis.text = element_text(
-      size = 12, color = "black"),
-    plot.margin = unit(c(1.25, 1.25, 1.25, 1.25), "lines"),
-    plot.title = element_text(
-      size = 12, face = "bold", color = "#921F30",
-      margin = margin(b = 10)
-    )
-  )
-
-# ============================================================================ #
-#                                 Concavidad                                   #
-# ============================================================================ #
-
-# la concavidad se rompe si queda un intervalo vacío distinto al último por la derecha
-
-# ejemplo 1: primer intervalo
-set.seed(123)
-
-data <- reffcy(
-  DGP = "add_scenario_XnY1",
-  parms = list(
-    N = 50,
-    scenario = "A"
-  ))
-
-a1 <- 0.8
-a2 <- - 0.4
-
-k1 <- 3.084632
-k2 <- 5.080007
-
-hinge1 <- pmax(0, data[, 1] - k1)
-hinge2 <- pmax(0, data[, 1] - k2)
-
-data$y_hat <- 0.5 + a1 * hinge1 + a2 * hinge2
+data$aces <- predict (
+  object = model,
+  newdata = data,
+  x = x,
+  method = "aces"
+)$y_pred
 
 ggplot(data) +
-  geom_line(aes(x = x1, y = y_hat)) +
-  geom_vline(xintercept = k1) +
-  geom_vline(xintercept = k2) +
+  geom_point(aes(x = x1, y = y)) +
+  geom_line(aes(x = x1, y = aces), color = "red") +
   theme_bw()
-
-# ejemplo 2: segundo intervalo
-set.seed(123)
-
-data <- reffcy(
-  DGP = "add_scenario_XnY1",
-  parms = list(
-    N = 50,
-    scenario = "A"
-  ))
-
-b1 <- - 0.8
-a2 <- 0.4
-
-k1 <- 3.084632
-k2 <- 5.080007
-
-hinge1 <- pmax(0, k1 - data[, 1])
-hinge2 <- pmax(0, data[, 1] - k2)
-
-data$y_hat <- 0.5 + b1 * hinge1 + a2 * hinge2
-
-ggplot(data) +
-  geom_line(aes(x = x1, y = y_hat)) +
-  geom_vline(xintercept = k1) +
-  geom_vline(xintercept = k2) +
-  theme_bw()
-

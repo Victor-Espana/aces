@@ -8,14 +8,13 @@ aces_algorithm(
   data,
   x_vars,
   y_vars,
-  z_vars,
   quick_aces,
   error_type,
   max_degree,
   inter_cost,
   metric,
   shape,
-  nterms,
+  max_terms,
   err_red,
   minspan,
   endspan,
@@ -30,8 +29,6 @@ aces_algorithm(
 
 \item{y_vars}{Column indexes of output variables in \code{data}.}
 
-\item{z_vars}{Column indexes of contextual variables in \code{data}.}
-
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
@@ -42,9 +39,9 @@ aces_algorithm(
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin (only for piece-wise linear version).}
+\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
 
-\item{nterms}{Maximum number of terms created during the forward step.}
+\item{max_terms}{Maximum number of terms created during the forward step.}
 
 \item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree BFs.}
 

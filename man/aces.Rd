@@ -12,8 +12,8 @@ aces(
   error_type = "add",
   mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
-  shape = list(mono = TRUE, conc = TRUE, ptto = FALSE, ),
-  nterms = 50,
+  shape = list(mono = TRUE, conc = TRUE, ptto = FALSE),
+  max_terms = 50,
   err_red = 0.01,
   kn_grid = -1,
   minspan = -1,
@@ -60,7 +60,7 @@ aces(
   \item{\code{ptto}}: A \code{logical} indicating if the estimator should satisfy \code{f(0) = 0}.
 }}
 
-\item{nterms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
+\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
 
 \item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs. Default is \code{0.01}.}
 
@@ -92,9 +92,6 @@ An \code{aces} object.
 }
 \description{
 This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
-}
-\details{
-See ...
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr

@@ -9,15 +9,15 @@ rf_aces(
   x,
   y,
   quick_aces = TRUE,
-  model_type = "env",
   error_type = "add",
   mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
   shape = list(mono = TRUE, conc = TRUE, ptto = FALSE),
   learners = 100,
-  nvars = length(x)/3,
-  sample_size = nrow(data),
-  nterms = 50,
+  bag_size = nrow(data),
+  max_feats = length(x)/3,
+  early_stopping = list(ma_window = 10, tolerance = 5),
+  max_terms = 50,
   err_red = 0.01,
   kn_grid = -1,
   minspan = -1,
@@ -65,11 +65,17 @@ rf_aces(
 
 \item{learners}{An \code{integer} indicating the number of models for bagging.}
 
-\item{nvars}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
+\item{bag_size}{An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.}
 
-\item{sample_size}{An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.}
+\item{max_feats}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
 
-\item{nterms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
+\item{early_stopping}{A \code{list} specifying the early stopping criteria based on the out-of-bag (OOB) error to unnecessary training by stopping when the OOB error no longer improves. The list should contain the following elements:
+\itemize{
+  \item{\code{ma_window}}: An \code{integer} specifying the size of the moving average window used to smooth the OOB error. A larger value makes the stopping condition more stable but less reactive to short-term fluctuations. Default is 10.
+  \item{\code{tolerance}}: An \code{integer} indicating the number of consecutive iterations without significant improvement in the OOB error before stopping the training. Higher values make the model more tolerant to small fluctuations. Default is 5.
+}}
+
+\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
 
 \item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.}
 
@@ -77,7 +83,6 @@ rf_aces(
 \itemize{
    \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
    \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
-
 }}
 
 \item{minspan}{A \code{numeric} specifying the minimum number of observations between two adjacent knots. Options are:
@@ -95,13 +100,10 @@ rf_aces(
 }}
 }
 \value{
-An \code{rf_aces} object.
+A \code{rf_aces} object.
 }
 \description{
 This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces} and Random Forest, introduced by \insertCite{breiman2001;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces} and \insertCite{espana2024rf;textual}{aces}.
-}
-\details{
-See ...
 }
 \references{
 \insertRef{espana2024rf}{aces} \cr \cr
