@@ -53,7 +53,7 @@ predict.aces <- function (
   }
 
   # data in [x, y] format with interaction and / or transformation of variables included
-  data <- prepare_data (
+  data <- set_data (
     data = newdata,
     x = x,
     y = NULL,
@@ -170,7 +170,7 @@ predict.rf_aces <- function (
   }
 
   # data in [x, y] format with interaction of variables included
-  data <- prepare_data (
+  data <- set_data (
     data = newdata,
     x = x,
     y = NULL,

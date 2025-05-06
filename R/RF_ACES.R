@@ -334,8 +334,19 @@ rf_aces <- function (
 
   }
 
-  inp_cols <- names(data)[1:length(x)]
-  out_cols <- names(data)[(length(x) + 1):(length(x) + length(y))]
+
+  data_sorted <- as.data.frame (
+    set_data (
+      data = data,
+      x = x,
+      y = y,
+      max_degree = 1,
+      error_type = "add"
+    )
+  )
+
+  inp_cols <- names(data_sorted)[1:length(x)]
+  out_cols <- names(data_sorted)[(length(x) + 1):(length(x) + length(y))]
 
   colnames(xmat_rf_aces) <- colnames(xmat_rf_aces_cubic) <- colnames(xmat_rf_aces_quintic) <- inp_cols
   colnames(ymat_rf_aces) <- colnames(ymat_rf_aces_cubic) <- colnames(ymat_rf_aces_quintic) <- out_cols
@@ -381,6 +392,7 @@ rf_aces <- function (
   )
 
   RF_ACES[["control"]] <- list (
+    "quick_aces" = quick_aces,
     "error_type" = error_type,
     "max_degree" = mul_BF[["max_degree"]],
     "inter_cost" = mul_BF[["inter_cost"]],
@@ -395,7 +407,7 @@ rf_aces <- function (
     "err_red" = err_red,
     "minspan" = minspan,
     "endspan" = endspan,
-    "kn_grid" = NULL,
+    "kn_grid" = kn_grid,
     "kn_penalty" = NULL,
     "wc" = NULL,
     "wq" = NULL
@@ -492,7 +504,7 @@ rf_aces_algorithm <- function (
   DMUs <- data
 
   # data in [x, z, y] format with interaction of variables included
-  data <- prepare_data (
+  data <- set_data (
     data = data,
     x = x_vars,
     y = y_vars,
@@ -579,26 +591,26 @@ rf_aces_algorithm <- function (
     dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
   ) %>% as.data.frame()
 
-  dea_returns <- ifelse(shape[["conc"]], "variable", "constant")
+  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
 
   table_scores[, 1] <- rad_out (
-    tech_xmat = as.matrix(DMUs[, x_vars]),
+    tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
-    eval_xmat = as.matrix(DMUs[, x_vars]),
+    eval_xmat = as.matrix(DMUs[, x_filtered]),
     eval_ymat = as.matrix(DMUs[, y_vars]),
     convexity = TRUE,
-    returns = dea_returns
+    returns = "variable"
   )[, 1]
 
   for (out in 1:nY) {
 
     table_scores[, 1 + out] <- rad_out (
-      tech_xmat = as.matrix(DMUs[, x_vars]),
+      tech_xmat = as.matrix(DMUs[, x_filtered]),
       tech_ymat = as.matrix(DMUs[, y_vars[out]]),
-      eval_xmat = as.matrix(DMUs[, x_vars]),
+      eval_xmat = as.matrix(DMUs[, x_filtered]),
       eval_ymat = as.matrix(DMUs[, y_vars[out]]),
       convexity = TRUE,
-      returns = dea_returns
+      returns = "variable"
     )[, 1]
 
   }
@@ -961,6 +973,7 @@ rf_aces_algorithm <- function (
     data = DMUs,
     x = x_vars,
     y = y_vars,
+    quick_aces = quick_aces,
     error_type = error_type,
     max_degree = max_degree,
     inter_cost = inter_cost,
@@ -1075,11 +1088,10 @@ compute_oob <- function (
 
 }
 
-#' @title Compute Variable Importance in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
+#' @title Compute Variable Importance for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
 #'
 #' @description
-#'
-#' This function computes a metric of variable importance for a given Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) with a certain number of base learners.
+#' Computes a robust measure of variable importance for a fitted Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model. Importance scores are obtained by evaluating the increase in prediction error when permuting each input variable as in \insertCite{breiman2001;textual}{aces}.
 #'
 #' @param data
 #' A \code{data.frame} or \code{matrix} containing the variables in the model.
@@ -1096,152 +1108,323 @@ compute_oob <- function (
 #' @param repeats
 #' Number of times the variable importance procedure is repeated.
 #'
-#' @return
+#' @references
+#' \insertRef{breiman2001}{aces} \cr
 #'
-#' This function returns a metric of variable importance for each input variable
+#' @return
+#' This function returns a metric of variable importance for each input variable.
 
-compute_variable_importance <- function (
+rf_aces_varimp <- function (
     data,
     x,
     y,
     object,
     repeats = 1
-  ) {
+    ) {
 
-  # ACES meta-data
-  control_features <- object[[1]][[1]][["control"]]
+  # RF-ACES configuration
+  control_features <- object[["control"]]
 
-  model_type <- control_features[["model_type"]]
+  quick_aces <- control_features[["quick_aces"]]
   error_type <- control_features[["error_type"]]
-  y_type <- object[[1]][[1]][["data"]][["y_type"]]
-  degree <- control_features[["degree"]]
+  max_degree <- control_features[["max_degree"]]
+  inter_cost <- control_features[["inter_cost"]]
   metric <- control_features[["metric"]]
-  mon <- control_features[["monotonicity"]]
-  con <- control_features[["concavity"]]
-  ori <- as.logical(control_features[["origin"]])
+  shape <- control_features[["shape"]]
+  learners <- control_features[["learners"]]
+  bag_size <- control_features[["bag_size"]]
+  max_feats <- control_features[["max_feats"]]
+  early_stopping <- control_features[["early_stopping"]]
+  max_terms <- control_features[["max_terms"]]
   err_red <- control_features[["err_red"]]
-  hd_cost <- control_features[["hd_cost"]]
+  kn_grid <- control_features[["kn_grid"]]
   minspan <- control_features[["minspan"]]
   endspan <- control_features[["endspan"]]
-  wc <- control_features[["wc"]]
-  wq <- control_features[["wq"]]
 
-  # RF-ACES meta-data
-  RF_features <- object[[1]][[1]][["control"]][["RF"]]
+  # initialize matrix of variable importance
+  mat_varimp <- matrix (
+    0,
+    nrow = length(x)
+  )
 
-  RF_sample <- RF_features[["sample"]]
-  RF_models <- RF_features[["models"]]
-  RF_max_feats <- RF_features[["max_feats"]]
-  RF_oob_red <- RF_features[["oob_red"]]
+  rownames(mat_varimp) <- colnames(data)[x]
+  colnames(mat_varimp) <- "importance"
 
-  # number of estimated technologies
-  nrankings <- length(object[[1]])
+  # out-of-bag error of the complete model
+  oob <- object[["forest"]][[length(object[["forest"]])]][["OOB"]]
 
-  # ranking
-  rankings <- vector("list", nrankings)
+  # out-of-bag excluding the j-th input variable
+  oob_j <- c()
 
-  # sample size
-  N <- nrow(data)
+  # compute oob shuffling each variable "j"
+  for (j in 1:length(x)) {
+    for (n in 1:repeats) {
 
-  for (k in 1:nrankings) {
+      data_shuffled <- data
+      xvar_shuffled <- data[sample(1:nrow(data)), x[j]]
+      data_shuffled[, x[j]] <- xvar_shuffled
 
-    # select a model
-    data_info <- object[[1]][[k]][["data"]]
-
-    # look for netputs if y_type = "individual"
-    z <- data_info[["z"]]
-
-    # output index
-    y <- data_info[["y"]]
-
-    # data in [x, z, y] format with interaction of variables included
-    data_model <- set_interactions (
-      data = data,
-      x = x,
-      y = NULL,
-      z = z,
-      degree = degree
-    )
-
-    # add output data to input data
-    data_model <- cbind(data_model, data[, y, drop = FALSE])
-
-    # reorder index 'x' and 'y' in data
-    x <- 1:(ncol(data_model) - length(y))
-    y <- (length(x) + 1):ncol(data_model)
-
-    # number of inputs
-    nX <- length(x)
-
-    # initialize matrix of variable importance
-    mat_varimp <- matrix (
-      0,
-      nrow = nX
-    )
-    rownames(mat_varimp) <- colnames(data_model)[x]
-    colnames(mat_varimp) <- "importance"
-
-    # out-of-bag error of the complete model
-    oob <- object[[length(object)]][[1]][["OOB"]]
-
-    # out-of-bag excluding the j-th input variable
-    oob_j <- c()
-
-    # compute oob shuffling each variable "j"
-    for (j in 1:nX) {
-      for (n in 1:repeats) {
-        data_shuffled <- data_model
-        xvar_shuffled <- data_model[sample(1:N), x[j]]
-        data_shuffled[, x[j]] <- xvar_shuffled
-
-        model_j <- aces (
-          data = data_shuffled,
-          x = x,
-          y = y,
-          y_type = y_type,
-          model_type = model_type,
-          error_type = error_type,
-          RF = list (
-            "apply" = TRUE,
-            "sample" = RF_sample,
-            "models" = RF_models,
-            "max_feats" = RF_max_feats,
-            "oob_red" = RF_oob_red
-          ),
-          mul_BF = list (
-            "degree" = degree,
-            "hd_cost" = 0
-          ),
-          metric = "mse",
-          shape = list (
-            "mon" = mon,
-            "con" = con,
-            "ori" = ori
-          ),
-          max_terms = nrow(data),
-          err_red = err_red,
-          kn_grid = - 1,
-          minspan = minspan,
-          endspan = endspan,
-          kn_penalty = NULL,
-          smoothing = list (
-            "wc" = wc,
-            "wq" = wq
-          )
+      model_j <- rf_aces (
+        data = data_shuffled,
+        x = x,
+        y = y,
+        quick_aces = quick_aces,
+        error_type = error_type,
+        mul_BF = list (
+          "max_degree" = max_degree,
+          "inter_cost" = inter_cost
+        ),
+        metric = metric,
+        shape = shape,
+        learners = learners,
+        bag_size = bag_size,
+        max_feats = max_feats,
+        early_stopping = early_stopping,
+        max_terms = max_terms,
+        err_red = err_red,
+        kn_grid = kn_grid,
+        minspan = minspan,
+        endspan = endspan
         )
 
         # out-of-bag error for the model with the jth variable shuffled
-        oob_j <- c(oob_j, model_j[[length(model_j)]][[1]][["OOB"]])
+        oob_j <- c(oob_j, model_j[["forest"]][[length(model_j[["forest"]])]][["OOB"]])
+
       }
 
       # add oob_j to the matrix of variable importance
       mat_varimp[j, "importance"] <- round(100 * ((mean(oob_j) - oob) / mean(oob_j)), 2)
+
+  }
+
+  ranking <- mat_varimp[order(mat_varimp[, 1], decreasing = TRUE), ]
+
+  return(rankings)
+
+}
+
+#' @title Percentile-Based Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
+#'
+#' @description
+#' Predicts the optimal output level under the RF-ACES model using a specified percentile of the conditional distribution, rather than the mean. As in DEA, inputs are held fixed, and the output is predicted via Random Forests by selecting a given percentile (e.g., the 5th percentile) of the conditional distribution. This approach enables modeling conservative or optimistic production frontiers by adjusting the percentile parameter.
+#'
+#' @param object
+#' A \code{rf_aces} object.
+#'
+#' @param newdata
+#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#'
+#' @param x
+#' Column indexes of input variables in \code{data}.
+#'
+#' @param y
+#' Column indexes of output variables in \code{data}.
+#'
+#' @param p
+#' A numeric value between 0 and 1 specifying the conditional percentile to be used for prediction.
+#'
+#' @param method
+#' Model for prediction:
+#' \itemize{
+#' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
+#' }
+#'
+#' @return
+#' A numeric vector of predicted output values for each observation, based on the specified percentile.
+
+rf_aces_p_predict <- function (
+    object,
+    newdata,
+    x,
+    y,
+    p,
+    method
+    ) {
+
+  RF_ACES <- object
+
+  xmat_rf_aces <- xmat_rf_aces_cubic <- xmat_rf_aces_quintic <- NULL
+  ymat_rf_aces <- ymat_rf_aces_cubic <- ymat_rf_aces_quintic <- NULL
+
+  # save technology for Random Forest
+  for (i in seq_along(RF_ACES[["forest"]])) {
+
+    xmat_rf_aces <- rbind (
+      xmat_rf_aces,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["xmat"]]
+    )
+
+    ymat_rf_aces <- rbind (
+      ymat_rf_aces,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["ymat"]]
+    )
+
+    xmat_rf_aces_cubic <- rbind (
+      xmat_rf_aces_cubic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["xmat"]]
+    )
+
+    ymat_rf_aces_cubic <- rbind (
+      ymat_rf_aces_cubic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["ymat"]]
+    )
+
+    xmat_rf_aces_quintic <- rbind (
+      xmat_rf_aces_quintic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["xmat"]]
+    )
+
+    ymat_rf_aces_quintic <- rbind (
+      ymat_rf_aces_quintic,
+      RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["ymat"]]
+    )
+
+  }
+
+  data_sorted <- as.data.frame (
+    set_data (
+      data = newdata,
+      x = x,
+      y = y,
+      max_degree = 1,
+      error_type = "add"
+    )
+  )
+
+  inp_cols <- names(data_sorted)[1:length(x)]
+  out_cols <- names(data_sorted)[(length(x) + 1):(length(x) + length(y))]
+
+  colnames(xmat_rf_aces) <- colnames(xmat_rf_aces_cubic) <- colnames(xmat_rf_aces_quintic) <- inp_cols
+  colnames(ymat_rf_aces) <- colnames(ymat_rf_aces_cubic) <- colnames(ymat_rf_aces_quintic) <- out_cols
+
+  rf_aces_technology <- data.frame(xmat_rf_aces, ymat_rf_aces) %>%
+    group_by(across(all_of(inp_cols))) %>%
+    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = 'drop')
+
+  rf_aces_cubic_technology <- data.frame(xmat_rf_aces_cubic, ymat_rf_aces_cubic) %>%
+    group_by(across(all_of(inp_cols))) %>%
+    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = 'drop')
+
+  rf_aces_quintic_technology <- data.frame(xmat_rf_aces_quintic, ymat_rf_aces_quintic) %>%
+    group_by(across(all_of(inp_cols))) %>%
+    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = 'drop')
+
+  RF_ACES[["technology"]] <- list (
+    "rf_aces" = list (
+      "xmat" = as.matrix(rf_aces_technology[, x]),
+      "ymat" = as.matrix(rf_aces_technology[, y])
+    ),
+    "rf_aces_cubic" = list (
+      "xmat" = as.matrix(rf_aces_cubic_technology[, x]),
+      "ymat" = as.matrix(rf_aces_cubic_technology[, y])
+    ),
+    "rf_aces_quintic" = list (
+      "xmat" = as.matrix(rf_aces_quintic_technology[, x]),
+      "ymat" = as.matrix(rf_aces_quintic_technology[, y])
+    )
+  )
+
+  # number of outputs
+  nY <- length(RF_ACES[["data"]][["y"]])
+
+  # determine error type
+  error_type <- RF_ACES[["control"]][["error_type"]]
+
+  # data in [x, y] format with interaction of variables included
+  data <- set_data (
+    data = newdata,
+    x = x,
+    y = NULL,
+    max_degree = RF_ACES[["control"]][["max_degree"]],
+    error_type = error_type
+  )
+
+  # technology
+  tecno <- RF_ACES[["technology"]][[method]]
+
+  # number of models in Random Forest
+  RF_models <- length(RF_ACES[["forest"]])
+
+  # list of predictions for each model
+  y_hat_RF <- vector("list", RF_models)
+
+  for (t in 1:RF_models) {
+
+    # output predictions
+    y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
+
+    # select an element from the forest
+    model <- RF_ACES[["forest"]][[t]]
+
+    # method
+    aces_model <- model[["methods"]][[method]]
+    knots <- aces_model[["knots"]]
+
+    # matrix of basis function
+    B <- set_Bmat (
+      newdata = data,
+      model = aces_model,
+      knots = knots,
+      method = method
+    )
+
+    if (error_type == "add") {
+
+      for (out in 1:nY) {
+        y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
+      }
+
+    } else {
+
+      for (out in 1:nY) {
+        y_hat[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
+        y_hat[, out] <- exp(y_hat[, out])
+      }
+
     }
 
-    rankings[[k]] <- mat_varimp
+    y_hat_RF[[t]] <- as.data.frame(y_hat)
 
-    return(rankings)
   }
+
+  # point estimation
+  y_hat_aux <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
+
+  # mean prediction
+  for (var in 1:nY) {
+
+    # select "var" variable for each data.frame
+    rf_estimation <- lapply(y_hat_RF, function(df) df[, var])
+
+    # transform to matrix
+    matrix_var <- do.call(cbind, rf_estimation)
+
+    # mean predictions
+    y_hat_aux[, var] <- rowMeans(matrix_var, na.rm = TRUE)
+
+  }
+
+  # compute DEA scores
+  scores <- rad_out (
+    tech_xmat = tecno[["xmat"]],
+    tech_ymat = tecno[["ymat"]],
+    eval_xmat = as.matrix(newdata[, x]),
+    eval_ymat = as.matrix(y_hat_aux),
+    convexity = TRUE,
+    returns = "variable"
+  )
+
+  # remove unfeasibilities
+  scores[scores < -10000 | scores > 10000] <- NA
+
+  # predictions
+  y_hat <- as.data.frame(y_hat_aux * scores)
+
+  names(y_hat) <- paste(RF_ACES[["data"]][["ynames"]], "_pred", sep = "")
+
+  return(y_hat)
 
 }
 

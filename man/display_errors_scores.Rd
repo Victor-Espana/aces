@@ -9,6 +9,7 @@ display_errors_scores(
   x,
   y,
   object,
+  method,
   measure,
   returns,
   direction,
@@ -23,7 +24,9 @@ display_errors_scores(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{object}{An \code{aces} object.}
+\item{object}{An \code{aces} or \code{rf-aces} object.}
+
+\item{method}{Model prediction method used to compute predictions of inputs and obtain a new vector of outputs.}
 
 \item{measure}{Mathematical programming model to compute the efficiency scores.}
 

@@ -172,7 +172,10 @@ display_errors_aces <- function (
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param object
-#' An \code{aces} object.
+#' An \code{aces} or \code{rf-aces} object.
+#'
+#' @param method
+#' Model prediction method used to compute predictions of inputs and obtain a new vector of outputs.
 #'
 #' @param measure
 #' Mathematical programming model to compute the efficiency scores.
@@ -199,6 +202,7 @@ display_errors_scores <- function (
     x,
     y,
     object,
+    method,
     measure,
     returns,
     direction,
@@ -229,6 +233,37 @@ display_errors_scores <- function (
   if (!inherits(object, c("aces", "rf_aces"))) {
     stop(paste(deparse(substitute(object)), "must be an aces or rf_aces object."))
   }
+
+  # Valid methods per object class
+  if (inherits(object, "rf_aces")) {
+    allowed_methods <- c("rf_aces", "rf_aces_cubic", "rf_aces_quintic")
+    if (!(method %in% allowed_methods)) {
+      stop(paste0("Invalid method '", method, "' for object of class 'rf_aces'. ",
+                  "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."))
+    }
+  }
+
+  if (inherits(object, "aces")) {
+    allowed_methods <- c("aces", "aces_cubic", "aces_quintic", "aces_forward")
+    if (!(method %in% allowed_methods)) {
+      stop(paste0("Invalid method '", method, "' for object of class 'aces'. ",
+                  "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."))
+    }
+  }
+
+  # Valid measures
+  valid_measures <- c("rad_out", "rad_inp", "ddf", "rsl_out", "rsl_inp", "wam", "rf_aces_rad_out")
+
+  if (!(measure %in% valid_measures)) {
+    stop(paste0("Invalid measure '", measure, "'. ",
+                "Please choose one of: ", paste(valid_measures, collapse = ", "), "."))
+  }
+
+  # Enforce compatibility of rf_aces_rad_out with class rf_aces only
+  if (measure == "rf_aces_rad_out" && !inherits(object, "rf_aces")) {
+    stop("Measure 'rf_aces_rad_out' can only be used with objects of class 'rf_aces'.")
+  }
+
 
   # returns must be valid
   if (!is.null(returns) && !returns %in% c("constant", "variable")) {

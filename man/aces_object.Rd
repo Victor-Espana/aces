@@ -8,6 +8,7 @@ aces_object(
   data,
   x,
   y,
+  quick_aces,
   error_type,
   max_degree,
   inter_cost,
@@ -35,6 +36,8 @@ aces_object(
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
+
+\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 

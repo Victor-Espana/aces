@@ -8,7 +8,7 @@ aces_scores(
   eval_data,
   x,
   y,
-  relevant,
+  relevant = FALSE,
   object,
   method = "aces",
   measure = "rad_out",
@@ -74,7 +74,7 @@ aces_scores(
 A \code{data.frame} with the efficiency scores computed through an Adaptive Constrained Enveloping Splines model.
 }
 \description{
-This function computes the efficiency scores for each Decision-Making-Unit through an Adaptive Constrained Enveloping Splines model and an user-defined measure. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
+This function computes the efficiency scores for each Decision-Making-Unit (DMU) by first generating a virtual dataset using an Adaptive Constrained Enveloping Splines (ACES) model. It then constructs a standard DEA technology based on this virtual dataset and evaluates the efficiency scores according to a user-defined measure.
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr

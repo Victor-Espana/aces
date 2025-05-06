@@ -3,7 +3,7 @@ devtools::document()
 library("ggplot2")
 
 data <- cobb_douglas_XnY1 (
-  N = 100,
+  N = 50,
   nX = 3
 )
 
@@ -47,7 +47,7 @@ aces_scores (
   eval_data = data,
   x = x,
   y = y,
-  relevant = FALSE,
+  relevant = TRUE,
   object = model,
   method = "aces",
   measure = "wam",
@@ -58,7 +58,7 @@ aces_scores (
 )
 
 # RF-ACES
-tic()
+
 model <- rf_aces (
   data = data,
   x = x,
@@ -75,7 +75,7 @@ model <- rf_aces (
     "conc" = T,
     "ptto" = F
   ),
-  learners = 50,
+  learners = 100,
   bag_size = nrow(data),
   max_feats = length(x) / 3,
   early_stopping = list (
@@ -88,6 +88,37 @@ model <- rf_aces (
   minspan = - 1,
   endspan = 0
 )
+
+importance <- rf_varimp (
+    data = data,
+    x = x,
+    y = y,
+    object = model,
+    repeats = 3
+    )
+
+p_predict2 <- rf_aces_p_predict (
+  object = model,
+  newdata = data,
+  x = x,
+  y = y,
+  p = 1,
+  method = "rf_aces"
+)
+
+scores <- rf_aces_scores (
+  eval_data = data[, c(x, y)],
+  x = x,
+  y = y,
+  object = model,
+  method = "rf_aces",
+  measure = "rf_aces_rad_out",
+  returns = "variable",
+  direction = NULL,
+  weights = NULL,
+  digits = 3
+)
+
 toc()
 
 data$y_hat <- predict (
@@ -97,44 +128,19 @@ data$y_hat <- predict (
   method = "rf_aces"
 )$y_pred
 
-# aces_scores
-# rf_scores
-# interval rf
-
-# S-ACES
-model <- s_aces (
-  data = data,
+aces_scores (
+  eval_data = data,
   x = x,
   y = y,
-  z = z,
-  quick_aces = TRUE,
-  error_type = "add",
-  mul_BF = list (
-    "max_degree" = 1,
-    "compl_cost" = 0.05
-  ),
-  metric = "mse",
-  shape = list (
-    "mono" = T,
-    "conc" = F,
-    "ptto" = F
-  ),
-  nterms = nrow(data),
-  err_red = 0.01,
-  kn_grid = - 1,
-  minspan = - 1,
-  endspan = 0,
-  kn_penalty = 1
+  relevant = FALSE,
+  object = model,
+  method = "aces",
+  measure = "wam",
+  returns = "variable",
+  direction = NULL,
+  weights = "NOR",
+  digits = 3
 )
 
-data$aces <- predict (
-  object = model,
-  newdata = data,
-  x = x,
-  method = "aces"
-)$y_pred
-
-ggplot(data) +
-  geom_point(aes(x = x1, y = y)) +
-  geom_line(aes(x = x1, y = aces), color = "red") +
-  theme_bw()
+# rf_scores
+# interval rf

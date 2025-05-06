@@ -256,7 +256,7 @@ aces_algorithm <- function (
   DMUs <- data
 
   # data in [x, y] format with interaction of variables included
-  data <- prepare_data (
+  data <- set_data (
     data = data,
     x = x_vars,
     y = y_vars,
@@ -339,8 +339,6 @@ aces_algorithm <- function (
     dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
   ) %>% as.data.frame()
 
-  dea_returns <- ifelse(shape[["conc"]], "variable", "constant")
-
   x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
 
   table_scores[, 1] <- rad_out (
@@ -349,7 +347,7 @@ aces_algorithm <- function (
     eval_xmat = as.matrix(DMUs[, x_filtered]),
     eval_ymat = as.matrix(DMUs[, y_vars]),
     convexity = TRUE,
-    returns = dea_returns
+    returns = "variable"
   )[, 1]
 
   for (out in 1:nY) {
@@ -360,7 +358,7 @@ aces_algorithm <- function (
       eval_xmat = as.matrix(DMUs[, x_filtered]),
       eval_ymat = as.matrix(DMUs[, y_vars[out]]),
       convexity = TRUE,
-      returns = dea_returns
+      returns = "variable"
     )[, 1]
 
   }
@@ -835,6 +833,7 @@ aces_algorithm <- function (
       data = DMUs,
       x = x_vars,
       y = y_vars,
+      quick_aces = quick_aces,
       error_type = error_type,
       max_degree = max_degree,
       inter_cost = inter_cost,
@@ -873,6 +872,9 @@ aces_algorithm <- function (
 #'
 #' @param y
 #' Column indexes of output variables in \code{data}.
+#'
+#' @param quick_aces
+#' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
 #' @param error_type
 #' A \code{character} string specifying the error structure when fitting the model.
@@ -939,6 +941,7 @@ aces_object <- function (
     data,
     x,
     y,
+    quick_aces,
     error_type,
     max_degree,
     inter_cost,
@@ -972,6 +975,7 @@ aces_object <- function (
   )
 
   object[["control"]] <- list (
+    "quick_aces" = quick_aces,
     "error_type" = error_type,
     "max_degree" = max_degree,
     "inter_cost" = inter_cost,
@@ -1001,7 +1005,7 @@ aces_object <- function (
 
 }
 
-#' @title Prepare Data for Fitting
+#' @title Arrange Data for Fitting Model
 #'
 #' @description
 #' This function prepares the data for model fitting by generating additional input variables through interactions between variables. It also performs any necessary transformations, such as changing to a logarithmic scale if the error type is multiplicative. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
@@ -1024,7 +1028,7 @@ aces_object <- function (
 #' @return
 #' A \code{matrix} in a [x, y] format with variable interactions and / or transformations included.
 
-prepare_data <- function (
+set_data <- function (
     data,
     x,
     y,

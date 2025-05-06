@@ -4,22 +4,66 @@
 \alias{rf_aces_scores}
 \title{Compute Efficiency Scores using a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.}
 \usage{
-rf_aces_scores(eval_data, x, y, object, method, digits = 3)
+rf_aces_scores(
+  eval_data,
+  x,
+  y,
+  object,
+  method,
+  measure = measure,
+  returns = returns,
+  direction = direction,
+  weights = weights,
+  digits = 3
+)
 }
 \arguments{
 \item{eval_data}{A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.}
 
-\item{x}{Column indexes of input variables in \code{tech_data} and \code{eval_data}.}
+\item{x}{Column indexes of input variables in \code{eval_data}. The user may choose to include only the variables considered relevant based on the results of the \code{rf_aces_varimp} function.}
 
-\item{y}{Column indexes of output and netput variables in \code{tech_data} and \code{eval_data}.}
+\item{y}{Column indexes of output variables in \code{eval_data}.}
 
-\item{object}{An \code{rf_aces} object.}
+\item{object}{A \code{rf_aces} object.}
 
 \item{method}{Model prediction used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
 \itemize{
-\item{\code{"aces"}}: Random Forest Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-\item{\code{"aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+\item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines model.
+\item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
+\item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
+}
+
+#' @param measure
+Mathematical programming model to calculate scores:
+\itemize{
+\item{\code{rad_out}} The output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+\item{\code{rad_inp}} The input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+\item{\code{ddf}}     The directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
+\item{\code{rsl_out}} The output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+\item{\code{rsl_inp}} The input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+\item{\code{wam}}     A weighted additive model.
+\item{\code{rf_aces_rad_out}} The output-oriented radial efficiency measure derived from the Random-Forest Adaptive Constrained Enveloping Splines model proposed by \insertCite{espana2024rf;textual}{aces}.
+}}
+
+\item{returns}{Type of returns to scale:
+\itemize{
+\item{\code{"constant"}} Constant returns to scale.
+\item{\code{"variable"}} Variable returns to scale (default).
+}}
+
+\item{direction}{Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}.
+\itemize{
+\item{\code{"mean"}}  Projection vector given by the average value of inputs and outputs of all DMUs. Applied if \code{direction = NULL}.
+\item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
+}}
+
+\item{weights}{Weights for the additive model. Only applied if \code{measure = "wam"}.
+\itemize{
+\item{\code{"ONE"}} Weighted Additive Model proposed by \insertCite{charnes1985;textual}{aces}.
+\item{\code{"MIP"}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
+\item{\code{"NOR"}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
+\item{\code{"RAM"}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
+\item{\code{"BAM"}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
 }}
 
 \item{digits}{Number of decimal places to which efficiency scores are rounded.}
@@ -28,5 +72,15 @@ rf_aces_scores(eval_data, x, y, object, method, digits = 3)
 A \code{data.frame} with the efficiency scores computed through a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.
 }
 \description{
-This function calculates the efficiency scores for each Decision-Making-Unit through a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.
+This function computes the efficiency scores for each Decision-Making-Unit based on a user-defined measure, using a Random-Forest Adaptive Constrained Enveloping Splines (RF-ACES) approach.
+}
+\references{
+\insertRef{espana2024rf}{aces} \cr \cr
+\insertRef{banker1984}{aces} \cr \cr
+\insertRef{chambers1998}{aces} \cr \cr
+\insertRef{fare1978}{aces} \cr \cr
+\insertRef{charnes1985}{aces} \cr \cr
+\insertRef{cooper1999}{aces} \cr \cr
+\insertRef{lovell1995}{aces} \cr \cr
+\insertRef{cooper2011}{aces}
 }
