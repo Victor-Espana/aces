@@ -334,7 +334,6 @@ rf_aces <- function (
 
   }
 
-
   data_sorted <- as.data.frame (
     set_data (
       data = data,

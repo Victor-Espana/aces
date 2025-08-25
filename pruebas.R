@@ -2,6 +2,8 @@ devtools::load_all()
 devtools::document()
 library("ggplot2")
 
+set.seed(314)
+
 data <- cobb_douglas_XnY1 (
   N = 50,
   nX = 3
@@ -12,13 +14,13 @@ y <- 4
 
 # ACES
 model <- aces (
-  data = data,
-  x = x,
-  y = y,
+  data = data, #
+  x = x, #
+  y = y, #
   quick_aces = FALSE,
   error_type = "add",
-  mul_BF = list (
-    "max_degree" = 2,
+  mul_BF = list ( #
+    "max_degree" = 1,
     "inter_cost" = 0.05
   ),
   metric = "mse",
@@ -27,8 +29,8 @@ model <- aces (
     "conc" = T,
     "ptto" = F
   ),
-  max_terms = nrow(data),
-  err_red = 0.01,
+  max_terms = nrow(data), #
+  err_red = 0.0001, #
   kn_grid = - 1,
   minspan = - 1,
   endspan = - 1

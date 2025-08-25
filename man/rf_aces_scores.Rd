@@ -9,11 +9,11 @@ rf_aces_scores(
   x,
   y,
   object,
-  method,
-  measure = measure,
-  returns = returns,
-  direction = direction,
-  weights = weights,
+  method = "rf_aces",
+  measure = "rad_out",
+  returns = "variable",
+  direction = NULL,
+  weights = NULL,
   digits = 3
 )
 }

@@ -1497,7 +1497,7 @@ generate_technology <- function (
 
     for (j in 2:ncol(table_scores)) {
 
-      if (abs(table_scores[i, 1] - table_scores[i, j]) < 0.05) {
+      if (abs(table_scores[i, 1] - table_scores[i, j]) <= 0.05) {
 
         tech_ymat[i, j - 1] <- tech_ymat2[i, j - 1]
 
@@ -1518,5 +1518,132 @@ generate_technology <- function (
   tecno[["ymat"]] <- if (error_type == "add") as.matrix(tech_ymat) else exp(as.matrix(tech_ymat))
 
   return(tecno)
+
+}
+
+#' @title Generate a New Technology Set
+#'
+#' @description
+#' This function constructs a new production technology by modifying the output matrix based on a refinement
+#' procedure that replaces overestimated outputs. For each output, the predicted values from an ACES model are compared against the original observed values. When the predicted value exceeds the observed one by more than a predefined threshold, the observed value is retained instead.
+#'
+#' @param object
+#' An \code{aces} object.
+#'
+#' @param tech_xmat
+#' A \code{matrix} representing the input data.
+#'
+#' @param tech_ymat
+#' A \code{matrix} representing the output data.
+#'
+#' @param psi
+#' A \code{numeric} threshold controlling the refinement of predicted outputs. If the predicted value for a given output exceeds the observed value by more than \code{psi}, the observed value is used instead.
+#'
+#' @return
+#' An \code{aces} object with updated technologies.
+#'
+#' @export
+
+change_technology <- function (
+    object,
+    tech_xmat,
+    tech_ymat,
+    psi
+    ) {
+
+  # sample size
+  N <- nrow(tech_xmat)
+
+  # number of outputs
+  nY <- ncol(tech_ymat)
+
+  # table of scores
+  table_scores <- matrix (
+    ncol = nY + 1,
+    nrow = N,
+    dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
+  ) %>% as.data.frame()
+
+  table_scores[, 1] <- rad_out (
+    tech_xmat = as.matrix(tech_xmat),
+    tech_ymat = as.matrix(tech_ymat),
+    eval_xmat = as.matrix(tech_xmat),
+    eval_ymat = as.matrix(tech_ymat),
+    convexity = TRUE,
+    returns = "variable"
+  )[, 1]
+
+  for (out in 1:nY) {
+
+    table_scores[, 1 + out] <- rad_out (
+      tech_xmat = as.matrix(tech_xmat),
+      tech_ymat = as.matrix(tech_ymat[, out]),
+      eval_xmat = as.matrix(tech_xmat),
+      eval_ymat = as.matrix(tech_ymat[, out]),
+      convexity = TRUE,
+      returns = "variable"
+    )[, 1]
+
+  }
+
+  for (m in names(object[["technology"]])) {
+
+    # define technology
+    tecno <- list()
+
+    # matrix of inputs for the technology
+    tecno[["xmat"]] <- as.matrix(tech_xmat)
+
+    # prediction
+    Bmat <- object[["methods"]][[m]][["Bmatx"]]
+    coef <- object[["methods"]][[m]][["coefs"]]
+
+    tech_ymat2 <- Bmat %*% coef
+
+    colnames(tech_ymat2) <- colnames(tech_ymat)
+
+    # matrix of outputs for the technology
+    tech_out <- as.data.frame (
+      matrix (
+        NA,
+        nrow = nrow(table_scores),
+        ncol = ncol(table_scores) - 1
+      )
+    )
+
+    for (i in 1:nrow(table_scores)) {
+
+      for (j in 2:ncol(table_scores)) {
+
+        if (abs(table_scores[i, 1] - table_scores[i, j]) <= psi) {
+
+          tech_out[i, j - 1] <- tech_ymat2[i, j - 1]
+
+        } else {
+
+          tech_out[i, j - 1] <- tech_ymat[i, j - 1]
+
+        }
+      }
+    }
+
+    ptto <- object[["control"]][["shape"]][["ptto"]]
+
+    # modify the last row of tech_ymat based on the error type
+    if (ptto) {
+      tech_out[nrow(tech_ymat), ] <- if (error_type == "add") 1e-10 else log(1 + 1e-10)
+    }
+
+    error_type <- object[["control"]][["error_type"]]
+
+    # assign tech_ymat to tecno[["ymat"]] with the appropriate transformation
+    tecno[["ymat"]] <- if (error_type == "add") as.matrix(tech_out) else exp(as.matrix(tech_out))
+
+    # update technology set
+    object[["technology"]][[m]][["ymat"]] <- as.matrix(tecno[["ymat"]])
+
+  }
+
+  return(object)
 
 }

@@ -264,7 +264,6 @@ display_errors_scores <- function (
     stop("Measure 'rf_aces_rad_out' can only be used with objects of class 'rf_aces'.")
   }
 
-
   # returns must be valid
   if (!is.null(returns) && !returns %in% c("constant", "variable")) {
     stop(paste(returns, "is not available. Please, check help(\"aces_scores\")"))
