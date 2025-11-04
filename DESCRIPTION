@@ -23,3 +23,7 @@ RdMacros:
   Rdpack
 URL: https://github.com/Victor-Espana/aafs
 BugReports: https://github.com/Victor-Espana/aafs/issues
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

@@ -2,7 +2,7 @@
 #'
 #' @description
 #'
-#' This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
+#' This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces} and \insertCite{espana2025;textual}{aces}.
 #'
 #' @name aces
 #'
@@ -88,6 +88,7 @@
 #' @references
 #'
 #' \insertRef{espana2024}{aces} \cr \cr
+#' \insertRef{espana2025}{aces} \cr \cr
 #' \insertRef{friedman1991}{aces} \cr \cr
 #' \insertRef{zhang1994}{aces} \cr
 #'
@@ -422,7 +423,7 @@ aces_algorithm <- function (
   #     Bp: basis function
   #     xi: variable for splitting
   #      t: knot for splitting
-  #      R: mean error between true data and predicted data (B %*% coefs)
+  #    LOF: mean error between true data and predicted data (B %*% coefs)
   #  coefs: regression coefficients
 
   bf <- list (
@@ -483,6 +484,9 @@ aces_algorithm <- function (
   # initial error
   err_min <- err
 
+  # iteration counter
+  iter <- 0
+
   while(length(aces_forward[["bf_set"]]) + 2 < max_terms) {
 
     # add 2 new basis functions to the model:
@@ -514,6 +518,12 @@ aces_algorithm <- function (
     # update model
     if (new_err[1] < err[1] * (1 - err_red[1])) {
 
+      # update iteration counter
+      iter <- iter + 1
+
+      # compute relative reduction
+      rel_reduction <- (err[1] - new_err[1]) / err[1]
+
       # update B
       aces_forward[["B"]] <- B_bf_knt_err[[1]]
 
@@ -532,6 +542,19 @@ aces_algorithm <- function (
       # updated variable importance matrix
       var_imp <- B_bf_knt_err[[6]]
       var_imp <- rbind(var_imp, rep(0, nX))
+
+      cat(
+        sprintf(
+          paste0(
+            "Iteration %d completed — error reduced by %.1f%% ",
+            "(%.1f -> %.1f).\n"
+          ),
+          iter,
+          100 * rel_reduction,
+          err[1] / (1 - rel_reduction),  # old err reconstructed
+          err[1]
+        )
+      )
 
     } else {
 

@@ -20,7 +20,5 @@ An \code{aces} object with updated technologies.
 }
 \description{
 This function constructs a new production technology by modifying the output matrix based on a refinement
-procedure that replaces overestimated outputs. For each output, the predicted values from an ACES model
-(tech_ymat2) are compared against the original observed values (tech_ymat1). When the predicted value exceeds
-the observed one by more than a predefined threshold, the observed value is retained instead.
+procedure that replaces overestimated outputs. For each output, the predicted values from an ACES model are compared against the original observed values. When the predicted value exceeds the observed one by more than a predefined threshold, the observed value is retained instead.
 }

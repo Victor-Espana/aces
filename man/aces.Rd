@@ -91,10 +91,11 @@ aces(
 An \code{aces} object.
 }
 \description{
-This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}.
+This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces} and \insertCite{espana2025;textual}{aces}.
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr
+\insertRef{espana2025}{aces} \cr \cr
 \insertRef{friedman1991}{aces} \cr \cr
 \insertRef{zhang1994}{aces} \cr
 }

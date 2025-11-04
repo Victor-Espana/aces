@@ -15,7 +15,8 @@
 #' @return
 #' A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yT).
 #'
-#'
+#' @export
+
 cobb_douglas_XnY1 <- function (
     N,
     nX
@@ -132,6 +133,7 @@ cobb_douglas_XnY1 <- function (
 #'
 #' \insertRef{simar2011}{aces}
 #'
+#' @export
 
 cobb_douglas_XnY1_noise <- function (
     N,
@@ -233,6 +235,7 @@ cobb_douglas_XnY1_noise <- function (
 #' @references
 #' \insertRef{ahn2023}{aces}
 #'
+#' @export
 
 cobb_douglas_X3Y3 <- function (
     N,
@@ -361,6 +364,7 @@ cobb_douglas_X3Y3 <- function (
 #' \insertRef{nataraja2011}{aces} \cr \cr
 #' \insertRef{peyrache2020}{aces}
 #'
+#' @export
 
 cobb_douglas_XnHnY1 <- function (
     N,
@@ -551,6 +555,7 @@ cobb_douglas_XnHnY1 <- function (
 #' @references
 #' \insertRef{kuosmanen2010}{aces}
 #'
+#' @export
 
 add_scenario_XnY1 <- function (
     N,
@@ -691,6 +696,7 @@ add_scenario_XnY1 <- function (
 #' @references
 #' \insertRef{kuosmanen2010}{aces}
 #'
+#' @export
 
 mult_scenario_XnY1 <- function (
     N,
@@ -831,6 +837,7 @@ mult_scenario_XnY1 <- function (
 #' @references
 #' \insertRef{santin2009}{aces}
 #'
+#' @export
 
 translog_X2Y2 <- function (
     N,

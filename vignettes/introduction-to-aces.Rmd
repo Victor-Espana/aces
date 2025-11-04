@@ -1,0 +1,196 @@
+---
+title: "Adaptive Constrained Enveloping Splines"
+author: "Víctor J. España"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to ACES}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<style>
+p, li { text-align: justify; }
+</style>
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+
+```
+
+```{r library}
+
+# load library
+# install.packages("aces")
+library("aces")
+
+```
+
+# Overview
+
+`aces` presents a unified family of techniques for estimating production frontiers. The goal is to address key limitations of traditional DEA, such as overfitting, limited robustness, and difficulties in high dimensional settings. The family includes three complementary methods: **Adaptive Constrained Enveloping Splines** (ACES), a flexible estimator of technical efficiency; **Random Forest ACES** (RF-ACES), which improves robustness through ensemble learning; and **Quick ACES** (Q-ACES), which prioritizes computational efficiency for large scale applications. Each method targets different empirical needs and allows researchers to choose the approach that best matches data characteristics.
+
+## Workflow
+
+1. **Define the training sample.**  
+   Select inputs and outputs and form the dataset \(\{(\boldsymbol{x}_i,\boldsymbol{y}_i)\}_{i=1}^n\), with \(\boldsymbol{x}_i \in \mathbb{R}^m_{+}\) and \(\boldsymbol{y}_i \in \mathbb{R}^s_{+}\).  
+
+2. **Choose the estimator family.**  
+   Select one of the available families — ACES, RF-ACES, or Q-ACES — according to data size and robustness/computation needs.  
+
+3. **Tune hyperparameters with resampling.**  
+   Specify the relevant hyperparameters for the chosen family (e.g., limits on basis size and interaction order) and select them via \(k\)-fold cross-validation (or an analogous resampling scheme), balancing predictive accuracy and parsimony.  
+
+4. **Fit the frontier and obtain predictions.**  
+   Train the shape-constrained model on \(\{(\boldsymbol{x}_i,\boldsymbol{y}_i)\}_{i=1}^n\) and compute the predicted attainable output(s) for each DMU:
+   \[
+   \hat{y}_i \quad (s=1), \qquad
+   \hat{\boldsymbol{y}}_i = \bigl(\hat{y}_{i1},\dots,\hat{y}_{is}\bigr) \in \mathbb{R}^s_{+} \quad (s>1).
+   \]
+   These predictions represent the estimated maximal feasible production at \(\boldsymbol{x}_i\) under the learned frontier.
+
+5. **Multi-output selection (when \(s>1\)).**  
+   For each DMU \(i\) and each output component \(r\), decide whether the analysis will use the observed value \(y_{ir}\) or the model-based estimate \(\hat{y}_{ir}\), according to a pre-specified criterion. In the single-output case, this step is not required.
+
+6. **Construct the refined sample.**  
+   Build the refined dataset:
+   \[
+   \{(\boldsymbol{x}_i,\hat{y}_i)\}_{i=1}^n \quad (s=1), \qquad
+   \{(\boldsymbol{x}_i,\hat{\boldsymbol{y}}_i)\}_{i=1}^n \quad (s>1),
+   \]
+   where each \(\hat{y}_{ir}\) follows the choice made in the previous step.  
+
+7. **Construct the DEA technology on the refined sample.**  
+   Using the refined sample, define the empirical technology under VRS (or CRS) as
+   \begin{equation*}
+      \begin{split}
+      \hat{\varphi}_{\text{DEA-VRS}}= & 
+      \left\{(\boldsymbol{x},\boldsymbol{y}) \in \mathbb{R}^{m+s}_{+} : x_j \ge \sum_{i=1}^{n}\lambda_{i}x_{ij},\ j=1,\dots,m, \right. \\
+      & \left. y_r \le \sum_{i=1}^{n}\lambda_{i}\hat{y}_{ir},\ r=1,\dots,s,\ \sum_{i=1}^{n}\lambda_{i} = 1,\ \lambda_{i} \ge 0,\ i = 1,\dots,n \right\}
+     \end{split}
+   \end{equation*}
+   and, analogously, under CRS by removing the convexity constraint \(\sum_{i=1}^{n}\lambda_i = 1\).  
+
+8. **Evaluate technical efficiency.**  
+   Compute the desired efficiency measures (e.g., output-oriented radial distances) in the standard DEA sense with respect to the estimated technology \(\hat{\varphi}\) on the observed dataset.
+
+## Data simulation
+
+```{r database_1}
+
+# set seed
+set.seed(314)
+
+# input generation
+data_x3y1 <- cobb_douglas_XnY1 (
+  N = 50,
+  nX = 3
+)
+  
+```
+
+```{r database_2}
+
+# set seed
+set.seed(314)
+
+# input generation
+data_x2y2 <- translog_X2Y2 (
+  N = 50,
+  border = 0.1,
+  noise = FALSE
+)
+  
+```
+
+## How to tune ACES
+
+# Basic configuration for ACES
+
+The ACES model includes several hyperparameters that control flexibility and the trade–off between accuracy and complexity. Below we describe the most influential ones used in the baseline configuration.
+
+- **`max_degree`**: sets the highest degree of interaction allowed among input variables. For instance, `max_degree = 2` admits pairwise interactions, while higher values allow more complex multiplicative effects. In most production applications, second–order interactions are sufficient to capture curvature without excessive computational cost.
+
+- **`inter_cost`**: specifies the minimum relative improvement (in terms of the lack–of–fit criterion) required to include a higher–degree BF. A value of `0.05` means that a new interaction must improve the current best degree–1 term by at least 5%. This prevents unnecessary complexity when additional interactions bring marginal benefit.
+
+- **`max_terms`**: defines the upper limit of BFs created during the forward stage. Here we deliberately set it to a very large number so that the algorithm stops only when the minimum relative error reduction threshold (`err_red`) is reached.
+
+- **`err_red`**: controls the minimum proportional reduction in training error required to add a new pair of BFs. Typical values range between `0.005` and `0.02`, which offer a balanced compromise between flexibility and interpretability.
+
+---
+
+# RF-ACES example
+
+```{r eval=FALSE}
+# Warning: training can be computationally intensive
+fit_rf <- rf_aces (
+  data      = data,
+  x         = 1:2,  
+  y         = 5,
+  learners  = 50,
+  bag_size  = 50,
+  max_feats = 1
+)
+
+head(aces_scores(fit_rf))
+```
+
+---
+
+# Quick-ACES example
+
+```{r, eval = FALSE}
+# Faster alternative with heuristic pruning
+fit_q <- aces(
+  y ~ x1 + x2, data = dat,
+  quick_aces = TRUE,
+  monotone = TRUE, concave = TRUE
+)
+
+head(aces_scores(fit_q))
+```
+
+---
+
+# Multi-output example (DEA-type construction)
+
+```{r eval=FALSE}
+# Synthetic 2-input 2-output technology
+sim <- cet_cd_X2Y2(N = 50, border = 0.1, noise = FALSE)
+
+fit_multi <- aces(
+  data = sim,
+  x = 1:2,   # inputs
+  y = 3:4,   # outputs
+  monotone = TRUE,
+  concave  = TRUE
+)
+
+# Efficiency on the constructed VRS technology
+head(aces_scores(fit_multi))
+```
+
+---
+
+# References
+
+- Friedman, J. H. (1991). *Multivariate adaptive regression splines*. The annals of statistics, 19(1):1–67.
+- España, V. J., Aparicio, J., Barber, X., & Esteve, M. (2024). *Estimating production functions through additive models based on regression splines*. European Journal of Operational Research, 312(2), 684–699.
+- España, V. J., Aparicio, J., & Barber, X. (2025a). *An adaptation of Random Forest to estimate convex non-parametric production technologies: an empirical illustration of efficiency measurement in education*. International Transactions in Operational Research, 32(5), 2523–2546.  
+- España, V. J., Aparicio, J., & Barber, X. (2025b). *Estimating production technologies using multi-output adaptive constrained enveloping splines*. Computers & Operations Research, 107242.  
+
+---
+
+# Session info
+
+```{r eval=FALSE}
+sessionInfo()
+```

@@ -2,7 +2,7 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{rf_aces_scores}
 \alias{rf_aces_scores}
-\title{Compute Efficiency Scores using a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.}
+\title{Compute Efficiency Scores using a Random Forest-Adaptive Constrained Enveloping Splines (RF-ACES) model.}
 \usage{
 rf_aces_scores(
   eval_data,
@@ -42,7 +42,7 @@ Mathematical programming model to calculate scores:
 \item{\code{rsl_out}} The output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
 \item{\code{rsl_inp}} The input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
 \item{\code{wam}}     A weighted additive model.
-\item{\code{rf_aces_rad_out}} The output-oriented radial efficiency measure derived from the Random-Forest Adaptive Constrained Enveloping Splines model proposed by \insertCite{espana2024rf;textual}{aces}.
+\item{\code{rf_aces_rad_out}} The output-oriented radial efficiency measure derived from the Random Forest-Adaptive Constrained Enveloping Splines model proposed by \insertCite{espana2024rf;textual}{aces}.
 }}
 
 \item{returns}{Type of returns to scale:
@@ -72,7 +72,7 @@ Mathematical programming model to calculate scores:
 A \code{data.frame} with the efficiency scores computed through a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.
 }
 \description{
-This function computes the efficiency scores for each Decision-Making-Unit based on a user-defined measure, using a Random-Forest Adaptive Constrained Enveloping Splines (RF-ACES) approach.
+This function computes the efficiency scores for each Decision-Making-Unit (DMU) by first generating a virtual dataset using a Random Forest-Adaptive Constrained Enveloping Splines (ACES) model. It then constructs a standard DEA technology based on this virtual dataset and evaluates the efficiency scores according to a user-defined measure.
 }
 \references{
 \insertRef{espana2024rf}{aces} \cr \cr

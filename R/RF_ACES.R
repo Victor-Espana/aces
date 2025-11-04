@@ -2,7 +2,7 @@
 #'
 #' @description
 #'
-#' This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces} and Random Forest, introduced by \insertCite{breiman2001;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces} and \insertCite{espana2024rf;textual}{aces}.
+#' This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces} and Random Forest, introduced by \insertCite{breiman2001;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}, \insertCite{espana2024rf;textual}{aces} and \insertCite{espana2025;textual}{aces}.
 #'
 #' @name rf_aces
 #'
@@ -101,6 +101,7 @@
 #'
 #' \insertRef{espana2024rf}{aces} \cr \cr
 #' \insertRef{espana2024}{aces} \cr \cr
+#' \insertRef{espana2025}{aces} \cr \cr
 #' \insertRef{friedman1991}{aces} \cr \cr
 #' \insertRef{breiman2001}{aces} \cr \cr
 #' \insertRef{zhang1994}{aces} \cr
@@ -284,7 +285,7 @@ rf_aces <- function (
 
   # random-forest hyperparameters
   rf_list = list (
-    learners = learners,
+    learners = m,
     bag_size = bag_size,
     max_feats = max_feats,
     early_stopping = early_stopping
@@ -364,16 +365,16 @@ rf_aces <- function (
 
   RF_ACES[["technology"]] <- list (
     "rf_aces" = list (
-      "xmat" = as.matrix(rf_aces_technology[, x]),
-      "ymat" = as.matrix(rf_aces_technology[, y])
+      "xmat" = as.matrix(rf_aces_technology[, 1:length(x)]),
+      "ymat" = as.matrix(rf_aces_technology[, (length(x) + 1):ncol(rf_aces_technology)])
     ),
     "rf_aces_cubic" = list (
-      "xmat" = as.matrix(rf_aces_cubic_technology[, x]),
-      "ymat" = as.matrix(rf_aces_cubic_technology[, y])
+      "xmat" = as.matrix(rf_aces_cubic_technology[, 1:length(x)]),
+      "ymat" = as.matrix(rf_aces_cubic_technology[, (length(x) + 1):ncol(rf_aces_technology)])
     ),
     "rf_aces_quintic" = list (
-      "xmat" = as.matrix(rf_aces_quintic_technology[, x]),
-      "ymat" = as.matrix(rf_aces_quintic_technology[, y])
+      "xmat" = as.matrix(rf_aces_quintic_technology[, 1:length(x)]),
+      "ymat" = as.matrix(rf_aces_quintic_technology[, (length(x) + 1):ncol(rf_aces_technology)])
     )
   )
 
@@ -673,7 +674,7 @@ rf_aces_algorithm <- function (
   #     Bp: basis function
   #     xi: variable for splitting
   #      t: knot for splitting
-  #      R: mean error between true data and predicted data (B %*% coefs)
+  #    LOF: mean error between true data and predicted data (B %*% coefs)
   #  coefs: regression coefficients
 
   bf <- list (
@@ -1158,6 +1159,13 @@ rf_aces_varimp <- function (
   # compute oob shuffling each variable "j"
   for (j in 1:length(x)) {
     for (n in 1:repeats) {
+
+      print (
+        paste0 (
+          "Computing variable importance for variable ", colnames(data)[x[j]],
+          ": repeat ", n, " of ", repeats
+          )
+        )
 
       data_shuffled <- data
       xvar_shuffled <- data[sample(1:nrow(data)), x[j]]

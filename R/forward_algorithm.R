@@ -136,7 +136,11 @@ add_basis_function <- function (
       if (nrow(var_imp) > 1) {
 
         # threshold for important variables
-        threshold <- sort(normalized_importance, decreasing = TRUE)[2] / 2
+        if (length(x) >= 2) {
+          threshold <- sort(normalized_importance, decreasing = TRUE)[2] / 2
+        } else {
+          threshold <- sort(normalized_importance, decreasing = TRUE)[1] / 2
+        }
 
         # set a deactivation threshold
         is_active <- normalized_importance[xi] >= threshold
@@ -365,7 +369,7 @@ add_basis_function <- function (
         bf1[["t"]] <- bf2[["t"]] <- knots[i]
 
         # R
-        bf1[['R']] <- bf2[['R']] <- err_min[1]
+        bf1[['LOF']] <- bf2[['LOF']] <- err_min[1]
 
         # coefficients
         bf1[['coefs']] <- bf2[['coefs']] <- coefs
