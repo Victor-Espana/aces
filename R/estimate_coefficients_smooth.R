@@ -4,9 +4,6 @@
 #'
 #' This function solves a Linear Programming problem to obtain a set of coefficients that impose concavity and non-decreasing monotonicity in the Smooth Adaptive Constrained Enveloping Splines estimator.
 #'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
-#'
 #' @param B
 #' A \code{matrix} of cubic or quintic basis functions.
 #'
@@ -29,38 +26,22 @@
 #'
 #' A \code{vector} with the estimated coefficients.
 
-estimate_coefficients_smoothed <- function (
-    model_type,
-    B,
-    y_obs,
-    dea_scores,
-    n_pair,
-    n_lsub,
-    shape
-    ) {
-
-  if (model_type == "envelopment") {
-
-    coefs <- estim_coefs_smooth_envelopment (
-      B = B,
-      y_obs = y_obs,
-      dea_scores = dea_scores,
-      n_pair = n_pair,
-      n_lsub = n_lsub,
-      shape = shape
-    )
-
-  } else {
-
-    coefs <- estim_coefs_smooth_stochastic (
-      B = B,
-      y_obs = y_obs,
-      n_pair = n_pair,
-      n_lsub = n_lsub,
-      shape = shape
-    )
-
-  }
+estimate_coefficients_smoothed <- function(
+  B,
+  y_obs,
+  dea_scores,
+  n_pair,
+  n_lsub,
+  shape
+) {
+  coefs <- estim_coefs_smooth_envelopment(
+    B = B,
+    y_obs = y_obs,
+    dea_scores = dea_scores,
+    n_pair = n_pair,
+    n_lsub = n_lsub,
+    shape = shape
+  )
 
   return(coefs)
 }
@@ -95,15 +76,14 @@ estimate_coefficients_smoothed <- function (
 #'
 #' A \code{vector} of estimated coefficients.
 
-estim_coefs_smooth_envelopment <- function (
-    B,
-    y_obs,
-    dea_scores,
-    n_pair,
-    n_lsub,
-    shape
-    ) {
-
+estim_coefs_smooth_envelopment <- function(
+  B,
+  y_obs,
+  dea_scores,
+  n_pair,
+  n_lsub,
+  shape
+) {
   # monotonicity
   mono <- shape[["mono"]]
 
@@ -129,7 +109,6 @@ estim_coefs_smooth_envelopment <- function (
   coefs <- matrix(NA, nrow = p, ncol = nY)
 
   for (out in 1:nY) {
-
     # vars: c(tau_0, alpha_1, beta_2, ... , alpha_(H-1), beta_H, w_1, ..., w_R, e_1, ... , e_n)
     objVal <- c(rep(0, p), deaw[, out])
 
@@ -141,64 +120,55 @@ estim_coefs_smooth_envelopment <- function (
     # ========================================= #
 
     # equality constraints: y_hat - e = y
-    EMat <- cbind(B, diag(rep(- 1, N), N))
+    EMat <- cbind(B, diag(rep(-1, N), N))
 
     # matrix of coefficients
     Amat <- rbind(EMat)
 
     # generate concavity matrix for paired basis functions
     if (conc) {
-
       CMat <- matrix(0, nrow = pairs, ncol = p + N)
 
       if (pairs >= 1) {
-
         for (i in 1:pairs) {
-
-          CMat[i, ] <- c (
+          CMat[i, ] <- c(
             0,
             rep(c(0, 0), i - 1),
-            - 1,
-            - 1,
+            -1,
+            -1,
             rep(c(0, 0), pairs - i),
             rep(0, n_lsub + N)
-            )
+          )
         }
-
       }
 
       # add concavity matrix to the envelopment matrix
       Amat <- rbind(Amat, CMat)
-
     }
 
     # generate non-decreasing monotonicity matrix for paired basis functions
     if (mono) {
-
-      MMat <- cbind (
+      MMat <- cbind(
         rep(0, n_pair),
-        diag(c(1, - 1), n_pair),
+        diag(c(1, -1), n_pair),
         matrix(0, n_pair, n_lsub),
         matrix(0, n_pair, N)
-        )
+      )
 
       # add non-decreasing monotonicity matrix to the envelopment matrix
       Amat <- rbind(Amat, MMat)
-
     }
 
     # generate concavity & increasing monotonicity matrix for LF-U-BF
     if (mono | conc) {
-
-      MCMat <- cbind (
+      MCMat <- cbind(
         matrix(0, n_lsub, 1 + n_pair),
-        diag(- 1, n_lsub),
+        diag(-1, n_lsub),
         matrix(0, n_lsub, N)
-        )
+      )
 
       # add concavity & increasing monotonicity [LSBF] to envelopment matrix
       Amat <- rbind(Amat, MCMat)
-
     }
 
     # ==================================================== #
@@ -217,18 +187,18 @@ estim_coefs_smooth_envelopment <- function (
     # Lower and upper bounds                               #
     # ==================================================== #
 
-    bnds <- list (
-      lower = list (
+    bnds <- list(
+      lower = list(
         ind = 1L:p,
-        val = rep(- Inf, p)
-        )
+        val = rep(-Inf, p)
       )
+    )
 
     # ==================================================== #
     # Solution of the optimization problem                 #
     # ==================================================== #
 
-    sols <- Rglpk_solve_LP (
+    sols <- Rglpk_solve_LP(
       obj = objVal,
       mat = Amat,
       dir = dirs,
@@ -237,16 +207,11 @@ estim_coefs_smooth_envelopment <- function (
     )
 
     coefs[, out] <- sols$solution[1:p]
-
   }
 
   return(coefs)
 }
 
-#' @title Estimate Coefficients in Smooth Adaptive Constrained Enveloping Splines Fitting: Stochastic Version and Additive Error
-#'
-#' @description
-#'
 #' This function solves a Linear Programming problem to obtain a vector of coefficients that impose the required shaped on the Smooth Adaptive Constrained Enveloping Splines estimator in the stochastic version, assuming an additive error structure.
 #'
 #' @param B
@@ -270,15 +235,14 @@ estim_coefs_smooth_envelopment <- function (
 #'
 #' A \code{vector} of estimated coefficients.
 
-estim_coefs_smooth_stochastic <- function (
-    B,
-    y_obs,
-    dea_scores,
-    n_pair,
-    n_lsub,
-    shape
-    ) {
-
+estim_coefs_smooth_stochastic <- function(
+  B,
+  y_obs,
+  dea_scores,
+  n_pair,
+  n_lsub,
+  shape
+) {
   # monotonicity
   mono <- shape[["mono"]]
 
@@ -301,7 +265,6 @@ estim_coefs_smooth_stochastic <- function (
   coefs <- matrix(NA, nrow = p, ncol = nY)
 
   for (out in 1:nY) {
-
     # select an output
     y_ind <- y_obs[, out]
 
@@ -330,7 +293,7 @@ estim_coefs_smooth_stochastic <- function (
     # ========================================= #
 
     # fitting matrix: y_hat - e = y
-    FMat <- cbind(B, diag(rep(- 1, N), N))
+    FMat <- cbind(B, diag(rep(-1, N), N))
     Amat <- FMat
 
     # generate concavity matrix for paired basis functions
@@ -339,11 +302,11 @@ estim_coefs_smooth_stochastic <- function (
 
       if (pairs >= 1) {
         for (i in 1:pairs) {
-          CMat[i, ] <- c (
+          CMat[i, ] <- c(
             0,
             rep(c(0, 0), i - 1),
-            - 1,
-            - 1,
+            -1,
+            -1,
             rep(c(0, 0), pairs - i),
             rep(0, n_lsub + N)
           )
@@ -352,36 +315,31 @@ estim_coefs_smooth_stochastic <- function (
 
       # add concavity matrix to the envelopment matrix
       Amat <- rbind(Amat, CMat)
-
     }
 
     # non-decreasing monotonicity: paired basis functions
     if (mono) {
-
-      MMat <- cbind (
+      MMat <- cbind(
         rep(0, n_pair),
-        diag(c(1, - 1), n_pair),
+        diag(c(1, -1), n_pair),
         matrix(0, n_pair, n_lsub),
         matrix(0, n_pair, N)
       )
 
       # add non-decreasing monotonicity matrix to the envelopment matrix
       Amat <- rbind(Amat, MMat)
-
     }
 
     # concavity & increasing monotonicity: left-side unpaired basis functions
     if (mono | conc) {
-
-      MCMat <- cbind (
+      MCMat <- cbind(
         matrix(0, n_lsub, 1 + n_pair),
-        diag(- 1, n_lsub),
+        diag(-1, n_lsub),
         matrix(0, n_lsub, N)
       )
 
       # add concavity & increasing monotonicity [LSBF] to envelopment matrix
       Amat <- rbind(Amat, MCMat)
-
     }
 
     # ==================================================== #
@@ -390,10 +348,8 @@ estim_coefs_smooth_stochastic <- function (
 
     if (ptto_val) {
       bvec <- c(y_ind, 1, rep(0, nrow(Amat) - N - 1))
-
     } else {
       bvec <- c(y_ind, rep(0, nrow(Amat) - N))
-
     }
 
     # ==================================================== #
@@ -401,25 +357,20 @@ estim_coefs_smooth_stochastic <- function (
     # ==================================================== #
 
     if (ptto != FALSE) {
-
-      sols <- solve.QP (
+      sols <- solve.QP(
         Dmat = Dmat, dvec = dvec,
         Amat = t(Amat), bvec = bvec,
         meq = N + 1
       )
-
     } else {
-
-      sols <- solve.QP (
+      sols <- solve.QP(
         Dmat = Dmat, dvec = dvec,
         Amat = t(Amat), bvec = bvec,
         meq = N
       )
-
     }
 
     coefs[, out] <- sols$solution[1:p]
-
   }
 
   return(coefs)

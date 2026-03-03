@@ -18,9 +18,6 @@
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
-#' @param model_type
-#' A \code{character} string specifying the nature of the estimated production frontier. It can be either: \code{"envelopment"} or \code{"stochastic"}.
-#'
 #' @param max_degree
 #' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
 #'
@@ -53,23 +50,22 @@
 #' @return
 #' This function returns error messages if hyperparameters are incorrectly specified.
 
-display_errors_aces <- function (
-    data,
-    x,
-    y,
-    scale_data,
-    quick_aces,
-    max_degree,
-    inter_cost,
-    metric,
-    max_terms,
-    err_red,
-    kn_grid,
-    minspan,
-    endspan,
-    kn_penalty
-    ) {
-
+display_errors_aces <- function(
+  data,
+  x,
+  y,
+  scale_data,
+  quick_aces,
+  max_degree,
+  inter_cost,
+  metric,
+  max_terms,
+  err_red,
+  kn_grid,
+  minspan,
+  endspan,
+  kn_penalty
+) {
   # data is a matrix or a data.frame
   if (!is.data.frame(data) && !is.matrix(data)) {
     stop("data must be a data.frame or a matrix")
@@ -146,14 +142,13 @@ display_errors_aces <- function (
 
   # the kn_grid must have the same length that x
   if (is.list(kn_grid) && length(kn_grid) != length(x)) {
-    stop ("If kn_grid is entered, the length must be equal to length(x).")
+    stop("If kn_grid is entered, the length must be equal to length(x).")
   }
 
   # kn_penalty must be a semi-positive number
   if (is.null(kn_penalty) || kn_penalty < 0) {
     stop("kn_penalty must be a number equal or greater than 0.")
   }
-
 }
 
 #' @title Argument Validation for Efficiency Score Computation
@@ -188,22 +183,22 @@ display_errors_aces <- function (
 #' @return
 #' None. The function is used for its side effect of generating \code{stop()} messages upon validation failure.
 
-display_errors_scores <- function (
-    data,
-    x,
-    y,
-    object,
-    method,
-    measure,
-    returns,
-    direction
-    ) {
-
-  var_indexes <- sort (
-    c (
+display_errors_scores <- function(
+  data,
+  x,
+  y,
+  object,
+  method,
+  measure,
+  returns,
+  direction
+) {
+  var_indexes <- sort(
+    c(
       object[["data"]][["x"]],
       object[["data"]][["y"]]
-    ))
+    )
+  )
 
   # check if training and test names are the same
   tr_names <- colnames(object[["data"]][["df"]])[var_indexes]
@@ -222,16 +217,18 @@ display_errors_scores <- function (
   if (inherits(object, "rf_aces")) {
     allowed_methods <- c("rf_aces", "rf_aces_cubic", "rf_aces_quintic")
     if (!(method %in% allowed_methods)) {
-      stop(paste0("Invalid method '", method, "' for object of class 'rf_aces'. ",
-                  "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."))
+      stop(paste0(
+        "Invalid method '", method, "' for object of class 'rf_aces'. ",
+        "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."
+      ))
     }
   }
 
   if (inherits(object, "aces")) {
     allowed_methods <- c("aces", "aces_cubic", "aces_quintic", "aces_forward")
     if (!(method %in% allowed_methods)) {
-      stop (
-        paste0 (
+      stop(
+        paste0(
           "Invalid method '", method, "' for object of class 'aces'. ",
           "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."
         )
@@ -240,19 +237,19 @@ display_errors_scores <- function (
   }
 
   # Valid measures
-  valid_measures <- c (
+  valid_measures <- c(
     "rad_out", "rad_inp", "ddf", "rsl_out", "rsl_inp",
     "wam_mip", "wam_nor", "wam_ram", "wam_bam",
     "rf_aces_rad_out"
-    )
+  )
 
   if (!(measure %in% valid_measures)) {
-    stop (
-      paste0 (
+    stop(
+      paste0(
         "Invalid measure '", measure, "'. ",
         "Please choose one of: ", paste(valid_measures, collapse = ", "), "."
-        )
       )
+    )
   }
 
   # Enforce compatibility of rf_aces_rad_out with class rf_aces only
@@ -267,10 +264,8 @@ display_errors_scores <- function (
 
   # direction must be a matrix with size [n x (nX+nY)]
   if (!is.null(direction)) {
-
     # Check if it is a valid data structure
     if (is.matrix(direction) || is.data.frame(direction)) {
-
       # Check rows: must match evaluated DMUs
       if (nrow(direction) != nrow(data)) {
         stop(paste("The direction matrix must have", nrow(data), "rows (one per DMU)."))
@@ -285,19 +280,12 @@ display_errors_scores <- function (
       if (!all(sapply(as.data.frame(direction), is.numeric))) {
         stop("All elements in the direction matrix must be numeric.")
       }
-
     } else {
-
       stop("Invalid 'direction' type. A numeric matrix or data.frame is required.")
-
     }
-
   } else if (measure == "ddf") {
-
     stop("Directional Distance Function (ddf) requires a 'direction' matrix.")
-
   }
-
 }
 
 #' @title Error Messaging in Random-Forest Adaptive Constrained Enveloping Splines (RF-ACES) functions
@@ -358,25 +346,24 @@ display_errors_scores <- function (
 #' @return
 #' This function return error messages if hyperparameters are incorrectly specified.
 
-display_errors_rf_aces <- function (
-    data,
-    x,
-    y,
-    scale_data,
-    quick_aces,
-    max_degree,
-    inter_cost,
-    metric,
-    learners,
-    bag_size,
-    max_feats,
-    max_terms,
-    err_red,
-    minspan,
-    endspan,
-    kn_grid
-    ) {
-
+display_errors_rf_aces <- function(
+  data,
+  x,
+  y,
+  scale_data,
+  quick_aces,
+  max_degree,
+  inter_cost,
+  metric,
+  learners,
+  bag_size,
+  max_feats,
+  max_terms,
+  err_red,
+  minspan,
+  endspan,
+  kn_grid
+) {
   # data is a matrix or a data.frame
   if (!is.data.frame(data) && !is.matrix(data)) {
     stop("data must be a data.frame or a matrix")
@@ -464,7 +451,6 @@ display_errors_rf_aces <- function (
 
   # the kn_grid must have the same length that x
   if (is.list(kn_grid) && length(kn_grid) != length(x)) {
-    stop ("If kn_grid is entered, the length must be equal to length(x).")
+    stop("If kn_grid is entered, the length must be equal to length(x).")
   }
 }
-

@@ -15,17 +15,15 @@
 #' @return
 #' A \code{list} with the locations of the central and the side knots in each dimension.
 
-side_knot_location <- function (
-    data,
-    nX,
-    knots
-    ) {
-
+side_knot_location <- function(
+  data,
+  nX,
+  knots
+) {
   # initialize a list to save side knot locations
   kn_side_loc <- vector("list", nX)
 
   for (v in 1:nX) {
-
     # get knots for the v-th variable
     kt_v <- sort(unique(knots[knots[, 1] == v, 2]))
 
@@ -35,12 +33,10 @@ side_knot_location <- function (
     kn_side_loc[[v]] <- c(min(data[, v]), kt_v, max(data[, v]))
 
     # compute the midpoints between central knots
-    kn_side_loc[[v]] <- sort(c(kn_side_loc[[v]], kn_side_loc[[v]][- length(kn_side_loc[[v]])] + diff(kn_side_loc[[v]]) / 2))
-
+    kn_side_loc[[v]] <- sort(c(kn_side_loc[[v]], kn_side_loc[[v]][-length(kn_side_loc[[v]])] + diff(kn_side_loc[[v]]) / 2))
   }
 
   return(kn_side_loc)
-
 }
 
 #' @title Generate a Suitable Triplet of Knots
@@ -70,14 +66,13 @@ side_knot_location <- function (
 #' @return
 #' A \code{vector} with a suitable triplet of knots.
 
-set_triplet_knots <- function (
-    knots,
-    w,
-    smoothing,
-    mono,
-    conc
-    ) {
-
+set_triplet_knots <- function(
+  knots,
+  w,
+  smoothing,
+  mono,
+  conc
+) {
   # unconstrained knots
   t0 <- knots[1] # t-
   t1 <- knots[2] # t
@@ -89,9 +84,7 @@ set_triplet_knots <- function (
 
   # constrained knots
   if (mono | conc) {
-
     if (smoothing == "cubic") {
-
       ratio <- d / e
 
       if (ratio < 1 | ratio > 2) {
@@ -99,22 +92,18 @@ set_triplet_knots <- function (
         e <- w * d
         t2 <- t1 + e
       }
-
     } else if (smoothing == "quintic") {
-
       ratio <- e / d
 
-      if (ratio < 8/7 | ratio > 1.5) {
+      if (ratio < 8 / 7 | ratio > 1.5) {
         # update t-
         d <- w * e
         t0 <- t1 - d
-
       }
     }
   }
 
   return(c(t0, t1, t2))
-
 }
 
 #' @title Fit a Smooth Adaptive Constrained Enveloping Splines using Cubic Functions
@@ -137,9 +126,6 @@ set_triplet_knots <- function (
 #'
 #' @param fdh_scores
 #' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
@@ -170,22 +156,20 @@ set_triplet_knots <- function (
 #'
 #' A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through cubic functions.
 
-cubic_aces <- function (
-    data,
-    x,
-    y,
-    dea_scores,
-    fdh_scores,
-    model_type,
-    metric,
-    shape,
-    kn_grid,
-    kn_side_loc,
-    kn_penalty,
-    xi_degree,
-    wc
-    ) {
-
+cubic_aces <- function(
+  data,
+  x,
+  y,
+  dea_scores,
+  fdh_scores,
+  metric,
+  shape,
+  kn_grid,
+  kn_side_loc,
+  kn_penalty,
+  xi_degree,
+  wc
+) {
   # number of inputs
   nX <- length(x)
 
@@ -196,7 +180,6 @@ cubic_aces <- function (
   w_list <- vector("list", length(wc))
 
   for (l in 1:length(wc)) {
-
     # new matrix of basis functions
     B <- matrix(data = rep(1, N), ncol = 1)
 
@@ -210,7 +193,6 @@ cubic_aces <- function (
     not_paired <- c()
 
     for (v in 1:nX) {
-
       if (is.null(kn_side_loc[[v]])) next
 
       # from first midpoint: position 2
@@ -218,7 +200,6 @@ cubic_aces <- function (
       # step 2 to select midpoints
 
       for (i in seq(2, length(kn_side_loc[[v]]) - 3, 2)) {
-
         # select a central knot: position i + 1
         t <- kn_side_loc[[v]][i + 1]
 
@@ -226,7 +207,7 @@ cubic_aces <- function (
         side <- kn_grid[kn_grid[, "t"] == t, "side"]
 
         # triplet of knots
-        triplet <- set_triplet_knots (
+        triplet <- set_triplet_knots(
           knots = kn_side_loc[[v]][i:(i + 2)],
           w = wc[l],
           smoothing = "cubic",
@@ -235,33 +216,29 @@ cubic_aces <- function (
         )
 
         # update B with two new truncated cubic basis functions
-        B <- create_cubic_basis (
+        B <- create_cubic_basis(
           data = data,
           xi = v,
           knots = triplet,
           B = B,
           side = side
-          )
+        )
 
         if (length(side) == 1) {
-
           not_paired <- c(not_paired, ncol(B))
           status <- "unpaired"
           side <- side
-
         } else {
-
           paired <- c(paired, (ncol(B) - 1):ncol(B))
           status <- "paired"
           side <- side
-
         }
 
         # update cubic knots
-        cubic_knots[[v]] <- append (
+        cubic_knots[[v]] <- append(
           cubic_knots[[v]],
-          list (
-            list (
+          list(
+            list(
               t = triplet,
               status = status,
               side = side
@@ -272,7 +249,6 @@ cubic_aces <- function (
     }
 
     if (shape[["mono"]] || shape[["conc"]]) {
-
       # number of paired basis functions
       n_pair <- sum(duplicated(kn_grid[, c("xi", "t")])) * 2
 
@@ -283,29 +259,24 @@ cubic_aces <- function (
       B <- B[, c(1, paired, not_paired)]
 
       # estimate coefficients
-      coefs <- estimate_coefficients_smoothed (
-        model_type = model_type,
+      coefs <- estimate_coefficients_smoothed(
         B = B,
         y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
         n_pair = n_pair,
         n_lsub = n_lsub,
         shape = shape
-        )
-
+      )
     } else {
-
-      coefs <- estimate_coefficients (
-        model_type = model_type,
+      coefs <- estimate_coefficients(
         B = B[, c(1, paired, not_paired)],
-        y = data[, y, drop = F],
+        y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
         fdh_scores = fdh_scores,
         it_list = NULL,
         Bp_list = NULL,
         shape = shape
       )
-
     }
 
     # prediction
@@ -315,14 +286,14 @@ cubic_aces <- function (
       y_hat[, out] <- B %*% coefs[, out, drop = F]
     }
 
-    LOF <- err_metric (
+    LOF <- err_metric(
       y_obs = data[, y, drop = F],
       y_hat = y_hat,
       metric = metric,
       weight = 1 / dea_scores
     )
 
-    GCV <- compute_gcv (
+    GCV <- compute_gcv(
       y_obs = data[, y, drop = F],
       LOF = LOF,
       n_bf = ncol(B),
@@ -346,7 +317,6 @@ cubic_aces <- function (
   aces_cubic <- w_list[[which.min(GCVs)]]
 
   return(aces_cubic)
-
 }
 
 #' @title Generate a New Pair of Cubic Basis Functions
@@ -374,14 +344,13 @@ cubic_aces <- function (
 #'
 #' A \code{matrix} of basis functions updated with the new cubic basis functions.
 
-create_cubic_basis <- function (
-    data,
-    xi,
-    knots,
-    B,
-    side
-    ) {
-
+create_cubic_basis <- function(
+  data,
+  xi,
+  knots,
+  B,
+  side
+) {
   # triplet of knots
   t0 <- knots[1]
   t1 <- knots[2]
@@ -391,58 +360,53 @@ create_cubic_basis <- function (
   d <- t1 - t0 # t  - t-
   e <- t2 - t1 # t+ - t
 
-  p1 <- (2 * e - d) / (e + d) ^ 2
-  r1 <- (d - e) / (e + d) ^ 3
+  p1 <- (2 * e - d) / (e + d)^2
+  r1 <- (d - e) / (e + d)^3
 
-  p2 <- (2 * d - e) / (- e - d) ^ 2
-  r2 <- (e - d) / (- e - d) ^ 3
+  p2 <- (2 * d - e) / (-e - d)^2
+  r2 <- (e - d) / (-e - d)^3
 
   # side of the basis function: both or right
   if (length(side) == 2 || side == "R") {
-
-    term1 <- p1 * (data[, xi] - t0) ^ 2
-    term2 <- r1 * (data[, xi] - t0) ^ 3
+    term1 <- p1 * (data[, xi] - t0)^2
+    term2 <- r1 * (data[, xi] - t0)^3
 
     # C1
-    C1 <- ifelse (
+    C1 <- ifelse(
       data[, xi] <= t0,
       0,
-      ifelse (
+      ifelse(
         data[, xi] > t0 & data[, xi] < t2,
         term1 + term2,
         data[, xi] - t1
-        )
       )
+    )
 
     # add C1 to B matrix
     B <- cbind(B, C1)
-
   }
 
   # side of the basis function: both or right
   if (length(side) == 2 || side == "L") {
-
-    term1 <- p2 * (data[, xi] - t2) ^ 2
-    term2 <- r2 * (data[, xi] - t2) ^ 3
+    term1 <- p2 * (data[, xi] - t2)^2
+    term2 <- r2 * (data[, xi] - t2)^3
 
     # C2
-    C2 <- ifelse (
+    C2 <- ifelse(
       data[, xi] <= t0,
       t1 - data[, xi],
-      ifelse (
+      ifelse(
         data[, xi] > t0 & data[, xi] < t2,
         term1 + term2,
         0
-        )
       )
+    )
 
     # add C2 to B matrix
     B <- cbind(B, C2)
-
   }
 
   return(B)
-
 }
 
 #' @title Fit a Smooth Adaptive Constrained Enveloping Splines using Quintic Functions
@@ -465,9 +429,6 @@ create_cubic_basis <- function (
 #'
 #' @param fdh_scores
 #' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier that the function will estimate.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
@@ -500,22 +461,20 @@ create_cubic_basis <- function (
 #'
 #' A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through quintic functions.
 
-quintic_aces <- function (
-    data,
-    x,
-    y,
-    dea_scores,
-    fdh_scores,
-    model_type,
-    metric,
-    shape,
-    kn_grid,
-    kn_side_loc,
-    kn_penalty,
-    xi_degree,
-    wq
-    ) {
-
+quintic_aces <- function(
+  data,
+  x,
+  y,
+  dea_scores,
+  fdh_scores,
+  metric,
+  shape,
+  kn_grid,
+  kn_side_loc,
+  kn_penalty,
+  xi_degree,
+  wq
+) {
   # sample size
   N <- nrow(data)
 
@@ -526,7 +485,6 @@ quintic_aces <- function (
   w_list <- vector("list", length(wq))
 
   for (l in 1:length(wq)) {
-
     # new matrix of basis functions
     B <- matrix(data = rep(1, N), ncol = 1)
 
@@ -539,7 +497,7 @@ quintic_aces <- function (
     # not paired basis functions
     not_paired <- c()
 
-    for (v in 1:nX){
+    for (v in 1:nX) {
       if (is.null(kn_side_loc[[v]])) next
 
       # from first midpoint: position 2
@@ -547,7 +505,6 @@ quintic_aces <- function (
       # step 2 to select midpoints
 
       for (i in seq(2, length(kn_side_loc[[v]]) - 3, 2)) {
-
         # select a central knot: position i + 1
         t <- kn_side_loc[[v]][i + 1]
 
@@ -555,7 +512,7 @@ quintic_aces <- function (
         side <- kn_grid[kn_grid[, "t"] == t, "side"]
 
         # triplet of knots
-        triplet <- set_triplet_knots (
+        triplet <- set_triplet_knots(
           knots = kn_side_loc[[v]][i:(i + 2)],
           w = wq[l],
           smoothing = "quintic",
@@ -564,45 +521,39 @@ quintic_aces <- function (
         )
 
         # update B with two new truncated quintic basis functions
-        B <- create_quintic_basis (
+        B <- create_quintic_basis(
           data = data,
           xi = v,
           knots = triplet,
           B = B,
           side = side
-          )
+        )
 
         if (length(side) == 1) {
-
           not_paired <- c(not_paired, ncol(B))
           status <- "unpaired"
           side <- side
-
         } else {
-
           paired <- c(paired, (ncol(B) - 1):ncol(B))
           status <- "paired"
           side <- side
-
         }
 
         # update cubic knots
-        quintic_knots[[v]] <- append (
+        quintic_knots[[v]] <- append(
           quintic_knots[[v]],
-          list (
-            list (
+          list(
+            list(
               t = triplet,
               status = status,
               side = side
             )
           )
         )
-
       }
     }
 
     if (shape[["mono"]] || shape[["conc"]]) {
-
       # number of paired basis functions
       n_pair <- sum(duplicated(kn_grid[, c("xi", "t")])) * 2
 
@@ -613,8 +564,7 @@ quintic_aces <- function (
       B <- B[, c(1, paired, not_paired)]
 
       # estimate coefficients
-      coefs <- estimate_coefficients_smoothed (
-        model_type = model_type,
+      coefs <- estimate_coefficients_smoothed(
         B = B,
         y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
@@ -622,20 +572,16 @@ quintic_aces <- function (
         n_lsub = n_lsub,
         shape = shape
       )
-
     } else {
-
-      coefs <- estimate_coefficients (
-        model_type = model_type,
+      coefs <- estimate_coefficients(
         B = B[, c(1, paired, not_paired)],
-        y = data[, y, drop = F],
+        y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
         fdh_scores = fdh_scores,
         it_list = NULL,
         Bp_list = NULL,
         shape = shape
       )
-
     }
 
     # prediction
@@ -645,14 +591,14 @@ quintic_aces <- function (
       y_hat[, out] <- B %*% coefs[, out, drop = F]
     }
 
-    LOF <- err_metric (
+    LOF <- err_metric(
       y_obs = data[, y, drop = F],
       y_hat = y_hat,
       metric = metric,
       weight = 1 / dea_scores
     )
 
-    GCV <- compute_gcv (
+    GCV <- compute_gcv(
       y_obs = data[, y, drop = F],
       LOF = LOF,
       n_bf = ncol(B),
@@ -667,7 +613,6 @@ quintic_aces <- function (
     w_list[[l]][["coefs"]] <- coefs
     w_list[[l]][["GCV"]] <- GCV
     w_list[[l]][["w"]] <- wq[l]
-
   }
 
   # lack-of-fit for each model
@@ -677,7 +622,6 @@ quintic_aces <- function (
   aces_quintic <- w_list[[which.min(GCVs)]]
 
   return(aces_quintic)
-
 }
 
 #' @title Generate a New Pair of Quintic Basis Functions
@@ -705,14 +649,13 @@ quintic_aces <- function (
 #'
 #' A \code{matrix} of basis functions updated with the new quintic basis functions.
 
-create_quintic_basis <- function (
-    data,
-    xi,
-    knots,
-    B,
-    side
-    ) {
-
+create_quintic_basis <- function(
+  data,
+  xi,
+  knots,
+  B,
+  side
+) {
   # triplet of knots
   t0 <- knots[1]
   t1 <- knots[2]
@@ -720,60 +663,57 @@ create_quintic_basis <- function (
 
   d1 <- t2 - t1 # t+ - t
   d2 <- t1 - t0 # t  - t-
-  d  <- t2 - t0 # t+ - t-
+  d <- t2 - t0 # t+ - t-
 
-  alpha1 <- (6 * d1 - 4 * d2) / d ^ 3
-  alpha2 <- (4 * d1 - 6 * d2) / d ^ 3
+  alpha1 <- (6 * d1 - 4 * d2) / d^3
+  alpha2 <- (4 * d1 - 6 * d2) / d^3
 
-  beta1 <- (7 * d2 - 8 * d1) / d ^ 4
-  beta2 <- (7 * d1 - 8 * d2) / d ^ 4
+  beta1 <- (7 * d2 - 8 * d1) / d^4
+  beta2 <- (7 * d1 - 8 * d2) / d^4
 
-  gamma1 <- gamma2 <- (3 * d1 - 3 * d2) / d ^ 5
+  gamma1 <- gamma2 <- (3 * d1 - 3 * d2) / d^5
 
   # side of the basis function: both or right
   if (length(side) == 2 || side == "R") {
-
-    term1 <- alpha1 * (data[, xi] - t0) ^ 3
-    term2 <- beta1  * (data[, xi] - t0) ^ 4
-    term3 <- gamma1 * (data[, xi] - t0) ^ 5
+    term1 <- alpha1 * (data[, xi] - t0)^3
+    term2 <- beta1 * (data[, xi] - t0)^4
+    term3 <- gamma1 * (data[, xi] - t0)^5
 
     # Q1
-    Q1 <- ifelse (
+    Q1 <- ifelse(
       data[, xi] <= t0,
       0,
-      ifelse (
+      ifelse(
         data[, xi] > t0 & data[, xi] < t2,
         term1 + term2 + term3,
         data[, xi] - t1
-        )
       )
+    )
 
     # add Q1 to matrix B
-    B  <- cbind(B, Q1)
+    B <- cbind(B, Q1)
   }
 
   # side of the basis function: both or right
   if (length(side) == 2 || side == "L") {
-
-    term1 <- alpha2 * (data[, xi] - t2) ^ 3
-    term2 <- beta2  * (data[, xi] - t2) ^ 4
-    term3 <- gamma2 * (data[, xi] - t2) ^ 5
+    term1 <- alpha2 * (data[, xi] - t2)^3
+    term2 <- beta2 * (data[, xi] - t2)^4
+    term3 <- gamma2 * (data[, xi] - t2)^5
 
     # Q2
-    Q2 <- ifelse (
+    Q2 <- ifelse(
       data[, xi] <= t0,
       t1 - data[, xi],
-      ifelse (
+      ifelse(
         data[, xi] > t0 & data[, xi] < t2,
         term1 + term2 + term3,
         0
-        )
       )
+    )
 
     # add Q2 to matrix B
-    B  <- cbind(B, Q2)
+    B <- cbind(B, Q2)
   }
 
   return(B)
-
 }

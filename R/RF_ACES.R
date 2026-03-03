@@ -111,40 +111,39 @@
 #'
 #' @export
 
-rf_aces <- function (
-    data,
-    x,
-    y,
-    scale_data = TRUE,
-    quick_aces = TRUE,
-    mul_BF = list (
-      "max_degree" = 1,
-      "inter_cost" = 0.05
-    ),
-    metric = "mse",
-    shape = list (
-      "mono" = TRUE,
-      "conc" = TRUE
-      ),
-    learners = 100,
-    bag_size = nrow(data),
-    max_feats = length(x) / 3,
-    early_stopping = list (
-      "ma_window" = 10,
-      "tolerance" = 5
-    ),
-    max_terms = 50,
-    err_red = 0.01,
-    kn_grid = - 1,
-    minspan = - 1,
-    endspan = - 1
-    ) {
-
+rf_aces <- function(
+  data,
+  x,
+  y,
+  scale_data = TRUE,
+  quick_aces = TRUE,
+  mul_BF = list(
+    "max_degree" = 1,
+    "inter_cost" = 0.05
+  ),
+  metric = "mse",
+  shape = list(
+    "mono" = TRUE,
+    "conc" = TRUE
+  ),
+  learners = 100,
+  bag_size = nrow(data),
+  max_feats = length(x) / 3,
+  early_stopping = list(
+    "ma_window" = 10,
+    "tolerance" = 5
+  ),
+  max_terms = 50,
+  err_red = 0.01,
+  kn_grid = -1,
+  minspan = -1,
+  endspan = -1
+) {
   # ====================== #
   # DISPLAY ERRORS RF-ACES #
   # ====================== #
 
-  display_errors_rf_aces (
+  display_errors_rf_aces(
     data = data,
     x = x,
     y = y,
@@ -211,12 +210,11 @@ rf_aces <- function (
   stopping_condition_counter <- 0
 
   for (m in 1:length(RF_ACES)) {
-
     # update Progress Bar
     setTxtProgressBar(pb, m)
 
     # index of samples in the model
-    sample_bag <- sample (
+    sample_bag <- sample(
       1:nrow(data),
       size = bag_size,
       replace = TRUE
@@ -230,7 +228,7 @@ rf_aces <- function (
     oob_idxs <- which(!(1:nrow(data) %in% sample_bag))
     data_oob <- data[oob_idxs, ]
 
-    RF_ACES[[m]] <- rf_aces_algorithm (
+    RF_ACES[[m]] <- rf_aces_algorithm(
       data = data_bag,
       x_vars = x,
       y_vars = y,
@@ -238,7 +236,7 @@ rf_aces <- function (
       max_degree = mul_BF[["max_degree"]],
       inter_cost = mul_BF[["inter_cost"]],
       metric = metric,
-      shape = list (
+      shape = list(
         "mono" = shape[["mono"]],
         "conc" = shape[["conc"]]
       ),
@@ -258,16 +256,16 @@ rf_aces <- function (
     # select out-of-bag indices
     y_hat <- y_hat[oob_idxs, ]
 
-    oob_pred[[m]] <- matrix (
-      c (
+    oob_pred[[m]] <- matrix(
+      c(
         "y_hat" = y_hat,
         "idx" = oob_idxs
-        ),
+      ),
       ncol = length(y) + 1
     )
 
     # OOB performance
-    oob_mse <- compute_oob (
+    oob_mse <- compute_oob(
       data = data,
       y = y,
       oob_idxs = oob_idxs,
@@ -282,31 +280,26 @@ rf_aces <- function (
     oob_trend <- c(oob_trend, oob_mse)
 
     if (m > ma_window) {
-
       # compute moving average over the last `ma_window` iterations
       oob_ma <- mean(tail(oob_trend, ma_window))
 
       # current oob greater than moving average over last oob
       if (oob_mse >= oob_ma) {
         stopping_condition_counter <- stopping_condition_counter + 1
-
       } else {
         stopping_condition_counter <- 0
-
       }
     }
 
     if (stopping_condition_counter == tolerance) {
-
       cat("\n")
       print(paste("Out-of-bag error stabilized after", m, "models"))
       break
     }
-
   }
 
   # random-forest hyperparameters
-  rf_list = list (
+  rf_list <- list(
     learners = m,
     bag_size = bag_size,
     max_feats = max_feats,
@@ -324,41 +317,39 @@ rf_aces <- function (
 
   # save technology for Random Forest
   for (i in seq_along(RF_ACES[["forest"]])) {
-
-    xmat_rf_aces <- rbind (
+    xmat_rf_aces <- rbind(
       xmat_rf_aces,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["xmat"]]
-      )
+    )
 
-    ymat_rf_aces <- rbind (
+    ymat_rf_aces <- rbind(
       ymat_rf_aces,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["ymat"]]
     )
 
-    xmat_rf_aces_cubic <- rbind (
+    xmat_rf_aces_cubic <- rbind(
       xmat_rf_aces_cubic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["xmat"]]
     )
 
-    ymat_rf_aces_cubic <- rbind (
+    ymat_rf_aces_cubic <- rbind(
       ymat_rf_aces_cubic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["ymat"]]
     )
 
-    xmat_rf_aces_quintic <- rbind (
+    xmat_rf_aces_quintic <- rbind(
       xmat_rf_aces_quintic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["xmat"]]
     )
 
-    ymat_rf_aces_quintic <- rbind (
+    ymat_rf_aces_quintic <- rbind(
       ymat_rf_aces_quintic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["ymat"]]
     )
-
   }
 
-  data_sorted <- as.data.frame (
-    set_data (
+  data_sorted <- as.data.frame(
+    set_data(
       data = data,
       x = x,
       y = y,
@@ -374,26 +365,26 @@ rf_aces <- function (
 
   rf_aces_technology <- data.frame(xmat_rf_aces, ymat_rf_aces) %>%
     group_by(across(all_of(inp_cols))) %>%
-    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = 'drop')
+    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = "drop")
 
   rf_aces_cubic_technology <- data.frame(xmat_rf_aces_cubic, ymat_rf_aces_cubic) %>%
     group_by(across(all_of(inp_cols))) %>%
-    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = 'drop')
+    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = "drop")
 
   rf_aces_quintic_technology <- data.frame(xmat_rf_aces_quintic, ymat_rf_aces_quintic) %>%
     group_by(across(all_of(inp_cols))) %>%
-    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = 'drop')
+    summarise(across(all_of(out_cols), mean, .names = "{col}"), .groups = "drop")
 
-  RF_ACES[["technology"]] <- list (
-    "rf_aces" = list (
+  RF_ACES[["technology"]] <- list(
+    "rf_aces" = list(
       "xmat" = as.matrix(rf_aces_technology[, 1:length(x)]),
       "ymat" = as.matrix(rf_aces_technology[, (length(x) + 1):ncol(rf_aces_technology)])
     ),
-    "rf_aces_cubic" = list (
+    "rf_aces_cubic" = list(
       "xmat" = as.matrix(rf_aces_cubic_technology[, 1:length(x)]),
       "ymat" = as.matrix(rf_aces_cubic_technology[, (length(x) + 1):ncol(rf_aces_technology)])
     ),
-    "rf_aces_quintic" = list (
+    "rf_aces_quintic" = list(
       "xmat" = as.matrix(rf_aces_quintic_technology[, 1:length(x)]),
       "ymat" = as.matrix(rf_aces_quintic_technology[, (length(x) + 1):ncol(rf_aces_technology)])
     )
@@ -403,7 +394,7 @@ rf_aces <- function (
   # Object #
   # ====== #
 
-  RF_ACES[["data"]] <- list (
+  RF_ACES[["data"]] <- list(
     "df" = data,
     "x" = x,
     "y" = y,
@@ -412,7 +403,7 @@ rf_aces <- function (
     "rownames" = rownames(data)
   )
 
-  RF_ACES[["control"]] <- list (
+  RF_ACES[["control"]] <- list(
     "quick_aces" = quick_aces,
     "max_degree" = mul_BF[["max_degree"]],
     "inter_cost" = mul_BF[["inter_cost"]],
@@ -432,7 +423,7 @@ rf_aces <- function (
     "psi" = 0.05,
     "wc" = NULL,
     "wq" = NULL,
-    scale = list (
+    scale = list(
       is_scaled = scale_data,
       mean_x = sx,
       mean_y = sy
@@ -446,7 +437,6 @@ rf_aces <- function (
   class(RF_ACES) <- "rf_aces"
 
   return(RF_ACES)
-
 }
 
 
@@ -505,28 +495,27 @@ rf_aces <- function (
 #'
 #' @export
 
-rf_aces_algorithm <- function (
-    data,
-    x_vars,
-    y_vars,
-    quick_aces,
-    max_degree,
-    inter_cost,
-    metric,
-    shape,
-    max_feats,
-    max_terms,
-    err_red,
-    minspan,
-    endspan,
-    kn_grid
-    ) {
-
+rf_aces_algorithm <- function(
+  data,
+  x_vars,
+  y_vars,
+  quick_aces,
+  max_degree,
+  inter_cost,
+  metric,
+  shape,
+  max_feats,
+  max_terms,
+  err_red,
+  minspan,
+  endspan,
+  kn_grid
+) {
   # save a copy of the original data
   DMUs <- data
 
   # data in [x, z, y] format with interaction of variables included
-  data <- set_data (
+  data <- set_data(
     data = data,
     x = x_vars,
     y = y_vars,
@@ -553,7 +542,7 @@ rf_aces_algorithm <- function (
   # ================== #
 
   # variable importance
-  var_imp <- matrix (
+  var_imp <- matrix(
     rep(0, nX),
     nrow = 1
   )
@@ -563,7 +552,6 @@ rf_aces_algorithm <- function (
 
   # remove variables with low correlation
   if (quick_aces) {
-
     # Spearman’s Rank Correlation
     spearman_corr <- cor(data, method = "spearman")
     spearman_corr <- spearman_corr[1:length(x), (length(x) + 1):ncol(data)]
@@ -577,28 +565,22 @@ rf_aces_algorithm <- function (
     threshold_1 <- min(0.1, t1_quantile)
 
     t2_quantile <- quantile(kendall_corr[kendall_corr > 0], probs = 0.2)
-    threshold_2 <- min (0.1, t2_quantile)
+    threshold_2 <- min(0.1, t2_quantile)
 
     # iterate over the variables
     for (j in 1:nX) {
-
       # check for both Spearman and Kendall correlations
       if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
-
-        var_imp[1, j] <- - 1
-
+        var_imp[1, j] <- -1
       }
     }
 
     relevant_variables <- c()
 
     for (col in colnames(var_imp)) {
-
       if (var_imp[1, col] == 0) {
-
         variables <- unlist(strsplit(col, "_"))
         relevant_variables <- unique(c(relevant_variables, variables))
-
       }
     }
 
@@ -606,23 +588,22 @@ rf_aces_algorithm <- function (
 
     # inputs removed
     x_drop <- x_vars[!which(colnames(data) %in% relevant_variables)]
-
   }
 
   # table of scores
-  table_scores <- matrix (
+  table_scores <- matrix(
     ncol = nY + 1,
     nrow = nrow(data),
     dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
   ) %>% as.data.frame()
 
-  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
+  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[-x_drop]
 
   # ========== #
   # DEA SCORES #
   # ========== #
 
-  table_scores[, 1] <- rad_out (
+  table_scores[, 1] <- rad_out(
     tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
     eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -632,8 +613,7 @@ rf_aces_algorithm <- function (
   )[, 1]
 
   for (out in 1:nY) {
-
-    table_scores[, 1 + out] <- rad_out (
+    table_scores[, 1 + out] <- rad_out(
       tech_xmat = as.matrix(DMUs[, x_filtered]),
       tech_ymat = as.matrix(DMUs[, y_vars[out]]),
       eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -641,17 +621,16 @@ rf_aces_algorithm <- function (
       convexity = TRUE,
       returns = "variable"
     )[, 1]
-
   }
 
   # weights for error metrics based on DEA
-  dea_scores <-  table_scores[, 2:ncol(table_scores)]
+  dea_scores <- table_scores[, 2:ncol(table_scores)]
 
   # ========== #
   # FDH SCORES #
   # ========== #
 
-  table_scores[, 1] <- rad_out (
+  table_scores[, 1] <- rad_out(
     tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
     eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -661,8 +640,7 @@ rf_aces_algorithm <- function (
   )[, 1]
 
   for (out in 1:nY) {
-
-    table_scores[, 1 + out] <- rad_out (
+    table_scores[, 1 + out] <- rad_out(
       tech_xmat = as.matrix(DMUs[, x_filtered]),
       tech_ymat = as.matrix(DMUs[, y_vars[out]]),
       eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -670,11 +648,10 @@ rf_aces_algorithm <- function (
       convexity = FALSE,
       returns = "variable"
     )[, 1]
-
   }
 
   # weights for error metrics based on DEA
-  fdh_scores <-  table_scores[, 2:ncol(table_scores), drop = FALSE]
+  fdh_scores <- table_scores[, 2:ncol(table_scores), drop = FALSE]
 
   # ==================== #
   # VARIABLE INTERACTION #
@@ -683,7 +660,7 @@ rf_aces_algorithm <- function (
   # matrix with:
   # row 1: the index of the variable
   # row 2: the degree of the variable
-  xi_degree <- matrix (
+  xi_degree <- matrix(
     c(x, rep(1, length(x))),
     byrow = TRUE,
     nrow = 2,
@@ -691,28 +668,22 @@ rf_aces_algorithm <- function (
   )
 
   if (!is.list(max_degree)) {
-
     v <- 0
 
     for (i in 1:max_degree) {
-
       combs <- combn(1:length(x_vars), i)
 
       for (k in 1:ncol(combs)) {
         v <- v + 1
         xi_degree[2, v] <- i
       }
-
     }
-
   } else {
-
     xi_degree[2, x_vars] <- 1
 
     for (k in 1:length(max_degree)) {
       xi_degree[2, length(x_vars) + k] <- length(max_degree[[k]])
     }
-
   }
 
   # ===================== #
@@ -722,7 +693,7 @@ rf_aces_algorithm <- function (
   y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, max)
 
   # lack-of-fit
-  LOF <- err_metric (
+  LOF <- err_metric(
     y_obs = data[, y, drop = F],
     y_hat = y_hat,
     metric = metric,
@@ -739,13 +710,13 @@ rf_aces_algorithm <- function (
   #    LOF: mean error between true data and predicted data (B %*% coefs)
   #  coefs: regression coefficients
 
-  bf <- list (
+  bf <- list(
     "id" = 1,
     "status" = "intercept",
     "side" = "E",
     "Bp" = rep(1, N),
-    "xi" = c(- 1),
-    "t" = c(- 1),
+    "xi" = c(-1),
+    "t" = c(-1),
     "LOF" = LOF,
     "coefs" = unname(apply(data[, y, drop = FALSE], 2, max))
   )
@@ -757,7 +728,7 @@ rf_aces_algorithm <- function (
   Bp_list <- vector("list", nX)
 
   for (xi in 1:nX) {
-    Bp_list[[xi]] <- list (
+    Bp_list[[xi]] <- list(
       "paired" = NULL,
       "right" = NULL,
       "left" = NULL
@@ -765,7 +736,7 @@ rf_aces_algorithm <- function (
   }
 
   # set of basis functions (bf_set) and the matrix of basis functions (B)
-  rf_aces <- list (
+  rf_aces <- list(
     "bf_set" = list(bf),
     "B" = matrix(rep(1, N))
   )
@@ -774,7 +745,7 @@ rf_aces_algorithm <- function (
   err <- bf[["LOF"]]
 
   # set the grid of knots
-  kn_grid <- set_knots_grid (
+  kn_grid <- set_knots_grid(
     data = data,
     n_input_1 = length(x_vars),
     n_input_2 = nX,
@@ -784,7 +755,7 @@ rf_aces_algorithm <- function (
   )
 
   # minimum span (minspan) and end span (endspan)
-  L_Le <- compute_span (
+  L_Le <- compute_span(
     kn_grid = kn_grid,
     minspan = minspan,
     endspan = endspan,
@@ -797,23 +768,20 @@ rf_aces_algorithm <- function (
   # initial error
   err_min <- err
 
-  while(length(rf_aces[["bf_set"]]) + 2 < max_terms) {
-
+  while (length(rf_aces[["bf_set"]]) + 2 < max_terms) {
     last_bf <- rf_aces[["bf_set"]][[length(rf_aces[["bf_set"]])]]
 
     while (last_bf[["id"]] == 1) {
-
       # random input for bagging
       random_x <- sample(x, max_feats)
 
       # add 2 new basis functions to the model:
-      B_bf_knt_err <- add_basis_function (
+      B_bf_knt_err <- add_basis_function(
         data = data,
         x = random_x,
         y = y,
         xi_degree = xi_degree,
         inter_cost = inter_cost,
-        model_type = "envelopment",
         dea_scores = dea_scores,
         fdh_scores = fdh_scores,
         metric = metric,
@@ -829,22 +797,19 @@ rf_aces_algorithm <- function (
       )
 
       if (is.list(B_bf_knt_err)) break
-
     }
 
     if (last_bf[["id"]] != 1) {
-
       # random input for bagging
       random_x <- sample(x, max_feats)
 
       # add 2 new basis functions to the model:
-      B_bf_knt_err <- add_basis_function (
+      B_bf_knt_err <- add_basis_function(
         data = data,
         x = random_x,
         y = y,
         xi_degree = xi_degree,
         inter_cost = inter_cost,
-        model_type = "envelopment",
         dea_scores = dea_scores,
         fdh_scores = fdh_scores,
         metric = metric,
@@ -858,7 +823,6 @@ rf_aces_algorithm <- function (
         var_imp = var_imp,
         quick_aces = quick_aces
       )
-
     }
 
     if (!is.list(B_bf_knt_err)) break
@@ -868,7 +832,6 @@ rf_aces_algorithm <- function (
 
     # update model
     if (last_bf[["id"]] == 1 || new_err[1] < err[1] * (1 - err_red[1])) {
-
       # update B
       rf_aces[["B"]] <- B_bf_knt_err[[1]]
 
@@ -883,11 +846,8 @@ rf_aces_algorithm <- function (
 
       # update error
       err <- new_err
-
     } else {
-
       break
-
     }
   }
 
@@ -897,11 +857,8 @@ rf_aces_algorithm <- function (
   sts <- c()
 
   for (v in 1:nX) {
-
     for (side in c("paired", "right", "left")) {
-
       if (!is.null(Bp_list[[v]][[side]])) {
-
         # knots in variable "xi"
         knt_xi <- sapply(Bp_list[[v]][[side]], "[[", "t")
 
@@ -913,12 +870,11 @@ rf_aces_algorithm <- function (
 
         # status
         sts <- c(sts, rep(side, length(knt_xi)))
-
       }
     }
   }
 
-  kn_forward <- data.frame (
+  kn_forward <- data.frame(
     xi = var,
     t = knt,
     status = sts
@@ -928,7 +884,7 @@ rf_aces_algorithm <- function (
   # rf-aces
   # ==
 
-  rf_aces = list (
+  rf_aces <- list(
     "basis" = rf_aces[["bf_set"]],
     "Bmatx" = rf_aces[["B"]],
     "knots" = kn_forward,
@@ -936,7 +892,7 @@ rf_aces_algorithm <- function (
   )
 
   # generate technology
-  technology[["rf_aces"]] <- generate_technology (
+  technology[["rf_aces"]] <- generate_technology(
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces[["Bmatx"]] %*% rf_aces[["coefs"]],
@@ -961,13 +917,13 @@ rf_aces_algorithm <- function (
   kn_smoothed_left <- rf_aces_smoothed[["knots"]]
   kn_smoothed_left$side <- "L"
 
-  kn_smoothed <- rbind (
+  kn_smoothed <- rbind(
     kn_smoothed_right,
     kn_smoothed_left
   )
 
   # generate the input space for side knots location
-  kn_side_loc <- side_knot_location (
+  kn_side_loc <- side_knot_location(
     data = data,
     nX = nX,
     knots = kn_smoothed
@@ -977,12 +933,11 @@ rf_aces_algorithm <- function (
   # smoothing cubic aces
   # ==
 
-  rf_aces_cubic <- cubic_aces (
+  rf_aces_cubic <- cubic_aces(
     data = data,
     x = x,
     y = y,
     dea_scores = dea_scores,
-    model_type = "envelopment",
     metric = metric,
     shape = shape,
     kn_grid = kn_smoothed,
@@ -993,19 +948,18 @@ rf_aces_algorithm <- function (
   )
 
   # generate technology
-  technology[["rf_aces_cubic"]] <- generate_technology (
+  technology[["rf_aces_cubic"]] <- generate_technology(
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_cubic[["Bmatx"]] %*% rf_aces_cubic[["coefs"]],
     table_scores = table_scores
   )
 
-  rf_aces_quintic <- quintic_aces (
+  rf_aces_quintic <- quintic_aces(
     data = data,
     x = x,
     y = y,
     dea_scores = dea_scores,
-    model_type = "envelopment",
     metric = metric,
     shape = shape,
     kn_grid = kn_smoothed,
@@ -1016,7 +970,7 @@ rf_aces_algorithm <- function (
   )
 
   # generate technology
-  technology[["rf_aces_quintic"]] <- generate_technology (
+  technology[["rf_aces_quintic"]] <- generate_technology(
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_quintic[["Bmatx"]] %*% rf_aces_quintic[["coefs"]],
@@ -1027,7 +981,7 @@ rf_aces_algorithm <- function (
   # ACES OBJECT #
   # =========== #
 
-  RF_ACES <- aces_object (
+  RF_ACES <- aces_object(
     data = DMUs,
     x = x_vars,
     y = y_vars,
@@ -1054,21 +1008,20 @@ rf_aces_algorithm <- function (
 
   RF_ACES[["data"]] <- NULL
 
-  RF_ACES[["control"]] <- list (
+  RF_ACES[["control"]] <- list(
     "xi_degree" = RF_ACES[["control"]][["xi_degree"]],
     "wc" = RF_ACES[["control"]][["wc"]],
     "wq" = RF_ACES[["control"]][["wq"]]
   )
 
   RF_ACES[["methods"]][["aces"]] <- NULL
-  names(RF_ACES[["methods"]]) <- c (
+  names(RF_ACES[["methods"]]) <- c(
     "rf_aces",
     "rf_aces_cubic",
     "rf_aces_quintic"
   )
 
   return(RF_ACES)
-
 }
 
 #' @title Compute Out-of-Bag Error in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
@@ -1105,14 +1058,13 @@ rf_aces_algorithm <- function (
 #'
 #' This function returns the Out-of-Bag error metric, which provides an estimate of the model's prediction error on unseen data.
 
-compute_oob <- function (
-    data,
-    y,
-    oob_idxs,
-    oob_pred,
-    model
-    ) {
-
+compute_oob <- function(
+  data,
+  y,
+  oob_idxs,
+  oob_pred,
+  model
+) {
   # number of outputs
   nY <- length(y)
 
@@ -1123,8 +1075,8 @@ compute_oob <- function (
   model_pred <- as.data.frame(do.call(rbind, oob_pred[1:model]))
 
   # convert the predictions to a data frame and split by indices
-  model_pred <- lapply (
-    split (
+  model_pred <- lapply(
+    split(
       model_pred[, 1:nY, drop = F],
       model_pred[, ncol(model_pred)]
     ),
@@ -1138,11 +1090,10 @@ compute_oob <- function (
   oob_idxs <- as.numeric(rownames(model_pred))
 
   # calculate the OOB-MSE: value
-  oob_mse <- sum((data[oob_idxs, y] - model_pred[, 1:nY, drop = F]) ^ 2) /
+  oob_mse <- sum((data[oob_idxs, y] - model_pred[, 1:nY, drop = F])^2) /
     (length(oob_idxs) * nY)
 
   return(oob_mse)
-
 }
 
 #' @title Compute Variable Importance for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
@@ -1174,15 +1125,14 @@ compute_oob <- function (
 #' @return
 #' This function returns a metric of variable importance for each input variable.
 
-rf_aces_varimp <- function (
-    data,
-    x,
-    y,
-    object,
-    repeats = 1,
-    normalize = TRUE
-    ) {
-
+rf_aces_varimp <- function(
+  data,
+  x,
+  y,
+  object,
+  repeats = 1,
+  normalize = TRUE
+) {
   # RF-ACES configuration
   control_features <- object[["control"]]
 
@@ -1202,7 +1152,7 @@ rf_aces_varimp <- function (
   endspan <- control_features[["endspan"]]
 
   # initialize matrix of variable importance
-  mat_varimp <- matrix (
+  mat_varimp <- matrix(
     0,
     nrow = length(x)
   )
@@ -1215,29 +1165,27 @@ rf_aces_varimp <- function (
 
   # compute oob shuffling each variable "j"
   for (j in 1:length(x)) {
-
     # out-of-bag excluding the j-th input variable
     oob_j <- c()
 
     for (n in 1:repeats) {
-
-      print (
-        paste0 (
+      print(
+        paste0(
           "Computing variable importance for variable ", colnames(data)[x[j]],
           ": repeat ", n, " of ", repeats
-          )
         )
+      )
 
       data_shuffled <- data
       xvar_shuffled <- data[sample(1:nrow(data)), x[j]]
       data_shuffled[, x[j]] <- xvar_shuffled
 
-      model_j <- rf_aces (
+      model_j <- rf_aces(
         data = data_shuffled,
         x = x,
         y = y,
         quick_aces = quick_aces,
-        mul_BF = list (
+        mul_BF = list(
           "max_degree" = max_degree,
           "inter_cost" = inter_cost
         ),
@@ -1252,50 +1200,46 @@ rf_aces_varimp <- function (
         kn_grid = kn_grid,
         minspan = minspan,
         endspan = endspan
-        )
+      )
 
-        # out-of-bag error for the model with the j-th variable shuffled
-        oob_j <- c(oob_j, model_j[["forest"]][[length(model_j[["forest"]])]][["OOB"]])
+      # out-of-bag error for the model with the j-th variable shuffled
+      oob_j <- c(oob_j, model_j[["forest"]][[length(model_j[["forest"]])]][["OOB"]])
+    }
 
-      }
-
-      # add oob_j to the matrix of variable importance
-      mat_varimp[j, "importance"] <- round(100 * ((mean(oob_j) - oob) / oob), 2)
-
+    # add oob_j to the matrix of variable importance
+    mat_varimp[j, "importance"] <- round(100 * ((mean(oob_j) - oob) / oob), 2)
   }
 
   # ranking of variable importance
   var_ord <- order(mat_varimp[, 1], decreasing = TRUE, na.last = TRUE)
 
   ranking <- data.frame(
-    variable   = rownames(mat_varimp)[var_ord],
+    variable = rownames(mat_varimp)[var_ord],
     importance = as.numeric(mat_varimp[var_ord, 1]),
-    row.names  = NULL,
+    row.names = NULL,
     check.names = FALSE
   )
 
   if (normalize) {
-
-    imp <- ranking[,"importance"]
+    imp <- ranking[, "importance"]
 
     # shift negative values
     mn <- suppressWarnings(min(imp[is.finite(imp)], na.rm = TRUE))
     if (is.finite(mn) && mn < 0) {
-      imp <- imp - mn  # ahora imp >= 0
+      imp <- imp - mn # ahora imp >= 0
     }
 
     # scale [0,100]
     mx <- suppressWarnings(max(imp[is.finite(imp)], na.rm = TRUE))
     if (is.finite(mx) && mx > 0) {
-      ranking[,"importance"] <- round(100 * imp / mx, 2)
+      ranking[, "importance"] <- round(100 * imp / mx, 2)
     } else {
       warning("Normalization skipped: non-positive or non-finite max after shift.")
-      ranking[,"importance"] <- round(imp, 2)
+      ranking[, "importance"] <- round(imp, 2)
     }
   }
 
   return(ranking)
-
 }
 
 #' @title Percentile-Based Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
@@ -1329,15 +1273,14 @@ rf_aces_varimp <- function (
 #' @return
 #' A numeric vector of predicted output values for each observation, based on the specified percentile.
 
-rf_aces_p_predict <- function (
-    object,
-    newdata,
-    x,
-    y,
-    p,
-    method
-    ) {
-
+rf_aces_p_predict <- function(
+  object,
+  newdata,
+  x,
+  y,
+  p,
+  method
+) {
   RF_ACES <- object
 
   xmat_rf_aces <- xmat_rf_aces_cubic <- xmat_rf_aces_quintic <- NULL
@@ -1345,41 +1288,39 @@ rf_aces_p_predict <- function (
 
   # save technology for Random Forest
   for (i in seq_along(RF_ACES[["forest"]])) {
-
-    xmat_rf_aces <- rbind (
+    xmat_rf_aces <- rbind(
       xmat_rf_aces,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["xmat"]]
     )
 
-    ymat_rf_aces <- rbind (
+    ymat_rf_aces <- rbind(
       ymat_rf_aces,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces"]][["ymat"]]
     )
 
-    xmat_rf_aces_cubic <- rbind (
+    xmat_rf_aces_cubic <- rbind(
       xmat_rf_aces_cubic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["xmat"]]
     )
 
-    ymat_rf_aces_cubic <- rbind (
+    ymat_rf_aces_cubic <- rbind(
       ymat_rf_aces_cubic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_cubic"]][["ymat"]]
     )
 
-    xmat_rf_aces_quintic <- rbind (
+    xmat_rf_aces_quintic <- rbind(
       xmat_rf_aces_quintic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["xmat"]]
     )
 
-    ymat_rf_aces_quintic <- rbind (
+    ymat_rf_aces_quintic <- rbind(
       ymat_rf_aces_quintic,
       RF_ACES[["forest"]][[i]][["technology"]][["rf_aces_quintic"]][["ymat"]]
     )
-
   }
 
-  data_sorted <- as.data.frame (
-    set_data (
+  data_sorted <- as.data.frame(
+    set_data(
       data = newdata,
       x = x,
       y = y,
@@ -1395,26 +1336,26 @@ rf_aces_p_predict <- function (
 
   rf_aces_technology <- data.frame(xmat_rf_aces, ymat_rf_aces) %>%
     group_by(across(all_of(inp_cols))) %>%
-    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = 'drop')
+    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = "drop")
 
   rf_aces_cubic_technology <- data.frame(xmat_rf_aces_cubic, ymat_rf_aces_cubic) %>%
     group_by(across(all_of(inp_cols))) %>%
-    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = 'drop')
+    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = "drop")
 
   rf_aces_quintic_technology <- data.frame(xmat_rf_aces_quintic, ymat_rf_aces_quintic) %>%
     group_by(across(all_of(inp_cols))) %>%
-    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = 'drop')
+    summarise(across(all_of(out_cols), ~ quantile(.x, probs = p), .names = "{col}"), .groups = "drop")
 
-  RF_ACES[["technology"]] <- list (
-    "rf_aces" = list (
+  RF_ACES[["technology"]] <- list(
+    "rf_aces" = list(
       "xmat" = as.matrix(rf_aces_technology[, x]),
       "ymat" = as.matrix(rf_aces_technology[, y])
     ),
-    "rf_aces_cubic" = list (
+    "rf_aces_cubic" = list(
       "xmat" = as.matrix(rf_aces_cubic_technology[, x]),
       "ymat" = as.matrix(rf_aces_cubic_technology[, y])
     ),
-    "rf_aces_quintic" = list (
+    "rf_aces_quintic" = list(
       "xmat" = as.matrix(rf_aces_quintic_technology[, x]),
       "ymat" = as.matrix(rf_aces_quintic_technology[, y])
     )
@@ -1424,7 +1365,7 @@ rf_aces_p_predict <- function (
   nY <- length(RF_ACES[["data"]][["y"]])
 
   # data in [x, y] format with interaction of variables included
-  data <- set_data (
+  data <- set_data(
     data = newdata,
     x = x,
     y = NULL,
@@ -1441,7 +1382,6 @@ rf_aces_p_predict <- function (
   y_hat_RF <- vector("list", RF_models)
 
   for (t in 1:RF_models) {
-
     # output predictions
     y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
 
@@ -1453,7 +1393,7 @@ rf_aces_p_predict <- function (
     knots <- aces_model[["knots"]]
 
     # matrix of basis function
-    B <- set_Bmat (
+    B <- set_Bmat(
       newdata = data,
       model = aces_model,
       knots = knots,
@@ -1465,7 +1405,6 @@ rf_aces_p_predict <- function (
     }
 
     y_hat_RF[[t]] <- as.data.frame(y_hat)
-
   }
 
   # point estimation
@@ -1473,7 +1412,6 @@ rf_aces_p_predict <- function (
 
   # mean prediction
   for (var in 1:nY) {
-
     # select "var" variable for each data.frame
     rf_estimation <- lapply(y_hat_RF, function(df) df[, var])
 
@@ -1482,11 +1420,10 @@ rf_aces_p_predict <- function (
 
     # mean predictions
     y_hat_aux[, var] <- rowMeans(matrix_var, na.rm = TRUE)
-
   }
 
   # compute DEA scores
-  scores <- rad_out (
+  scores <- rad_out(
     tech_xmat = tecno[["xmat"]],
     tech_ymat = tecno[["ymat"]],
     eval_xmat = as.matrix(newdata[, x]),
@@ -1504,6 +1441,4 @@ rf_aces_p_predict <- function (
   names(y_hat) <- paste(RF_ACES[["data"]][["ynames"]], "_pred", sep = "")
 
   return(y_hat)
-
 }
-

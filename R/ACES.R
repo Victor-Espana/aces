@@ -97,34 +97,33 @@
 #'
 #' @export
 
-aces <- function (
-    data,
-    x,
-    y,
-    scale_data = TRUE,
-    quick_aces = TRUE,
-    mul_BF = list (
-      "max_degree" = 1,
-      "inter_cost" = 0.05
-    ),
-    metric = "mse",
-    shape = list (
-      "mono" = TRUE,
-      "conc" = TRUE
-      ),
-    max_terms = 50,
-    err_red = 0.01,
-    kn_grid = - 1,
-    minspan = - 1,
-    endspan = - 1,
-    kn_penalty = 2
-    ) {
-
+aces <- function(
+  data,
+  x,
+  y,
+  scale_data = TRUE,
+  quick_aces = TRUE,
+  mul_BF = list(
+    "max_degree" = 1,
+    "inter_cost" = 0.05
+  ),
+  metric = "mse",
+  shape = list(
+    "mono" = TRUE,
+    "conc" = TRUE
+  ),
+  max_terms = 50,
+  err_red = 0.01,
+  kn_grid = -1,
+  minspan = -1,
+  endspan = -1,
+  kn_penalty = 2
+) {
   # =================== #
   # DISPLAY ERRORS ACES #
   # =================== #
 
-  display_errors_aces (
+  display_errors_aces(
     data = data,
     x = x,
     y = y,
@@ -139,7 +138,7 @@ aces <- function (
     endspan = endspan,
     kn_grid = kn_grid,
     kn_penalty = kn_penalty
-    )
+  )
 
   # =================== #
   #    SCALING SETUP    #
@@ -155,7 +154,6 @@ aces <- function (
   data_algo <- data
 
   if (scale_data) {
-
     raw_x <- as.matrix(data[, x])
     raw_y <- as.matrix(data[, y])
 
@@ -169,14 +167,13 @@ aces <- function (
     # apply scaling
     data_algo[, x] <- sweep(raw_x, 2, sx, "/")
     data_algo[, y] <- sweep(raw_y, 2, sy, "/")
-
   }
 
   # ========= #
   # ALGORITHM #
   # ========= #
 
-  ACES <- aces_algorithm (
+  ACES <- aces_algorithm(
     data = data_algo,
     x_vars = x,
     y_vars = y,
@@ -184,7 +181,7 @@ aces <- function (
     max_degree = mul_BF[["max_degree"]],
     inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
-    shape = list (
+    shape = list(
       "mono" = shape[["mono"]],
       "conc" = shape[["conc"]]
     ),
@@ -194,7 +191,7 @@ aces <- function (
     endspan = endspan,
     kn_grid = kn_grid,
     kn_penalty = kn_penalty
-    )
+  )
 
   # add scaling options
   ACES[["control"]][["scale"]] <- list(
@@ -207,7 +204,6 @@ aces <- function (
   class(ACES) <- "aces"
 
   return(ACES)
-
 }
 
 #' @title Algorithm of Adaptive Constrained Enveloping Splines (ACES).
@@ -265,23 +261,22 @@ aces <- function (
 #'
 #' @export
 
-aces_algorithm <- function (
-    data,
-    x_vars,
-    y_vars,
-    quick_aces,
-    max_degree,
-    inter_cost,
-    metric,
-    shape,
-    max_terms,
-    err_red,
-    minspan,
-    endspan,
-    kn_grid,
-    kn_penalty
-    ) {
-
+aces_algorithm <- function(
+  data,
+  x_vars,
+  y_vars,
+  quick_aces,
+  max_degree,
+  inter_cost,
+  metric,
+  shape,
+  max_terms,
+  err_red,
+  minspan,
+  endspan,
+  kn_grid,
+  kn_penalty
+) {
   # save a copy of the original data
   DMUs <- data
 
@@ -289,12 +284,12 @@ aces_algorithm <- function (
   var_names <- colnames(DMUs[, c(x_vars, y_vars)])
 
   # data in [x, y] format with interaction of variables included
-  data <- set_data (
+  data <- set_data(
     data = data,
     x = x_vars,
     y = y_vars,
     max_degree = max_degree
-    )
+  )
 
   # samples size
   N <- nrow(data)
@@ -312,7 +307,7 @@ aces_algorithm <- function (
   # ================== #
 
   # variable importance
-  var_imp <- matrix (
+  var_imp <- matrix(
     rep(0, nX),
     nrow = 1
   )
@@ -322,7 +317,6 @@ aces_algorithm <- function (
 
   # remove variables with low correlation
   if (quick_aces) {
-
     # Spearman’s Rank Correlation
     spearman_corr <- cor(data, method = "spearman")
     spearman_corr <- spearman_corr[1:length(x), (length(x) + 1):ncol(data)]
@@ -336,28 +330,22 @@ aces_algorithm <- function (
     threshold_1 <- min(0.1, t1_quantile)
 
     t2_quantile <- quantile(kendall_corr[kendall_corr > 0], probs = 0.2)
-    threshold_2 <- min (0.1, t2_quantile)
+    threshold_2 <- min(0.1, t2_quantile)
 
     # iterate over the variables
     for (j in 1:nX) {
-
       # check for both Spearman and Kendall correlations
       if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
-
-        var_imp[1, j] <- - 1
-
+        var_imp[1, j] <- -1
       }
     }
 
     relevant_variables <- c()
 
     for (col in colnames(var_imp)) {
-
       if (var_imp[1, col] == 0) {
-
         variables <- unlist(strsplit(col, "_"))
         relevant_variables <- unique(c(relevant_variables, variables))
-
       }
     }
 
@@ -365,23 +353,22 @@ aces_algorithm <- function (
 
     # inputs removed
     x_drop <- x_vars[!which(colnames(data) %in% relevant_variables)]
-
   }
 
   # table of scores
-  table_scores <- matrix (
+  table_scores <- matrix(
     ncol = nY + 1,
     nrow = nrow(data),
     dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
   ) %>% as.data.frame()
 
-  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
+  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[-x_drop]
 
   # ========== #
   # DEA SCORES #
   # ========== #
 
-  table_scores[, 1] <- rad_out (
+  table_scores[, 1] <- rad_out(
     tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
     eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -392,8 +379,7 @@ aces_algorithm <- function (
   )[, 1]
 
   for (out in 1:nY) {
-
-    table_scores[, 1 + out] <- rad_out (
+    table_scores[, 1 + out] <- rad_out(
       tech_xmat = as.matrix(DMUs[, x_filtered]),
       tech_ymat = as.matrix(DMUs[, y_vars[out]]),
       eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -402,17 +388,16 @@ aces_algorithm <- function (
       returns = "variable",
       type = "objective"
     )[, 1]
-
   }
 
   # weights for error metrics based on DEA
-  dea_scores <-  table_scores[, 2:ncol(table_scores), drop = FALSE]
+  dea_scores <- table_scores[, 2:ncol(table_scores), drop = FALSE]
 
   # ========== #
   # FDH SCORES #
   # ========== #
 
-  table_scores[, 1] <- rad_out (
+  table_scores[, 1] <- rad_out(
     tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
     eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -423,8 +408,7 @@ aces_algorithm <- function (
   )[, 1]
 
   for (out in 1:nY) {
-
-    table_scores[, 1 + out] <- rad_out (
+    table_scores[, 1 + out] <- rad_out(
       tech_xmat = as.matrix(DMUs[, x_filtered]),
       tech_ymat = as.matrix(DMUs[, y_vars[out]]),
       eval_xmat = as.matrix(DMUs[, x_filtered]),
@@ -433,11 +417,10 @@ aces_algorithm <- function (
       returns = "variable",
       type = "objective"
     )[, 1]
-
   }
 
   # weights for error metrics based on DEA
-  fdh_scores <-  table_scores[, 2:ncol(table_scores), drop = FALSE]
+  fdh_scores <- table_scores[, 2:ncol(table_scores), drop = FALSE]
 
   # ==================== #
   # VARIABLE INTERACTION #
@@ -446,7 +429,7 @@ aces_algorithm <- function (
   # matrix with:
   # row 1: the index of the variable
   # row 2: the degree of the variable
-  xi_degree <- matrix (
+  xi_degree <- matrix(
     c(x, rep(1, length(x))),
     byrow = TRUE,
     nrow = 2,
@@ -454,28 +437,22 @@ aces_algorithm <- function (
   )
 
   if (!is.list(max_degree)) {
-
     v <- 0
 
     for (i in 1:max_degree) {
-
       combs <- combn(1:length(x_vars), i)
 
       for (k in 1:ncol(combs)) {
         v <- v + 1
         xi_degree[2, v] <- i
       }
-
     }
-
   } else {
-
     xi_degree[2, x_vars] <- 1
 
     for (k in 1:length(max_degree)) {
       xi_degree[2, length(x_vars) + k] <- length(max_degree[[k]])
     }
-
   }
 
   # ===================== #
@@ -485,7 +462,7 @@ aces_algorithm <- function (
   y_hat <- matrix(rep(1, N)) %*% apply(data[, y, drop = F], 2, max)
 
   # lack-of-fit
-  LOF <- err_metric (
+  LOF <- err_metric(
     y_obs = data[, y, drop = F],
     y_hat = y_hat,
     metric = metric,
@@ -502,13 +479,13 @@ aces_algorithm <- function (
   #    LOF: mean error between true data and predicted data (B %*% coefs)
   #  coefs: regression coefficients
 
-  bf <- list (
+  bf <- list(
     "id" = 1,
     "status" = "intercept",
     "side" = "E",
     "Bp" = rep(1, N),
-    "xi" = c(- 1),
-    "t" = c(- 1),
+    "xi" = c(-1),
+    "t" = c(-1),
     "LOF" = LOF,
     "coefs" = unname(apply(data[, y, drop = FALSE], 2, max))
   )
@@ -520,7 +497,7 @@ aces_algorithm <- function (
   Bp_list <- vector("list", nX)
 
   for (xi in 1:nX) {
-    Bp_list[[xi]] <- list (
+    Bp_list[[xi]] <- list(
       "paired" = NULL,
       "right" = NULL,
       "left" = NULL
@@ -528,16 +505,16 @@ aces_algorithm <- function (
   }
 
   # set of basis functions (bf_set) and the matrix of basis functions (B)
-  aces_forward <- list (
+  aces_forward <- list(
     "bf_set" = list(bf),
     "B" = matrix(rep(1, N))
-    )
+  )
 
   # error of the first basis function
   err <- bf[["LOF"]]
 
   # set the grid of knots
-  kn_grid <- set_knots_grid (
+  kn_grid <- set_knots_grid(
     data = data,
     n_input_1 = length(x_vars),
     n_input_2 = nX,
@@ -547,12 +524,12 @@ aces_algorithm <- function (
   )
 
   # minimum span (minspan) and end span (endspan)
-  L_Le <- compute_span (
+  L_Le <- compute_span(
     kn_grid = kn_grid,
     minspan = minspan,
     endspan = endspan,
     n_input = nX
-    )
+  )
 
   # list to save technologies created through ACES
   technology <- list()
@@ -563,16 +540,14 @@ aces_algorithm <- function (
   # iteration counter
   iter <- 0
 
-  while(length(aces_forward[["bf_set"]]) + 2 < max_terms) {
-
+  while (length(aces_forward[["bf_set"]]) + 2 < max_terms) {
     # add 2 new basis functions to the model:
-    B_bf_knt_err <- add_basis_function (
+    B_bf_knt_err <- add_basis_function(
       data = data,
       x = x,
       y = y,
       xi_degree = xi_degree,
       inter_cost = inter_cost,
-      model_type = "envelopment",
       dea_scores = dea_scores,
       fdh_scores = fdh_scores,
       metric = metric,
@@ -585,7 +560,7 @@ aces_algorithm <- function (
       err_min = err,
       var_imp = var_imp,
       quick_aces = quick_aces
-      )
+    )
 
     if (!is.list(B_bf_knt_err)) break
 
@@ -594,7 +569,6 @@ aces_algorithm <- function (
 
     # update model
     if (new_err[1] < err[1] * (1 - err_red[1])) {
-
       # update iteration counter
       iter <- iter + 1
 
@@ -632,11 +606,8 @@ aces_algorithm <- function (
           err[1]
         )
       )
-
     } else {
-
       break
-
     }
   }
 
@@ -648,7 +619,6 @@ aces_algorithm <- function (
   for (v in 1:nX) {
     for (side in c("paired", "right", "left")) {
       if (!is.null(Bp_list[[v]][[side]])) {
-
         # knots in variable "xi"
         knt_xi <- sapply(Bp_list[[v]][[side]], "[[", "t")
 
@@ -660,22 +630,21 @@ aces_algorithm <- function (
 
         # status
         sts <- c(sts, rep(side, length(knt_xi)))
-
       }
     }
   }
 
-  kn_forward <- data.frame (
+  kn_forward <- data.frame(
     xi = var,
     t = knt,
     status = sts
-    )
+  )
 
   # ==
   # forward aces
   # ==
 
-  aces_forward = list (
+  aces_forward <- list(
     "basis" = aces_forward[["bf_set"]],
     "Bmatx" = aces_forward[["B"]],
     "knots" = kn_forward,
@@ -683,7 +652,7 @@ aces_algorithm <- function (
   )
 
   # generate technology
-  technology[["aces_forward"]] <- generate_technology (
+  technology[["aces_forward"]] <- generate_technology(
     var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
@@ -695,20 +664,19 @@ aces_algorithm <- function (
   #   BACKWARD ALGORITHM   #
   # ====================== #
 
-  aces_submodels <- aces_pruning (
-      data = data,
-      x = x,
-      y = y,
-      xi_degree = xi_degree,
-      model_type = "envelopment",
-      dea_scores = dea_scores,
-      fdh_scores = fdh_scores,
-      metric = metric,
-      forward_model = aces_forward,
-      Bp_list = Bp_list,
-      shape = shape,
-      kn_penalty = kn_penalty
-    )
+  aces_submodels <- aces_pruning(
+    data = data,
+    x = x,
+    y = y,
+    xi_degree = xi_degree,
+    dea_scores = dea_scores,
+    fdh_scores = fdh_scores,
+    metric = metric,
+    forward_model = aces_forward,
+    Bp_list = Bp_list,
+    shape = shape,
+    kn_penalty = kn_penalty
+  )
 
   # generalized cross-validation for each model
   GCVs <- sapply(aces_submodels, function(x) x[["GCV"]])
@@ -720,13 +688,15 @@ aces_algorithm <- function (
   kn_backward <- do.call(rbind.data.frame, aces_backward[["t"]])
 
   # sort the knots by "xi", "status", "side", "t"
-  knots_backward_order <- with (
-    kn_backward, {
-    order (
-      xi,
-      status,
-      ifelse(status == "paired", t, desc(side)),
-      ifelse(status == "paired", desc(side), t))
+  knots_backward_order <- with(
+    kn_backward,
+    {
+      order(
+        xi,
+        status,
+        ifelse(status == "paired", t, desc(side)),
+        ifelse(status == "paired", desc(side), t)
+      )
     }
   )
 
@@ -737,7 +707,7 @@ aces_algorithm <- function (
   # aces
   # ==
 
-  aces <- list (
+  aces <- list(
     "aces_submodels" = aces_submodels,
     "Bmatx" = aces_backward[["B"]],
     "knots" = kn_backward,
@@ -746,7 +716,7 @@ aces_algorithm <- function (
   )
 
   # generate technology
-  technology[["aces"]] <- generate_technology (
+  technology[["aces"]] <- generate_technology(
     var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
@@ -769,7 +739,6 @@ aces_algorithm <- function (
   wq <- seq(8 / 7, 1.5, length.out = 5)
 
   for (s in 1:length(aces_submodels_gcv)) {
-
     # select a model to be smoothed
     aces_smoothed <- aces_submodels_gcv[[s]]
 
@@ -791,170 +760,159 @@ aces_algorithm <- function (
     check2 <- kn_smoothed$status == "unpaired"
 
     if (shape[["conc"]] && max(check1 + check2) == 2) {
-
       next
-
     } else {
-
       aces_smoothed_submodels[[s]][["Model"]] <- aces_smoothed
       aces_smoothed_submodels[[s]][["Knots"]] <- kn_smoothed
-
-      }
     }
+  }
 
-    # initialize list of cubic aces models
-    cubic_aces_models <- vector("list", length(aces_smoothed_submodels))
+  # initialize list of cubic aces models
+  cubic_aces_models <- vector("list", length(aces_smoothed_submodels))
 
-    # initialize list of quintic aces models
-    quintic_aces_models <- vector("list", length(aces_smoothed_submodels))
+  # initialize list of quintic aces models
+  quintic_aces_models <- vector("list", length(aces_smoothed_submodels))
 
-    for (m in 1:length(aces_smoothed_submodels)) {
+  for (m in 1:length(aces_smoothed_submodels)) {
+    if (is.null(aces_smoothed_submodels[[m]])) {
+      next
+    } else {
+      # select a model
+      aces_smoothed <- aces_smoothed_submodels[[m]][["Model"]]
 
-      if (is.null(aces_smoothed_submodels[[m]])) {
+      # select a set of knots
+      kn_smoothed <- aces_smoothed_submodels[[m]][["Knots"]]
 
-        next
-
-      } else {
-
-        # select a model
-        aces_smoothed <- aces_smoothed_submodels[[m]][["Model"]]
-
-        # select a set of knots
-        kn_smoothed <- aces_smoothed_submodels[[m]][["Knots"]]
-
-        # generate the input space for side knots location
-        kn_side_loc <- side_knot_location (
-          data = data,
-          nX = nX,
-          knots = kn_smoothed
-        )
-
-        # ==
-        # smoothing cubic aces
-        # ==
-
-        cubic_aces_models[[m]] <- cubic_aces (
-          data = data,
-          x = x,
-          y = y,
-          dea_scores = dea_scores,
-          fdh_scores = fdh_scores,
-          model_type = "envelopment",
-          metric = metric,
-          shape = shape,
-          kn_grid = kn_smoothed,
-          kn_side_loc = kn_side_loc,
-          kn_penalty = kn_penalty,
-          xi_degree = xi_degree,
-          wc = wc
-        )
-
-        # ==
-        # smoothing quintic aces
-        # ==
-
-        quintic_aces_models[[m]] <- quintic_aces (
-          data = data,
-          x = x,
-          y = y,
-          dea_scores = dea_scores,
-          fdh_scores = fdh_scores,
-          model_type = "envelopment",
-          metric = metric,
-          shape = shape,
-          kn_grid = kn_smoothed,
-          kn_side_loc = kn_side_loc,
-          kn_penalty = kn_penalty,
-          xi_degree = xi_degree,
-          wq = wq
-        )
-
-      }
-    }
-
-    # GCVs of cubic models
-    aces_cubic_gcvs <- sapply (
-      cubic_aces_models,
-      function (x) {
-        ifelse (
-          is.null(x[["GCV"]]),
-          Inf,
-          x[["GCV"]]
-          )
-        }
+      # generate the input space for side knots location
+      kn_side_loc <- side_knot_location(
+        data = data,
+        nX = nX,
+        knots = kn_smoothed
       )
 
-    min_gcv <- which.min(aces_cubic_gcvs)
+      # ==
+      # smoothing cubic aces
+      # ==
 
-    # cubic aces
-    aces_cubic <- cubic_aces_models[[min_gcv]]
-
-    # generate technology
-    technology[["aces_cubic"]] <- generate_technology (
-      var_names = var_names,
-      tech_xmat = DMUs[, x_vars],
-      tech_ymat1 = DMUs[, y_vars],
-      tech_ymat2 = aces_cubic[["Bmatx"]] %*% aces_cubic[["coefs"]],
-      table_scores = table_scores
-    )
-
-    # GCVs of quintic models
-    aces_quintic_gcvs <- sapply (
-      quintic_aces_models,
-      function (x) {
-        ifelse (
-          is.null(x[["GCV"]]),
-          Inf,
-          x[["GCV"]]
-          )
-        }
+      cubic_aces_models[[m]] <- cubic_aces(
+        data = data,
+        x = x,
+        y = y,
+        dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
+        metric = metric,
+        shape = shape,
+        kn_grid = kn_smoothed,
+        kn_side_loc = kn_side_loc,
+        kn_penalty = kn_penalty,
+        xi_degree = xi_degree,
+        wc = wc
       )
 
-    min_gcv <- which.min(aces_quintic_gcvs)
+      # ==
+      # smoothing quintic aces
+      # ==
 
-    # quintic aces
-    aces_quintic <- quintic_aces_models[[min_gcv]]
+      quintic_aces_models[[m]] <- quintic_aces(
+        data = data,
+        x = x,
+        y = y,
+        dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
+        metric = metric,
+        shape = shape,
+        kn_grid = kn_smoothed,
+        kn_side_loc = kn_side_loc,
+        kn_penalty = kn_penalty,
+        xi_degree = xi_degree,
+        wq = wq
+      )
+    }
+  }
 
-    # generate technology
-    technology[["aces_quintic"]] <- generate_technology (
-      var_names = var_names,
-      tech_xmat = DMUs[, x_vars],
-      tech_ymat1 = DMUs[, y_vars],
-      tech_ymat2 = aces_quintic[["Bmatx"]] %*% aces_quintic[["coefs"]],
-      table_scores = table_scores
-    )
+  # GCVs of cubic models
+  aces_cubic_gcvs <- sapply(
+    cubic_aces_models,
+    function(x) {
+      ifelse(
+        is.null(x[["GCV"]]),
+        Inf,
+        x[["GCV"]]
+      )
+    }
+  )
 
-    # =========== #
-    # ACES OBJECT #
-    # =========== #
+  min_gcv <- which.min(aces_cubic_gcvs)
 
-    ACES <- aces_object (
-      data = DMUs,
-      x = x_vars,
-      y = y_vars,
-      quick_aces = quick_aces,
-      max_degree = max_degree,
-      inter_cost = inter_cost,
-      xi_degree = xi_degree,
-      metric = metric,
-      shape = shape,
-      max_terms = ncol(aces_forward[["Bmatx"]]),
-      err_red = err_red,
-      minspan = minspan,
-      endspan = endspan,
-      kn_grid = kn_grid,
-      kn_penalty = kn_penalty,
-      psi = 0.05,
-      wc = aces_cubic[["w"]],
-      wq = aces_quintic[["w"]],
-      aces_forward = aces_forward,
-      aces = aces,
-      aces_cubic = aces_cubic,
-      aces_quintic = aces_quintic,
-      technology = technology
-    )
+  # cubic aces
+  aces_cubic <- cubic_aces_models[[min_gcv]]
 
-    return(ACES)
+  # generate technology
+  technology[["aces_cubic"]] <- generate_technology(
+    var_names = var_names,
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
+    tech_ymat2 = aces_cubic[["Bmatx"]] %*% aces_cubic[["coefs"]],
+    table_scores = table_scores
+  )
+
+  # GCVs of quintic models
+  aces_quintic_gcvs <- sapply(
+    quintic_aces_models,
+    function(x) {
+      ifelse(
+        is.null(x[["GCV"]]),
+        Inf,
+        x[["GCV"]]
+      )
+    }
+  )
+
+  min_gcv <- which.min(aces_quintic_gcvs)
+
+  # quintic aces
+  aces_quintic <- quintic_aces_models[[min_gcv]]
+
+  # generate technology
+  technology[["aces_quintic"]] <- generate_technology(
+    var_names = var_names,
+    tech_xmat = DMUs[, x_vars],
+    tech_ymat1 = DMUs[, y_vars],
+    tech_ymat2 = aces_quintic[["Bmatx"]] %*% aces_quintic[["coefs"]],
+    table_scores = table_scores
+  )
+
+  # =========== #
+  # ACES OBJECT #
+  # =========== #
+
+  ACES <- aces_object(
+    data = DMUs,
+    x = x_vars,
+    y = y_vars,
+    quick_aces = quick_aces,
+    max_degree = max_degree,
+    inter_cost = inter_cost,
+    xi_degree = xi_degree,
+    metric = metric,
+    shape = shape,
+    max_terms = ncol(aces_forward[["Bmatx"]]),
+    err_red = err_red,
+    minspan = minspan,
+    endspan = endspan,
+    kn_grid = kn_grid,
+    kn_penalty = kn_penalty,
+    psi = 0.05,
+    wc = aces_cubic[["w"]],
+    wq = aces_quintic[["w"]],
+    aces_forward = aces_forward,
+    aces = aces,
+    aces_cubic = aces_cubic,
+    aces_quintic = aces_quintic,
+    technology = technology
+  )
+
+  return(ACES)
 }
 
 #' @title Create an aces object
@@ -1036,35 +994,34 @@ aces_algorithm <- function (
 #'
 #' An \code{aces} object.
 
-aces_object <- function (
-    data,
-    x,
-    y,
-    quick_aces,
-    max_degree,
-    inter_cost,
-    xi_degree,
-    metric,
-    shape,
-    max_terms,
-    err_red,
-    minspan,
-    endspan,
-    kn_grid,
-    kn_penalty,
-    psi,
-    wc,
-    wq,
-    aces_forward,
-    aces,
-    aces_cubic,
-    aces_quintic,
-    technology
-    ) {
-
+aces_object <- function(
+  data,
+  x,
+  y,
+  quick_aces,
+  max_degree,
+  inter_cost,
+  xi_degree,
+  metric,
+  shape,
+  max_terms,
+  err_red,
+  minspan,
+  endspan,
+  kn_grid,
+  kn_penalty,
+  psi,
+  wc,
+  wq,
+  aces_forward,
+  aces,
+  aces_cubic,
+  aces_quintic,
+  technology
+) {
   object <- list()
 
-  object[["data"]] <- list (
+  object[["data"]] <- list(
     "df" = data,
     "x" = x,
     "y" = y,
@@ -1073,7 +1030,7 @@ aces_object <- function (
     "rownames" = rownames(data)
   )
 
-  object[["control"]] <- list (
+  object[["control"]] <- list(
     "quick_aces" = quick_aces,
     "max_degree" = max_degree,
     "inter_cost" = inter_cost,
@@ -1091,7 +1048,7 @@ aces_object <- function (
     "wq" = wq
   )
 
-  object[["methods"]] <- list (
+  object[["methods"]] <- list(
     "aces_forward" = aces_forward,
     "aces" = aces,
     "aces_cubic" = aces_cubic,
@@ -1101,7 +1058,6 @@ aces_object <- function (
   object[["technology"]] <- technology
 
   return(object)
-
 }
 
 #' @title Arrange Data for Fitting Model
@@ -1124,29 +1080,24 @@ aces_object <- function (
 #' @return
 #' A \code{matrix} in a [x, y] format with variable interactions included.
 
-set_data <- function (
-    data,
-    x,
-    y,
-    max_degree
-    ) {
-
+set_data <- function(
+  data,
+  x,
+  y,
+  max_degree
+) {
   # 1. generate interaction effects
   if (is.list(max_degree) || max_degree > 1) {
-
     if (!is.list(max_degree)) {
-
       # create a list with all the possible combinations between 1 and as much len(x) elements
       degree <- list()
 
       for (i in 2:max_degree) {
-
         combs <- combn(1:length(x), i)
 
         for (col in 1:ncol(combs)) {
           degree <- append(degree, list(combs[, col]))
         }
-
       }
     }
 
@@ -1158,7 +1109,6 @@ set_data <- function (
 
     # create the new variables
     for (p in 1:IVars) {
-
       # select the variables
       vars <- new_x[degree[[p]]]
 
@@ -1168,20 +1118,15 @@ set_data <- function (
 
       # create the new variable
       data[, name] <- apply(data[, vars], 1, prod)
-
     }
-
   } else {
-
     new_x <- x
-
   }
 
   # 2. data correctly sorted
   data <- data[, c(new_x, y)]
 
   return(as.matrix(data))
-
 }
 
 #' @title Error Metric for Model Evaluation.
@@ -1212,72 +1157,56 @@ set_data <- function (
 #' @return
 #' The calculated error metric.
 
-err_metric <- function (
-    y_obs,
-    y_hat,
-    metric,
-    weight
-    ) {
-
+err_metric <- function(
+  y_obs,
+  y_hat,
+  metric,
+  weight
+) {
   # samples in data
   N <- nrow(y_obs)
 
   # number of outputs
   nY <- ncol(y_obs)
 
-  if (all(y_obs > 0) && any(y_hat < 0) ) {
+  if (all(y_obs > 0) && any(y_hat < 0)) {
     # do not "allow" negative predictions (negative outputs)
     error <- Inf
-
   } else if (metric == "mae") {
-
     # mean absolute error
     devtn <- abs(y_hat - y_obs)
     error <- sum(weight * devtn) / (N * nY)
-
   } else if (metric == "mape") {
-
     # mean absolute percentage error
     devtn <- abs(y_hat - y_obs) / y_obs
     error <- sum(weight * devtn) / (N * nY) * 100
-
   } else if (metric == "mse") {
-
     # mean squared error
-    devtn <- (y_hat - y_obs) ^ 2
+    devtn <- (y_hat - y_obs)^2
     error <- sum(weight * devtn) / (N * nY)
-
   } else if (metric == "msle") {
-
     # mean squared logarithmic error
-    devtn <- (log(y_hat + 1) - log(y_obs + 1)) ^ 2
+    devtn <- (log(y_hat + 1) - log(y_obs + 1))^2
     error <- sum(weight * devtn) / (N * nY)
-
   } else if (metric == "rmse") {
-
     # root mean squared error
-    devtn <- (y_hat - y_obs) ^ 2
+    devtn <- (y_hat - y_obs)^2
     error <- sqrt(sum(weight * devtn) / (N * nY))
-
   } else if (metric == "nrmse1") {
-
     # normalized root mean squared error by the mean
-    devtn <- (y_hat - y_obs) ^ 2
+    devtn <- (y_hat - y_obs)^2
     error <- sqrt(sum(weight * devtn) / (N * nY)) / mean(y_obs)
-
   } else {
-
     # compute the mean of column-wise maximums and minimums in y
     ymax <- mean(apply(y_obs, 2, max))
     ymin <- mean(apply(y_obs, 2, min))
 
     # normalized root mean squared error by the range
-    devtn <- (y_hat - y_obs) ^ 2
+    devtn <- (y_hat - y_obs)^2
     error <- sqrt(sum(weight * devtn) / (N * nY)) / (ymax - ymin)
   }
 
   return(error)
-
 }
 
 #' @title Compute Minimum and End Span
@@ -1319,13 +1248,12 @@ err_metric <- function (
 #'   \item{\code{endspan}}: The computed end span.
 #' }
 
-compute_span <- function (
-    kn_grid,
-    minspan,
-    endspan,
-    n_input
-    ) {
-
+compute_span <- function(
+  kn_grid,
+  minspan,
+  endspan,
+  n_input
+) {
   # data.frame
   data <- do.call(cbind, kn_grid)
 
@@ -1333,15 +1261,14 @@ compute_span <- function (
   N <- nrow(data)
 
   # minimum span (L)
-  if (minspan == - 2) { # Zhang approach
+  if (minspan == -2) { # Zhang approach
 
     L <- numeric(n_input)
 
     # fixed log_factor
-    log_factor <- log2(- (1 / N) * log(0.95))
+    log_factor <- log2(-(1 / N) * log(0.95))
 
     for (var in 1:n_input) {
-
       # sorted variable
       sorted_var <- sort(data[, var])
 
@@ -1351,34 +1278,28 @@ compute_span <- function (
       # 3 lowest values
       min3 <- head(sorted_var, 3)
 
-      m1 <- - (max3[1] - min3[1]) / (2.5 * (N - 1)) * log_factor
+      m1 <- -(max3[1] - min3[1]) / (2.5 * (N - 1)) * log_factor
       m2 <- (1 / N) * sum(max3 - min3)
 
       # Lvar limited for the 10% of the DMUs
       L[var] <- floor(min(N * 0.10, max(m1, m2)))
-
     }
+  } else if (minspan == -1) { # Friedman approach (this value must be computed later)
 
-  } else if (minspan == - 1) { # Friedman approach (this value must be computed later)
-
-    L <- - 1
-
+    L <- -1
   } else {
-
     L <- min(N * 0.10, minspan)
-
   }
 
   # end span (Le)
-  if (endspan == - 2) { # Zhang approach
+  if (endspan == -2) { # Zhang approach
 
     Le <- numeric(n_input)
 
     # fixed log_factor
-    log_factor <- log2(- (1 / N) * log(0.95))
+    log_factor <- log2(-(1 / N) * log(0.95))
 
     for (var in 1:n_input) {
-
       # sorted variable
       sorted_var <- sort(data[, var])
 
@@ -1388,25 +1309,19 @@ compute_span <- function (
       # 3 lowest values
       min3 <- head(sorted_var, 3)
 
-      m1 <- - (max3[1] - min3[1]) / (2.5 * (N - 1)) * log_factor
+      m1 <- -(max3[1] - min3[1]) / (2.5 * (N - 1)) * log_factor
       m2 <- (1 / N) * sum(max3 - min3)
 
       Le[var] <- floor(min(N * 0.10, max(m1, m2)))
-
     }
-
-  } else if (endspan == - 1) { # Friedman approach
+  } else if (endspan == -1) { # Friedman approach
 
     Le <- floor(min(N * 0.1, 3 - log2(0.05 / n_input)))
-
   } else {
-
     Le <- min(N * 0.1, endspan)
-
   }
 
   return(list(L, Le))
-
 }
 
 #' @title Define the Grid of Knots
@@ -1435,33 +1350,30 @@ compute_span <- function (
 #' @return
 #' A \code{list} where each element contains the generated or provided vector of knots for the corresponding variable in the model.
 
-set_knots_grid <- function (
-    data,
-    n_input_1,
-    n_input_2,
-    kn_grid,
-    quick_aces,
-    dea_scores
-    ) {
-
+set_knots_grid <- function(
+  data,
+  n_input_1,
+  n_input_2,
+  kn_grid,
+  quick_aces,
+  dea_scores
+) {
   # Case 1: kn_grid is provided (list) and new variables are created (nX > inputs):
-    # expand the kn_grid list.
+  # expand the kn_grid list.
 
   # Case 2: kn_grid is provided (list) and new variables are not created (nX = inputs):
-    # keep the same kn_grid list.
+  # keep the same kn_grid list.
 
   # Case 3: kn_grid is not provided:
-    # create the kn_grid list.
+  # create the kn_grid list.
 
   if (is.list(kn_grid)) { # if kn_grid is provided
 
     if (n_input_2 > n_input_1) {
-
       # number of new variables (through interactions)
       new_vars <- n_input_2 - n_input_1
 
       for (v in seq_len(new_vars)) {
-
         # variable index
         var_idx <- n_input_2 - new_vars + v
 
@@ -1475,19 +1387,16 @@ set_knots_grid <- function (
         max_len_grid <- max(sapply(kn_grid, length))
 
         # grid of knots for the new variable
-        kn_grid[[varName]] <- seq (
+        kn_grid[[varName]] <- seq(
           from = min(var_data),
           to = max(var_data),
           length.out = max_len_grid
-          )
+        )
       }
-
     }
-
   } else { # if kn_grid is not provided, create it
 
     if (quick_aces) {
-
       # identify efficient DMUs
       eff_dmus <- data[abs(dea_scores - 1) < 0.001, ]
 
@@ -1495,7 +1404,6 @@ set_knots_grid <- function (
       kn_grid <- lapply(1:n_input_2, function(i) eff_dmus[, i])
 
       for (j in 1:length(kn_grid)) {
-
         # sort the unique values of the dimension
         sorted_values <- sort(unique(data[, j]))
 
@@ -1512,20 +1420,14 @@ set_knots_grid <- function (
 
         # final knots grid
         kn_grid[[j]] <- data[matched_indices, j]
-
       }
-
     } else {
-
       kn_grid <- lapply(1:n_input_2, function(i) data[, i])
-
     }
 
     # names
     names(kn_grid) <- colnames(data)[1:n_input_2]
-
   }
 
   return(kn_grid)
-
 }

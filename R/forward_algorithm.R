@@ -19,9 +19,6 @@
 #' @param inter_cost
 #' A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to justify adding a higher-degree basis function.
 #'
-#' @param model_type
-#' A \code{character} string specifying the nature of the production frontier.
-#'
 #' @param dea_scores
 #' A \code{matrix} containing DEA-VRS scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
@@ -69,27 +66,25 @@
 #'   \item \code{var_imp}; The updated matrix of variable importance
 #' }
 
-add_basis_function <- function (
-    data,
-    x,
-    y,
-    xi_degree,
-    inter_cost,
-    model_type,
-    dea_scores,
-    fdh_scores,
-    metric,
-    forward_model,
-    Bp_list,
-    shape,
-    kn_list,
-    kn_grid,
-    span,
-    err_min,
-    var_imp,
-    quick_aces
-    ) {
-
+add_basis_function <- function(
+  data,
+  x,
+  y,
+  xi_degree,
+  inter_cost,
+  dea_scores,
+  fdh_scores,
+  metric,
+  forward_model,
+  Bp_list,
+  shape,
+  kn_list,
+  kn_grid,
+  span,
+  err_min,
+  var_imp,
+  quick_aces
+) {
   # number of inputs
   nX <- ncol(data) - length(y)
 
@@ -110,35 +105,30 @@ add_basis_function <- function (
 
   # compute weighted mean reduction in error for each variable
   if (quick_aces && nrow(var_imp) > 1) {
-
     iters <- nrow(var_imp) - 1
 
     # weighted mean reduction for error in each variable: exponential decay
-    weights <- 0.95 ^ (iters:1)
+    weights <- 0.95^(iters:1)
     weighted_reduction <- colSums(var_imp[1:iters, , drop = FALSE] * weights) / sum(weights)
 
     # normalize importance
     normalized_importance <- weighted_reduction / max(weighted_reduction)
-
   }
 
   for (xi in x) {
-
     # ================================ #
     # Create the set of eligible knots #
     # ================================ #
 
     if (quick_aces) {
-
       # remove variables based on Spearman and Kendall correlation
-      if (var_imp[1, xi] == - 1) next
+      if (var_imp[1, xi] == -1) next
 
       # get knots: do not apply minimum and end span
       knots <- kn_grid[[xi]]
 
       # reduce number of knots based on importance
       if (nrow(var_imp) > 1) {
-
         # threshold for important variables
         if (length(x) >= 2) {
           threshold <- sort(normalized_importance, decreasing = TRUE)[2] / 2
@@ -150,7 +140,6 @@ add_basis_function <- function (
         is_active <- normalized_importance[xi] >= threshold
 
         if (is_active) {
-
           # proportion of knots to be selected
           kn_prop <- normalized_importance[xi]
 
@@ -159,17 +148,12 @@ add_basis_function <- function (
 
           # reduced set of knots
           knots <- knots[kn_indx]
-
         } else {
-
           next
-
         }
       }
-
     } else {
-
-      knots <- set_knots (
+      knots <- set_knots(
         data = data,
         nX = nX,
         var_idx = xi,
@@ -179,7 +163,6 @@ add_basis_function <- function (
         bf = bf,
         kn_grid = kn_grid
       )
-
     }
 
     # skip to the next step if there are not eligible knots
@@ -189,18 +172,17 @@ add_basis_function <- function (
     knots <- sample(knots)
 
     for (i in 1:length(knots)) {
-
       Bp_list_aux <- Bp_list
 
       # ================== #
       # Create two new bfs #
       # ================== #
 
-      new_pair <- create_linear_basis (
+      new_pair <- create_linear_basis(
         data = data,
         var_idx = xi,
         knot = knots[i]
-        )
+      )
 
       # ============== #
       # Update Bp_list #
@@ -210,11 +192,11 @@ add_basis_function <- function (
       nbf_xi <- length(Bp_list_aux[[xi]][["paired"]])
 
       # add 2 new basis functions to the Bp_list
-      new_bf <- list (
+      new_bf <- list(
         "id" = c(nbf + 1, nbf + 2),
         "Bp" = cbind(new_pair[[1]], new_pair[[2]]),
         "t"  = knots[i]
-        )
+      )
 
       Bp_list_aux[[xi]][["paired"]][[nbf_xi + 1]] <- new_bf
 
@@ -225,16 +207,12 @@ add_basis_function <- function (
 
       # column indexes of BFs in B matrix by variable (ignore intercept)
       for (v in x) {
-
         Bp_xi <- 1
 
         if (!is.null(Bp_list_aux[[v]][["paired"]])) {
-
           for (l in 1:length(Bp_list_aux[[v]][["paired"]])) {
-
             Bp_list_aux[[v]][["paired"]][[l]][["Bp_xi"]] <- c(Bp_xi, Bp_xi + 1)
             Bp_xi <- Bp_xi + 2
-
           }
         }
       }
@@ -243,9 +221,9 @@ add_basis_function <- function (
       # Update it_list #
       # ============== #
 
-      it_list <- set_intervals (
+      it_list <- set_intervals(
         Bp_list = Bp_list_aux
-        )
+      )
 
       # =============== #
       # Update B matrix #
@@ -254,14 +232,10 @@ add_basis_function <- function (
       new_B <- matrix(1, nrow = nrow(data))
 
       for (v in 1:length(Bp_list_aux)) {
-
         if (!is.null(Bp_list_aux[[v]][["paired"]])) {
-
           for (l in 1:length(Bp_list_aux[[v]][["paired"]])) {
-
             bf_jp <- Bp_list_aux[[v]][["paired"]][[l]][["Bp"]]
             new_B <- cbind(new_B, bf_jp)
-
           }
         }
       }
@@ -270,8 +244,7 @@ add_basis_function <- function (
       # Estimate coefficients #
       # ===================== #
 
-      coefs <- estimate_coefficients (
-        model_type = model_type,
+      coefs <- estimate_coefficients(
         B = new_B,
         y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
@@ -279,7 +252,7 @@ add_basis_function <- function (
         it_list = it_list,
         Bp_list = Bp_list_aux,
         shape = shape
-        )
+      )
 
       # predictions
       y_hat <- matrix(NA, nrow = nrow(data), ncol = length(y))
@@ -289,12 +262,12 @@ add_basis_function <- function (
       }
 
       # lack-of-fit measure
-      err <- err_metric (
+      err <- err_metric(
         y_obs = data[, y, drop = F],
         y_hat = y_hat[drop = F],
         metric = metric,
         weight = 1 / dea_scores
-        )
+      )
 
       # variable
       err[2] <- xi_degree[2, xi]
@@ -304,36 +277,25 @@ add_basis_function <- function (
       best_reduction <- var_imp[nrow(var_imp), xi]
 
       if (reduction > best_reduction) {
-
         var_imp[nrow(var_imp), xi] <- reduction
-
       }
 
       # check if the best basis function should be checked
       add <- FALSE
 
       if (is.na(err_min[2]) || err_min[2] == 1) {
-
         if (xi_degree[2, xi] == 1) {
-
           add <- err[1] < err_min[1]
-
         } else if (xi_degree[2, xi] > 1) {
-
           required_reduction <- err_min[1] * (1 - inter_cost)
 
           add <- err[1] < required_reduction
-
         }
-
       } else {
-
         add <- err[1] < err_min[1]
-
       }
 
       if (add) {
-
         # model has improved
         improvement <- TRUE
 
@@ -364,27 +326,25 @@ add_basis_function <- function (
         bf2[["side"]] <- "L"
 
         # Bp
-        bf1[['Bp']] <- new_pair[[1]]
-        bf2[['Bp']] <- new_pair[[2]]
+        bf1[["Bp"]] <- new_pair[[1]]
+        bf2[["Bp"]] <- new_pair[[2]]
 
         # xi
-        bf1[['xi']] <- bf2[['xi']] <- ifelse(all(bf[['xi']] == - 1), xi, c(bf[['xi']], xi))
+        bf1[["xi"]] <- bf2[["xi"]] <- ifelse(all(bf[["xi"]] == -1), xi, c(bf[["xi"]], xi))
 
         # knot
         bf1[["t"]] <- bf2[["t"]] <- knots[i]
 
         # R
-        bf1[['LOF']] <- bf2[['LOF']] <- err_min[1]
+        bf1[["LOF"]] <- bf2[["LOF"]] <- err_min[1]
 
         # coefficients
-        bf1[['coefs']] <- bf2[['coefs']] <- coefs
-
+        bf1[["coefs"]] <- bf2[["coefs"]] <- coefs
       }
     }
   }
 
   if (improvement) {
-
     # append new basis functions
     bf_set <- append(bf_set, list(bf1))
     bf_set <- append(bf_set, list(bf2))
@@ -393,19 +353,15 @@ add_basis_function <- function (
     len_knt <- length(bf1[["xi"]])
     var_pos <- bf1[["xi"]][len_knt]
 
-    kn_list[[var_pos]] <- append (
-      kn_list[[bf1[['xi']][len_knt]]],
+    kn_list[[var_pos]] <- append(
+      kn_list[[bf1[["xi"]][len_knt]]],
       list(list(t = bf1[["t"]], index = tindex))
-      )
+    )
 
     return(list(best_B, bf_set, kn_list, best_Bp_list, err_min, var_imp))
-
   } else {
-
     return(improvement)
-
   }
-
 }
 
 #' @title Generate the Set of Eligible Knots
@@ -442,17 +398,16 @@ add_basis_function <- function (
 #' @return
 #' Numeric vector with the knots values for the variable.
 
-set_knots <- function (
-    data,
-    nX,
-    var_idx,
-    minspan,
-    endspan,
-    kn_list,
-    bf,
-    kn_grid
-    ) {
-
+set_knots <- function(
+  data,
+  nX,
+  var_idx,
+  minspan,
+  endspan,
+  kn_list,
+  bf,
+  kn_grid
+) {
   # sample size
   N <- nrow(data)
 
@@ -463,11 +418,11 @@ set_knots <- function (
   sp2 <- ifelse(length(endspan) > 1, endspan[var_idx], endspan)
 
   # observations in the space of the basis function.
-  nobs_bf <- bf[['Bp']] != 0
+  nobs_bf <- bf[["Bp"]] != 0
 
   # minimum span for Friedman's approach
-  if (sp1 == - 1) {
-    sp1 <- floor(min(N * 0.1, - log2(- (1 / (nX * sum(nobs_bf))) * log(1 - 0.05)) / 2.5))
+  if (sp1 == -1) {
+    sp1 <- floor(min(N * 0.1, -log2(-(1 / (nX * sum(nobs_bf))) * log(1 - 0.05)) / 2.5))
   }
 
   # boolean: possible knots
@@ -476,15 +431,12 @@ set_knots <- function (
   # Set to FALSE the first and last "Le" observations
   if (sp2 != 0) {
     set_sp2_idx <- c(1:sp2, (length(kn_idx) - sp2 + 1):length(kn_idx))
-
   } else {
     set_sp2_idx <- c()
-
   }
 
   # Set to FALSE adjacent "L" observations
   if (!is.null(kn_list[[var_idx]])) {
-
     # used knots values
     used_kn_val <- sapply(kn_list[[var_idx]], "[[", "t")
 
@@ -492,7 +444,7 @@ set_knots <- function (
     used_kn_idx <- c()
 
     for (kn in 1:length(used_kn_val)) {
-      used_kn_idx <- c (
+      used_kn_idx <- c(
         used_kn_idx,
         which(kn_grid[[var_idx]][order(kn_grid[[var_idx]])] == used_kn_val[kn])
       )
@@ -501,19 +453,16 @@ set_knots <- function (
     set_sp1_idx <- c()
 
     for (idx in 1:length(used_kn_idx)) {
-      set_sp1_idx <- append (
+      set_sp1_idx <- append(
         set_sp1_idx,
         (used_kn_idx[idx] - sp1):(used_kn_idx[idx] + sp1)
-        )
+      )
     }
 
     # indexes must be greater than 0 and lower than N
     set_sp1_idx <- unique(sort(set_sp1_idx[set_sp1_idx > 0 & set_sp1_idx <= sum(nobs_bf)]))
-
   } else {
-
     set_sp1_idx <- c()
-
   }
 
   # set of observations to FALSE based on minspan and endspan
@@ -521,11 +470,8 @@ set_knots <- function (
 
   # define knots
   if (all(kn_idx == FALSE)) {
-
     knots <- NULL
-
   } else {
-
     # minimum value of observations in the basis function
     minimum <- min(data[nobs_bf, var_idx])
 
@@ -537,13 +483,11 @@ set_knots <- function (
 
     # knots between minimum and maximum
     knots <- varknots[varknots >= minimum & varknots <= maximum]
-
   }
 
   if (length(knots) <= 1) knots <- NULL
 
   return(knots)
-
 }
 
 #' @title Generate a Pair of Linear Basis Functions
@@ -563,16 +507,14 @@ set_knots <- function (
 #' @return
 #' A \code{list} with the new pair of basis functions.
 
-create_linear_basis <- function (
-    data,
-    var_idx,
-    knot
-    ) {
-
+create_linear_basis <- function(
+  data,
+  var_idx,
+  knot
+) {
   # create (xi-t)+ and (t-xi)+
   hinge1 <- pmax(0, data[, var_idx] - knot)
   hinge2 <- pmax(0, knot - data[, var_idx])
 
   return(list(hinge1, hinge2))
-
 }
