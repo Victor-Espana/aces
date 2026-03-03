@@ -21,7 +21,7 @@ estimate_coefficients_smoothed(
 
 \item{y_obs}{A \code{matrix} of the observed output data.}
 
-\item{dea_scores}{An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.}
+\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{n_pair}{An \code{integer} specifying the number of coefficients associated with the paired basis functions.}
 

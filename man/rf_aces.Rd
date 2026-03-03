@@ -8,11 +8,11 @@ rf_aces(
   data,
   x,
   y,
+  scale_data = TRUE,
   quick_aces = TRUE,
-  error_type = "add",
   mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
-  shape = list(mono = TRUE, conc = TRUE, ptto = FALSE),
+  shape = list(mono = TRUE, conc = TRUE),
   learners = 100,
   bag_size = nrow(data),
   max_feats = length(x)/3,
@@ -31,13 +31,9 @@ rf_aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
 
-\item{error_type}{A \code{character} string specifying the error structure to use. Options are:
-\itemize{
-  \item{\code{"add"}}: Additive error structure.
-  \item{\code{"mul"}}: Multiplicative error structure.
-}}
+\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
 \itemize{
@@ -60,7 +56,6 @@ rf_aces(
 \itemize{
   \item{\code{mono}}: A \code{logical} indicating if non-decreasing monotonicity should be enforced.
   \item{\code{conc}}: A \code{logical} indicating if concavity should be enforced.
-  \item{\code{ptto}}: A \code{logical} indicating if the estimator should satisfy \code{f(0) = 0}.
 }}
 
 \item{learners}{An \code{integer} indicating the number of models for bagging.}

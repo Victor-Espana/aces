@@ -4,7 +4,16 @@
 \alias{wam}
 \title{The Weighted Additive Model}
 \usage{
-wam(tech_xmat, tech_ymat, eval_xmat, eval_ymat, weights, convexity, returns)
+wam(
+  tech_xmat,
+  tech_ymat,
+  eval_xmat,
+  eval_ymat,
+  weights,
+  convexity,
+  returns,
+  type
+)
 }
 \arguments{
 \item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
@@ -17,16 +26,18 @@ wam(tech_xmat, tech_ymat, eval_xmat, eval_ymat, weights, convexity, returns)
 
 \item{weights}{Weights for the additive model:
 \itemize{
-\item{\code{"ONE"}} Weighted Additive Model.
-\item{\code{"MIP"}} Measure of Inefficiency Proportions.
-\item{\code{"NOR"}} Normalized Weighted Additive Model.
-\item{\code{"RAM"}} Range Adjusted Measure.
-\item{\code{"BAM"}} Bounded Adjusted Measure.
+\item{\code{"wam.one"}} Weighted Additive Model.
+\item{\code{"wam.mip"}} Measure of Inefficiency Proportions.
+\item{\code{"wam.nor"}} Normalized Weighted Additive Model.
+\item{\code{"wam.ram"}} Range Adjusted Measure.
+\item{\code{"wam.bam"}} Bounded Adjusted Measure.
 }}
 
 \item{convexity}{A \code{logical} value indicating if a convex technology is assumed.}
 
-\item{returns}{Type of returns to scale.}
+\item{returns}{Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+
+\item{type}{A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.}
 }
 \value{
 A \code{vector} of \code{"numeric"} scores computed through the Weighted Additive Model.

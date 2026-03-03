@@ -2,9 +2,9 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{rsl_inp}
 \alias{rsl_inp}
-\title{The input-oriented Russell model in the envelopment format}
+\title{The input-oriented Russell model}
 \usage{
-rsl_inp(tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns)
+rsl_inp(tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns, type)
 }
 \arguments{
 \item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
@@ -17,7 +17,9 @@ rsl_inp(tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns)
 
 \item{convexity}{A \code{logical} value indicating if a convex technology is assumed.}
 
-\item{returns}{Type of returns to scale.}
+\item{returns}{Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+
+\item{type}{A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.}
 }
 \value{
 A \code{vector} of \code{"numeric"} scores computed through the input-oriented Russell model.

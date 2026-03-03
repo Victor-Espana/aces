@@ -4,7 +4,7 @@
 \alias{rf_aces_varimp}
 \title{Compute Variable Importance for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).}
 \usage{
-rf_aces_varimp(data, x, y, object, repeats = 1)
+rf_aces_varimp(data, x, y, object, repeats = 1, normalize = TRUE)
 }
 \arguments{
 \item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
@@ -16,6 +16,8 @@ rf_aces_varimp(data, x, y, object, repeats = 1)
 \item{object}{A \code{rf_aces} object.}
 
 \item{repeats}{Number of times the variable importance procedure is repeated.}
+
+\item{normalize}{A \code{logical} value indicating whether to rescale the importance scores so that the most important variable has a value of 100 and all other variables are expressed relative to it.}
 }
 \value{
 This function returns a metric of variable importance for each input variable.

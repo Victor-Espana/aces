@@ -4,7 +4,7 @@
 \alias{set_data}
 \title{Arrange Data for Fitting Model}
 \usage{
-set_data(data, x, y, max_degree, error_type)
+set_data(data, x, y, max_degree)
 }
 \arguments{
 \item{data}{A \code{matrix} containing the variables in the model.}
@@ -14,12 +14,10 @@ set_data(data, x, y, max_degree, error_type)
 \item{y}{Column indexes of output variables in \code{data}.}
 
 \item{max_degree}{Maximum degree of interaction between variables. It can be a \code{list} of input indexes for interactions or a \code{numeric} value determining the maximum degree of interaction.}
-
-\item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 }
 \value{
-A \code{matrix} in a [x, y] format with variable interactions and / or transformations included.
+A \code{matrix} in a [x, y] format with variable interactions included.
 }
 \description{
-This function prepares the data for model fitting by generating additional input variables through interactions between variables. It also performs any necessary transformations, such as changing to a logarithmic scale if the error type is multiplicative. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
+This function prepares the data for model fitting by generating additional input variables through interactions between variables. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
 }
