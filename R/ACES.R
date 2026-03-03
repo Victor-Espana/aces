@@ -15,15 +15,11 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
+#' @param scale_data
+#' A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.
+#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure to use. Options are:
-#' \itemize{
-#'   \item{\code{"add"}}: Additive error structure.
-#'   \item{\code{"mul"}}: Multiplicative error structure.
-#' }
 #'
 #' @param mul_BF
 #' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
@@ -49,7 +45,6 @@
 #' \itemize{
 #'   \item{\code{mono}}: A \code{logical} indicating if non-decreasing monotonicity should be enforced.
 #'   \item{\code{conc}}: A \code{logical} indicating if concavity should be enforced.
-#'   \item{\code{ptto}}: A \code{logical} indicating if the estimator should satisfy \code{f(0) = 0}.
 #' }
 #'
 #' @param max_terms
@@ -106,8 +101,8 @@ aces <- function (
     data,
     x,
     y,
+    scale_data = TRUE,
     quick_aces = TRUE,
-    error_type = "add",
     mul_BF = list (
       "max_degree" = 1,
       "inter_cost" = 0.05
@@ -115,8 +110,7 @@ aces <- function (
     metric = "mse",
     shape = list (
       "mono" = TRUE,
-      "conc" = TRUE,
-      "ptto" = FALSE
+      "conc" = TRUE
       ),
     max_terms = 50,
     err_red = 0.01,
@@ -126,13 +120,16 @@ aces <- function (
     kn_penalty = 2
     ) {
 
-  # possible error messages:
+  # =================== #
+  # DISPLAY ERRORS ACES #
+  # =================== #
+
   display_errors_aces (
     data = data,
     x = x,
     y = y,
+    scale_data = scale_data,
     quick_aces = quick_aces,
-    error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
     inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
@@ -144,23 +141,52 @@ aces <- function (
     kn_penalty = kn_penalty
     )
 
-  if (shape[["ptto"]]) {
-    data <- rbind(data, rep(1e-10, ncol(data)))
+  # =================== #
+  #    SCALING SETUP    #
+  # =================== #
+
+  # scale factor for inputs
+  sx <- rep(1, length(x))
+
+  # scale factor for outputs
+  sy <- rep(1, length(y))
+
+  # copy of data for fitting
+  data_algo <- data
+
+  if (scale_data) {
+
+    raw_x <- as.matrix(data[, x])
+    raw_y <- as.matrix(data[, y])
+
+    # calculate factors (Mean)
+    sx <- colMeans(raw_x, na.rm = TRUE)
+    sx[sx == 0] <- 1
+
+    sy <- colMeans(raw_y, na.rm = TRUE)
+    sy[sy == 0] <- 1
+
+    # apply scaling
+    data_algo[, x] <- sweep(raw_x, 2, sx, "/")
+    data_algo[, y] <- sweep(raw_y, 2, sy, "/")
+
   }
 
+  # ========= #
+  # ALGORITHM #
+  # ========= #
+
   ACES <- aces_algorithm (
-    data = data,
+    data = data_algo,
     x_vars = x,
     y_vars = y,
     quick_aces = quick_aces,
-    error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
     inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
     shape = list (
       "mono" = shape[["mono"]],
-      "conc" = shape[["conc"]],
-      "ptto" = shape[["ptto"]]
+      "conc" = shape[["conc"]]
     ),
     max_terms = max_terms,
     err_red = err_red,
@@ -169,6 +195,13 @@ aces <- function (
     kn_grid = kn_grid,
     kn_penalty = kn_penalty
     )
+
+  # add scaling options
+  ACES[["control"]][["scale"]] <- list(
+    is_scaled = scale_data,
+    mean_x = sx,
+    mean_y = sy
+  )
 
   # type of object
   class(ACES) <- "aces"
@@ -193,9 +226,6 @@ aces <- function (
 #'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure when fitting the model.
 #'
 #' @param max_degree
 #' Maximum degree of interaction between variables.
@@ -240,7 +270,6 @@ aces_algorithm <- function (
     x_vars,
     y_vars,
     quick_aces,
-    error_type,
     max_degree,
     inter_cost,
     metric,
@@ -256,13 +285,15 @@ aces_algorithm <- function (
   # save a copy of the original data
   DMUs <- data
 
+  # variable names
+  var_names <- colnames(DMUs[, c(x_vars, y_vars)])
+
   # data in [x, y] format with interaction of variables included
   data <- set_data (
     data = data,
     x = x_vars,
     y = y_vars,
-    max_degree = max_degree,
-    error_type = error_type
+    max_degree = max_degree
     )
 
   # samples size
@@ -275,6 +306,10 @@ aces_algorithm <- function (
   # set number of inputs and outputs
   nX <- length(x)
   nY <- length(y)
+
+  # ================== #
+  # VARIABLE FILTERING #
+  # ================== #
 
   # variable importance
   var_imp <- matrix (
@@ -342,13 +377,18 @@ aces_algorithm <- function (
 
   x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
 
+  # ========== #
+  # DEA SCORES #
+  # ========== #
+
   table_scores[, 1] <- rad_out (
     tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
     eval_xmat = as.matrix(DMUs[, x_filtered]),
     eval_ymat = as.matrix(DMUs[, y_vars]),
     convexity = TRUE,
-    returns = "variable"
+    returns = "variable",
+    type = "objective"
   )[, 1]
 
   for (out in 1:nY) {
@@ -359,13 +399,49 @@ aces_algorithm <- function (
       eval_xmat = as.matrix(DMUs[, x_filtered]),
       eval_ymat = as.matrix(DMUs[, y_vars[out]]),
       convexity = TRUE,
-      returns = "variable"
+      returns = "variable",
+      type = "objective"
     )[, 1]
 
   }
 
   # weights for error metrics based on DEA
-  dea_scores <-  table_scores[, 2:ncol(table_scores)]
+  dea_scores <-  table_scores[, 2:ncol(table_scores), drop = FALSE]
+
+  # ========== #
+  # FDH SCORES #
+  # ========== #
+
+  table_scores[, 1] <- rad_out (
+    tech_xmat = as.matrix(DMUs[, x_filtered]),
+    tech_ymat = as.matrix(DMUs[, y_vars]),
+    eval_xmat = as.matrix(DMUs[, x_filtered]),
+    eval_ymat = as.matrix(DMUs[, y_vars]),
+    convexity = FALSE,
+    returns = "variable",
+    type = "objective"
+  )[, 1]
+
+  for (out in 1:nY) {
+
+    table_scores[, 1 + out] <- rad_out (
+      tech_xmat = as.matrix(DMUs[, x_filtered]),
+      tech_ymat = as.matrix(DMUs[, y_vars[out]]),
+      eval_xmat = as.matrix(DMUs[, x_filtered]),
+      eval_ymat = as.matrix(DMUs[, y_vars[out]]),
+      convexity = FALSE,
+      returns = "variable",
+      type = "objective"
+    )[, 1]
+
+  }
+
+  # weights for error metrics based on DEA
+  fdh_scores <-  table_scores[, 2:ncol(table_scores), drop = FALSE]
+
+  # ==================== #
+  # VARIABLE INTERACTION #
+  # ==================== #
 
   # matrix with:
   # row 1: the index of the variable
@@ -498,6 +574,7 @@ aces_algorithm <- function (
       inter_cost = inter_cost,
       model_type = "envelopment",
       dea_scores = dea_scores,
+      fdh_scores = fdh_scores,
       metric = metric,
       forward_model = aces_forward,
       Bp_list = Bp_list,
@@ -547,11 +624,11 @@ aces_algorithm <- function (
         sprintf(
           paste0(
             "Iteration %d completed — error reduced by %.1f%% ",
-            "(%.1f -> %.1f).\n"
+            "(%.2f -> %.2f).\n"
           ),
           iter,
           100 * rel_reduction,
-          err[1] / (1 - rel_reduction),  # old err reconstructed
+          err[1] / (1 - rel_reduction),
           err[1]
         )
       )
@@ -607,12 +684,11 @@ aces_algorithm <- function (
 
   # generate technology
   technology[["aces_forward"]] <- generate_technology (
+    var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = aces_forward[["Bmatx"]] %*% aces_forward[["coefs"]],
-    error_type = error_type,
-    table_scores = table_scores,
-    ptto = shape[["ptto"]]
+    table_scores = table_scores
   )
 
   # ====================== #
@@ -626,6 +702,7 @@ aces_algorithm <- function (
       xi_degree = xi_degree,
       model_type = "envelopment",
       dea_scores = dea_scores,
+      fdh_scores = fdh_scores,
       metric = metric,
       forward_model = aces_forward,
       Bp_list = Bp_list,
@@ -670,12 +747,11 @@ aces_algorithm <- function (
 
   # generate technology
   technology[["aces"]] <- generate_technology (
+    var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = aces[["Bmatx"]] %*% aces[["coefs"]],
-    error_type = error_type,
-    table_scores = table_scores,
-    ptto = shape[["ptto"]]
+    table_scores = table_scores
   )
 
   # ======================= #
@@ -762,6 +838,7 @@ aces_algorithm <- function (
           x = x,
           y = y,
           dea_scores = dea_scores,
+          fdh_scores = fdh_scores,
           model_type = "envelopment",
           metric = metric,
           shape = shape,
@@ -781,6 +858,7 @@ aces_algorithm <- function (
           x = x,
           y = y,
           dea_scores = dea_scores,
+          fdh_scores = fdh_scores,
           model_type = "envelopment",
           metric = metric,
           shape = shape,
@@ -813,12 +891,11 @@ aces_algorithm <- function (
 
     # generate technology
     technology[["aces_cubic"]] <- generate_technology (
+      var_names = var_names,
       tech_xmat = DMUs[, x_vars],
       tech_ymat1 = DMUs[, y_vars],
       tech_ymat2 = aces_cubic[["Bmatx"]] %*% aces_cubic[["coefs"]],
-      error_type = error_type,
-      table_scores = table_scores,
-      ptto = shape[["ptto"]]
+      table_scores = table_scores
     )
 
     # GCVs of quintic models
@@ -840,12 +917,11 @@ aces_algorithm <- function (
 
     # generate technology
     technology[["aces_quintic"]] <- generate_technology (
+      var_names = var_names,
       tech_xmat = DMUs[, x_vars],
       tech_ymat1 = DMUs[, y_vars],
       tech_ymat2 = aces_quintic[["Bmatx"]] %*% aces_quintic[["coefs"]],
-      error_type = error_type,
-      table_scores = table_scores,
-      ptto = shape[["ptto"]]
+      table_scores = table_scores
     )
 
     # =========== #
@@ -857,7 +933,6 @@ aces_algorithm <- function (
       x = x_vars,
       y = y_vars,
       quick_aces = quick_aces,
-      error_type = error_type,
       max_degree = max_degree,
       inter_cost = inter_cost,
       xi_degree = xi_degree,
@@ -869,6 +944,7 @@ aces_algorithm <- function (
       endspan = endspan,
       kn_grid = kn_grid,
       kn_penalty = kn_penalty,
+      psi = 0.05,
       wc = aces_cubic[["w"]],
       wq = aces_quintic[["w"]],
       aces_forward = aces_forward,
@@ -898,9 +974,6 @@ aces_algorithm <- function (
 #'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure when fitting the model.
 #'
 #' @param max_degree
 #' Maximum degree of interaction between variables.
@@ -935,6 +1008,9 @@ aces_algorithm <- function (
 #' @param kn_penalty
 #' Generalized Cross Validation (GCV) penalty per knot.
 #'
+#' @param psi
+#' Trimming factor for output predictions.
+#'
 #' @param wc
 #' Hyperparameter for the side knot distances in the cubic smoothing procedure.
 #'
@@ -965,7 +1041,6 @@ aces_object <- function (
     x,
     y,
     quick_aces,
-    error_type,
     max_degree,
     inter_cost,
     xi_degree,
@@ -977,6 +1052,7 @@ aces_object <- function (
     endspan,
     kn_grid,
     kn_penalty,
+    psi,
     wc,
     wq,
     aces_forward,
@@ -999,7 +1075,6 @@ aces_object <- function (
 
   object[["control"]] <- list (
     "quick_aces" = quick_aces,
-    "error_type" = error_type,
     "max_degree" = max_degree,
     "inter_cost" = inter_cost,
     "xi_degree" = xi_degree,
@@ -1011,6 +1086,7 @@ aces_object <- function (
     "endspan" = endspan,
     "kn_grid" = kn_grid,
     "kn_penalty" = kn_penalty,
+    "psi" = psi,
     "wc" = wc,
     "wq" = wq
   )
@@ -1031,7 +1107,7 @@ aces_object <- function (
 #' @title Arrange Data for Fitting Model
 #'
 #' @description
-#' This function prepares the data for model fitting by generating additional input variables through interactions between variables. It also performs any necessary transformations, such as changing to a logarithmic scale if the error type is multiplicative. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
+#' This function prepares the data for model fitting by generating additional input variables through interactions between variables. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
 #'
 #' @param data
 #' A \code{matrix} containing the variables in the model.
@@ -1045,26 +1121,17 @@ aces_object <- function (
 #' @param max_degree
 #'  Maximum degree of interaction between variables. It can be a \code{list} of input indexes for interactions or a \code{numeric} value determining the maximum degree of interaction.
 #'
-#' @param error_type
-#' A \code{character} string specifying the error structure when fitting the model.
-#'
 #' @return
-#' A \code{matrix} in a [x, y] format with variable interactions and / or transformations included.
+#' A \code{matrix} in a [x, y] format with variable interactions included.
 
 set_data <- function (
     data,
     x,
     y,
-    max_degree,
-    error_type
+    max_degree
     ) {
 
-  # 1. change to logarithmic scale if the error_type is multiplicative
-  if (error_type == "mul") {
-    data[, c(y)] <- log(data[, c(y)])
-  }
-
-  # 2. generate interaction effects
+  # 1. generate interaction effects
   if (is.list(max_degree) || max_degree > 1) {
 
     if (!is.list(max_degree)) {
@@ -1110,7 +1177,7 @@ set_data <- function (
 
   }
 
-  # 3. data correctly sorted
+  # 2. data correctly sorted
   data <- data[, c(new_x, y)]
 
   return(as.matrix(data))
@@ -1460,213 +1527,5 @@ set_knots_grid <- function (
   }
 
   return(kn_grid)
-
-}
-
-#' @title Generate a Technology Set
-#'
-#' @description
-#' This function generates a technology set based on input data and an ACES model output.
-#' The technology set represents the feasible combinations of inputs and outputs.
-#'
-#' @param tech_xmat
-#' A \code{matrix} representing the input data.
-#'
-#' @param tech_ymat1
-#' A \code{matrix} representing the output data.
-#'
-#' @param tech_ymat2
-#' A \code{matrix} representing the output data generated from an ACES model.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure when fitting the model.
-#'
-#' @param table_scores
-#' A \code{matrix} containing radial output scores using all outputs and using just each individual output.
-#'
-#' @param ptto
-#' A \code{logical} indicating if (0, 0) should be included in the technology.
-#'
-#' @return
-#' A \code{matrix} representing the technology set.
-
-generate_technology <- function (
-    tech_xmat,
-    tech_ymat1,
-    tech_ymat2,
-    error_type,
-    table_scores,
-    ptto
-    ) {
-
-  # define technology
-  tecno <- list()
-
-  # matrix of inputs for the technology
-  tecno[["xmat"]] <- as.matrix(tech_xmat)
-
-  # matrix of outputs for the technology
-  tech_ymat <- as.data.frame (
-    matrix (
-      NA,
-      nrow = nrow(table_scores),
-      ncol = ncol(table_scores) - 1
-      )
-    )
-
-  colnames(tech_ymat) <- colnames(tech_ymat1)
-
-  for (i in 1:nrow(table_scores)) {
-
-    for (j in 2:ncol(table_scores)) {
-
-      if (abs(table_scores[i, 1] - table_scores[i, j]) <= 0.05) {
-
-        tech_ymat[i, j - 1] <- tech_ymat2[i, j - 1]
-
-      } else {
-
-        tech_ymat[i, j - 1] <- tech_ymat1[i, j - 1]
-
-      }
-    }
-  }
-
-  # modify the last row of tech_ymat based on the error type
-  if (ptto) {
-    tech_ymat[nrow(tech_ymat), ] <- if (error_type == "add") 1e-10 else log(1 + 1e-10)
-  }
-
-  # assign tech_ymat to tecno[["ymat"]] with the appropriate transformation
-  tecno[["ymat"]] <- if (error_type == "add") as.matrix(tech_ymat) else exp(as.matrix(tech_ymat))
-
-  return(tecno)
-
-}
-
-#' @title Generate a New Technology Set
-#'
-#' @description
-#' This function constructs a new production technology by modifying the output matrix based on a refinement
-#' procedure that replaces overestimated outputs. For each output, the predicted values from an ACES model are compared against the original observed values. When the predicted value exceeds the observed one by more than a predefined threshold, the observed value is retained instead.
-#'
-#' @param object
-#' An \code{aces} object.
-#'
-#' @param tech_xmat
-#' A \code{matrix} representing the input data.
-#'
-#' @param tech_ymat
-#' A \code{matrix} representing the output data.
-#'
-#' @param psi
-#' A \code{numeric} threshold controlling the refinement of predicted outputs. If the predicted value for a given output exceeds the observed value by more than \code{psi}, the observed value is used instead.
-#'
-#' @return
-#' An \code{aces} object with updated technologies.
-#'
-#' @export
-
-change_technology <- function (
-    object,
-    tech_xmat,
-    tech_ymat,
-    psi
-    ) {
-
-  # sample size
-  N <- nrow(tech_xmat)
-
-  # number of outputs
-  nY <- ncol(tech_ymat)
-
-  # table of scores
-  table_scores <- matrix (
-    ncol = nY + 1,
-    nrow = N,
-    dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
-  ) %>% as.data.frame()
-
-  table_scores[, 1] <- rad_out (
-    tech_xmat = as.matrix(tech_xmat),
-    tech_ymat = as.matrix(tech_ymat),
-    eval_xmat = as.matrix(tech_xmat),
-    eval_ymat = as.matrix(tech_ymat),
-    convexity = TRUE,
-    returns = "variable"
-  )[, 1]
-
-  for (out in 1:nY) {
-
-    table_scores[, 1 + out] <- rad_out (
-      tech_xmat = as.matrix(tech_xmat),
-      tech_ymat = as.matrix(tech_ymat[, out]),
-      eval_xmat = as.matrix(tech_xmat),
-      eval_ymat = as.matrix(tech_ymat[, out]),
-      convexity = TRUE,
-      returns = "variable"
-    )[, 1]
-
-  }
-
-  for (m in names(object[["technology"]])) {
-
-    # define technology
-    tecno <- list()
-
-    # matrix of inputs for the technology
-    tecno[["xmat"]] <- as.matrix(tech_xmat)
-
-    # prediction
-    Bmat <- object[["methods"]][[m]][["Bmatx"]]
-    coef <- object[["methods"]][[m]][["coefs"]]
-
-    tech_ymat2 <- Bmat %*% coef
-
-    colnames(tech_ymat2) <- colnames(tech_ymat)
-
-    # matrix of outputs for the technology
-    tech_out <- as.data.frame (
-      matrix (
-        NA,
-        nrow = nrow(table_scores),
-        ncol = ncol(table_scores) - 1
-      )
-    )
-
-    for (i in 1:nrow(table_scores)) {
-
-      for (j in 2:ncol(table_scores)) {
-
-        if (abs(table_scores[i, 1] - table_scores[i, j]) <= psi) {
-
-          tech_out[i, j - 1] <- tech_ymat2[i, j - 1]
-
-        } else {
-
-          tech_out[i, j - 1] <- tech_ymat[i, j - 1]
-
-        }
-      }
-    }
-
-    ptto <- object[["control"]][["shape"]][["ptto"]]
-
-    # modify the last row of tech_ymat based on the error type
-    if (ptto) {
-      tech_out[nrow(tech_ymat), ] <- if (error_type == "add") 1e-10 else log(1 + 1e-10)
-    }
-
-    error_type <- object[["control"]][["error_type"]]
-
-    # assign tech_ymat to tecno[["ymat"]] with the appropriate transformation
-    tecno[["ymat"]] <- if (error_type == "add") as.matrix(tech_out) else exp(as.matrix(tech_out))
-
-    # update technology set
-    object[["technology"]][[m]][["ymat"]] <- as.matrix(tecno[["ymat"]])
-
-  }
-
-  return(object)
 
 }

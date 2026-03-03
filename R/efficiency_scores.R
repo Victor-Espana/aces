@@ -1,4 +1,4 @@
-#' @title The output-oriented radial model in the envelopment format
+#' @title The output-oriented radial model
 #'
 #' @description
 #' This function computes the efficiency scores through the output-oriented radial model in the envelopment format.
@@ -19,7 +19,10 @@
 #' A \code{logical} value indicating if a convex technology is assumed.
 #'
 #' @param returns
-#' Type of returns to scale.
+#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#'
+#' @param type
+#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective get.variables
 #'
@@ -32,7 +35,8 @@ rad_out <- function (
     eval_xmat,
     eval_ymat,
     convexity,
-    returns
+    returns,
+    type
     ) {
 
   # number of DMUs in the technology
@@ -41,12 +45,12 @@ rad_out <- function (
   # number of DMUs to be evaluated
   eval_dmu <- nrow(eval_xmat)
 
-  # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
   # number of inputs and outputs
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
+
+  # initialize vector of scores
+  scores <- matrix(nrow = eval_dmu, ncol = 1)
 
   for (d in 1:eval_dmu) {
 
@@ -77,8 +81,15 @@ rad_out <- function (
       }
     }
 
+    # solve model
     solve(lps)
-    scores[d, ] <- get.objective(lps)
+
+    # get scores
+    if (type == "objective") {
+      scores[d, 1] <- get.objective(lps)
+    } else if (type == "variables") {
+      scores[d, 1] <- get.variables(lps)[1]
+    }
 
   }
 
@@ -86,7 +97,7 @@ rad_out <- function (
 
 }
 
-#' @title The input-oriented radial model in the envelopment format
+#' @title The input-oriented radial model
 #'
 #' @description
 #' This function computes efficiency scores through the input-oriented radial model in the envelopment format.
@@ -107,7 +118,10 @@ rad_out <- function (
 #' A \code{logical} value indicating if a convex technology is assumed.
 #'
 #' @param returns
-#' Type of returns to scale.
+#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#'
+#' @param type
+#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
@@ -120,7 +134,8 @@ rad_inp <- function (
     eval_xmat,
     eval_ymat,
     convexity,
-    returns
+    returns,
+    type
     ) {
 
   # number of DMUs in the technology
@@ -129,12 +144,12 @@ rad_inp <- function (
   # number of DMUs to be evaluated
   eval_dmu <- nrow(eval_xmat)
 
-  # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
   # number of inputs and outputs
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
+
+  # initialize vector of scores
+  scores <- matrix(nrow = eval_dmu, ncol = 1)
 
   for (d in 1:eval_dmu) {
 
@@ -165,8 +180,15 @@ rad_inp <- function (
       }
     }
 
+    # solve model
     solve(lps)
-    scores[d, ] <- get.objective(lps)
+
+    # get scores
+    if (type == "objective") {
+      scores[d, 1] <- get.objective(lps)
+    } else if (type == "variables") {
+      scores[d, 1] <- get.variables(lps)[1]
+    }
 
   }
 
@@ -174,10 +196,11 @@ rad_inp <- function (
 
 }
 
+
 #' @title The Directional Distance Function
 #'
 #' @description
-#' This function computes efficiency scores through the directional distance function in the envelopment format.
+#' This function computes efficiency scores through the Directional Distance Function in the envelopment format.
 #'
 #' @param tech_xmat
 #' A \code{matrix} containing the observed input variables used to define the technology.
@@ -192,17 +215,16 @@ rad_inp <- function (
 #' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
 #'
 #' @param direction
-#' Direction of the vector to project on the frontier. Options are:
-#' \itemize{
-#' \item{\code{"mean"}} Projection vector given by the average value of inputs and outputs of all DMUs.
-#' \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
-#' }
+#' Direction of the vector to project on the frontier.
 #'
 #' @param convexity
 #' A \code{logical} value indicating if a convex technology is assumed.
 #'
 #' @param returns
-#' Type of returns to scale.
+#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#'
+#' @param type
+#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
@@ -216,7 +238,8 @@ ddf <- function (
     eval_ymat,
     direction,
     convexity,
-    returns
+    returns,
+    type
     ) {
 
   # number of DMUs in the technology
@@ -225,12 +248,16 @@ ddf <- function (
   # number of DMUs to be evaluated
   eval_dmu <- nrow(eval_xmat)
 
-  # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
   # number of inputs and outputs
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
+
+  # initialize vector of scores
+  scores <- matrix(nrow = eval_dmu, ncol = 1)
+
+  # direction of projection
+  G_x <- as.matrix(direction[, 1:nX])
+  G_y <- as.matrix(direction[, (nX + 1):(nX + nY)])
 
   for (d in 1:eval_dmu) {
 
@@ -242,23 +269,14 @@ ddf <- function (
     lp.control(lps, sense = 'max')
     set.objfn(lps, objVal)
 
-    if (direction == "mean") {
-      G_x <- matrix(colMeans(tech_xmat), nrow = 1)
-      G_y <- matrix(colMeans(tech_ymat), nrow = 1)
-
-    } else {
-      G_x <- matrix(eval_xmat[d, ], nrow = 1)
-      G_y <- matrix(eval_ymat[d, ], nrow = 1)
-    }
-
     # inputs
     for (xi in 1:nX) {
-      add.constraint(lps, xt = c(G_x[, xi], tech_xmat[, xi]), "<=",  rhs = eval_xmat[d, xi])
+      add.constraint(lps, xt = c(G_x[d, xi], tech_xmat[, xi]), "<=",  rhs = eval_xmat[d, xi])
     }
 
     # outputs
     for (yi in 1:nY) {
-      add.constraint(lps, xt = c(- G_y[, yi], tech_ymat[, yi]), ">=", rhs =  eval_ymat[d, yi])
+      add.constraint(lps, xt = c(- G_y[d, yi], tech_ymat[, yi]), ">=", rhs =  eval_ymat[d, yi])
     }
 
     # technology
@@ -273,8 +291,15 @@ ddf <- function (
 
     set.bounds(lps, lower = c(- Inf, rep(0, tech_dmu)))
 
+    # solve model
     solve(lps)
-    scores[d, ] <- get.objective(lps)
+
+    # get scores
+    if (type == "objective") {
+      scores[d, 1] <- get.objective(lps)
+    } else if (type == "variables") {
+      scores[d, 1] <- get.variables(lps)[1]
+    }
 
   }
 
@@ -282,7 +307,7 @@ ddf <- function (
 
 }
 
-#' @title The output-oriented Russell model in the envelopment format
+#' @title The output-oriented Russell model
 #'
 #' @description
 #' This function computes efficiency scores through the output-oriented Russell model in the envelopment format.
@@ -303,7 +328,10 @@ ddf <- function (
 #' A \code{logical} value indicating if a convex technology is assumed.
 #'
 #' @param returns
-#' Type of returns to scale.
+#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#'
+#' @param type
+#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
@@ -316,7 +344,8 @@ rsl_out <- function (
     eval_xmat,
     eval_ymat,
     convexity,
-    returns
+    returns,
+    type
     ) {
 
   # number of DMUs in the technology
@@ -325,12 +354,16 @@ rsl_out <- function (
   # number of DMUs to be evaluated
   eval_dmu <- nrow(eval_xmat)
 
-  # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
   # number of inputs and outputs
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
+
+  # initialize vector of scores
+  if (type == "objective") {
+    scores <- matrix(nrow = eval_dmu, ncol = 1)
+  } else if (type == "variables") {
+    scores <- matrix(nrow = eval_dmu, ncol = nY)
+  }
 
   for (d in 1:eval_dmu) {
 
@@ -367,8 +400,15 @@ rsl_out <- function (
       }
     }
 
+    # solve model
     solve(lps)
-    scores[d, ] <- get.objective(lps)
+
+    # get scores
+    if (type == "objective") {
+      scores[d, 1] <- get.objective(lps)
+    } else if (type == "variables") {
+      scores[d, 1:nY] <- get.variables(lps)[1:nY]
+    }
 
   }
 
@@ -376,7 +416,7 @@ rsl_out <- function (
 
 }
 
-#' @title The input-oriented Russell model in the envelopment format
+#' @title The input-oriented Russell model
 #'
 #' @description
 #' This function computes efficiency scores through the input-oriented Russell model in the envelopment format.
@@ -397,7 +437,10 @@ rsl_out <- function (
 #' A \code{logical} value indicating if a convex technology is assumed.
 #'
 #' @param returns
-#' Type of returns to scale.
+#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#'
+#' @param type
+#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
@@ -410,7 +453,8 @@ rsl_inp <- function (
     eval_xmat,
     eval_ymat,
     convexity,
-    returns
+    returns,
+    type
     ) {
 
   # number of DMUs in theta technology
@@ -419,25 +463,16 @@ rsl_inp <- function (
   # number of DMUs to be evaluated
   eval_dmu <- nrow(eval_xmat)
 
-  # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
   # number of inputs and outputs
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
 
-  # number of DMUs in theta technology
-  tech_dmu <- nrow(tech_xmat)
-
-  # number of DMUs to be evaluated
-  eval_dmu <- nrow(eval_xmat)
-
   # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
-  # number of inputs and outputs
-  nX <- ncol(tech_xmat)
-  nY <- ncol(tech_ymat)
+  if (type == "objective") {
+    scores <- matrix(nrow = eval_dmu, ncol = 1)
+  } else if (type == "variables") {
+    scores <- matrix(nrow = eval_dmu, ncol = nX)
+  }
 
   for (d in 1:eval_dmu) {
 
@@ -474,8 +509,15 @@ rsl_inp <- function (
       }
     }
 
+    # solve model
     solve(lps)
-    scores[d, ] <- get.objective(lps)
+
+    # get scores
+    if (type == "objective") {
+      scores[d, 1] <- get.objective(lps)
+    } else if (type == "variables") {
+      scores[d, 1:nX] <- get.variables(lps)[1:nX]
+    }
 
   }
 
@@ -502,18 +544,21 @@ rsl_inp <- function (
 #'
 #' @param weights Weights for the additive model:
 #' \itemize{
-#' \item{\code{"ONE"}} Weighted Additive Model.
-#' \item{\code{"MIP"}} Measure of Inefficiency Proportions.
-#' \item{\code{"NOR"}} Normalized Weighted Additive Model.
-#' \item{\code{"RAM"}} Range Adjusted Measure.
-#' \item{\code{"BAM"}} Bounded Adjusted Measure.
+#' \item{\code{"wam.one"}} Weighted Additive Model.
+#' \item{\code{"wam.mip"}} Measure of Inefficiency Proportions.
+#' \item{\code{"wam.nor"}} Normalized Weighted Additive Model.
+#' \item{\code{"wam.ram"}} Range Adjusted Measure.
+#' \item{\code{"wam.bam"}} Bounded Adjusted Measure.
 #' }
 #'
 #' @param convexity
 #' A \code{logical} value indicating if a convex technology is assumed.
 #'
 #' @param returns
-#' Type of returns to scale.
+#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#'
+#' @param type
+#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
 #'
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
 #'
@@ -527,7 +572,8 @@ wam <- function (
     eval_ymat,
     weights,
     convexity,
-    returns
+    returns,
+    type
     ) {
 
   # number of DMUs in the technology
@@ -536,12 +582,16 @@ wam <- function (
   # number of DMUs to be evaluated
   eval_dmu <- nrow(eval_xmat)
 
-  # initialize vector of scores
-  scores <- matrix(nrow = eval_dmu, ncol = 1)
-
   # number of inputs and outputs
   nX <- ncol(tech_xmat)
   nY <- ncol(tech_ymat)
+
+  # initialize vector of scores
+  if (type == "objective") {
+    scores <- matrix(nrow = eval_dmu, ncol = 1)
+  } else if (type == "variables") {
+    scores <- matrix(nrow = eval_dmu, ncol = nX + nY)
+  }
 
   for (d in 1:eval_dmu) {
 
@@ -549,38 +599,29 @@ wam <- function (
     objVal <- matrix(ncol = nX + nY + tech_dmu, nrow = 1)
 
     # Weights
-    if (weights == "ONE") {
-
-      # Weighted Additive Model
-      objVal[1:(nX + nY)] <- 1
-
-    } else if (weights == "MIP") {
+    if (weights == "wam_mip") {
 
       # Measure of Inefficiency Proportions
       objVal[1:(nX + nY)] <- c(1 / eval_xmat[d, ], 1 / eval_ymat[d, ])
 
-    } else if (weights == "NOR") {
+    } else if (weights == "wam_nor") {
 
       # Normalized Weighted Additive Model
       objVal[1:(nX + nY)] <- c(1 / apply(eval_xmat, 2, sd), 1 / apply(eval_ymat, 2, sd))
 
-    } else if (weights == "RAM") {
+    } else if (weights == "wam_ram") {
 
       # Range Adjusted Measure
       xranges <- apply(eval_xmat, 2, max) - apply(eval_xmat, 2, min)
       yranges <- apply(eval_ymat, 2, max) - apply(eval_ymat, 2, min)
       objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * xranges), 1 / ((nX + nY) * yranges))
 
-    } else if (weights == "BAM") {
+    } else if (weights == "wam_bam") {
 
       # Bounded Adjusted Measure
       p1 <- eval_xmat[d, ] - apply(eval_xmat, 2, min)
       p2 <- apply(eval_ymat, 2, max) - eval_ymat[d, ]
       objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * p1), 1 / ((nX + nY) * p2))
-
-    } else {
-
-      stop(print(paste(weights, "not available")))
 
     }
 
@@ -620,19 +661,26 @@ wam <- function (
       }
     }
 
+    # solve model
     solve(lps)
-    scores[d, ] <- get.objective(lps)
+
+    # get scores
+    if (type == "objective") {
+      scores[d, 1] <- get.objective(lps)
+    } else if (type == "variables") {
+      scores[d, 1:(nX + nY)] <- get.variables(lps)[1:(nX + nY)]
+    }
 
   }
 
   return(scores)
+
 }
 
 #' @title Compute Efficiency Scores using an Adaptive Constrained Enveloping Splines model.
 #'
 #' @description
-#'
-#' This function computes the efficiency scores for each Decision-Making-Unit (DMU) by first generating a virtual dataset using an Adaptive Constrained Enveloping Splines (ACES) model. It then constructs a standard DEA technology based on this virtual dataset and evaluates the efficiency scores according to a user-defined measure.
+#' This function computes the efficiency scores for each Decision-Making-Unit (DMU) using an Adaptive Constrained Enveloping Splines (ACES) model.
 #'
 #' @param eval_data
 #' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
@@ -661,40 +709,26 @@ wam <- function (
 #' @param measure
 #' Mathematical programming model to calculate scores:
 #' \itemize{
-#' \item{\code{rad_out}} The output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{rad_inp}} The input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{ddf}}     The directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
-#' \item{\code{rsl_out}} The output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{rsl_inp}} The input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{wam}}     A weighted additive model.
+#' \item{\code{rad_out}} Output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+#' \item{\code{rad_inp}} Input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+#' \item{\code{ddf}}     Directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
+#' \item{\code{rsl_out}} Output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+#' \item{\code{rsl_inp}} Input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+#' \item{\code{wam_mip}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
+#' \item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
+#' \item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
+#' \item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
 #' }
 #'
 #' @param returns
 #' Type of returns to scale:
 #' \itemize{
-#' \item{\code{"constant"}} Constant returns to scale.
-#' \item{\code{"variable"}} Variable returns to scale (default).
+#' \item{\code{"constant"}} Constant Returns to Scale.
+#' \item{\code{"variable"}} Variable Returns to Scale (default).
 #' }
 #'
 #' @param direction
-#' Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}.
-#' \itemize{
-#' \item{\code{"mean"}}  Projection vector given by the average value of inputs and outputs of all DMUs. Applied if \code{direction = NULL}.
-#' \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
-#' }
-#'
-#' @param weights
-#' Weights for the additive model. Only applied if \code{measure = "wam"}.
-#' \itemize{
-#' \item{\code{"ONE"}} Weighted Additive Model proposed by \insertCite{charnes1985;textual}{aces}.
-#' \item{\code{"MIP"}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{"NOR"}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
-#' \item{\code{"RAM"}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{"BAM"}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
-#' }
-#'
-#' @param digits
-#' Number of decimal places to which efficiency scores are rounded.
+#' Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}. A \code{matrix} or \code{data.frame} with \code{n} rows (number of DMUs to be evaluated) and \code{nX + nY} columns, containing the direction of the input variables followed by the direction of the output variables in the same order as they appear in the data.
 #'
 #' @references
 #'
@@ -702,7 +736,6 @@ wam <- function (
 #' \insertRef{banker1984}{aces} \cr \cr
 #' \insertRef{chambers1998}{aces} \cr \cr
 #' \insertRef{fare1978}{aces} \cr \cr
-#' \insertRef{charnes1985}{aces} \cr \cr
 #' \insertRef{cooper1999}{aces} \cr \cr
 #' \insertRef{lovell1995}{aces} \cr \cr
 #' \insertRef{cooper2011}{aces}
@@ -715,7 +748,7 @@ wam <- function (
 #'
 #' @export
 
-aces_scores <- function (
+get_scores <- function (
     eval_data,
     x,
     y,
@@ -724,12 +757,10 @@ aces_scores <- function (
     method = "aces",
     measure = "rad_out",
     returns = "variable",
-    direction = NULL,
-    weights = NULL,
-    digits = 3
+    direction = NULL
     ) {
 
-  # Possible error messages:
+  # handle errors:
   display_errors_scores (
     data = eval_data,
     x = x,
@@ -738,9 +769,7 @@ aces_scores <- function (
     method = method,
     measure = measure,
     returns = returns,
-    direction = direction,
-    weights = weights,
-    digits = digits
+    direction = direction
     )
 
   # number of inputs
@@ -755,6 +784,9 @@ aces_scores <- function (
 
   # matrix of inputs
   tech_xmat <- as.matrix(object[["technology"]][[method]][["xmat"]])
+
+  # auxiliar variable for using only relevant variables
+  rel_x <- NULL
 
   if (relevant) {
 
@@ -775,10 +807,10 @@ aces_scores <- function (
     split_vars <- unique(unlist(strsplit(participating_vars_names, "_")))
 
     # get the column indices for the unique variables
-    x <- sort(match(split_vars, colnames(xi_degree)))
+    rel_x <- sort(match(split_vars, colnames(xi_degree)))
 
     # update technology
-    tech_xmat <- as.matrix(tech_xmat[, x])
+    tech_xmat <- as.matrix(tech_xmat[, rel_x, drop = FALSE])
 
   }
 
@@ -790,10 +822,53 @@ aces_scores <- function (
   # ======================= #
 
   # matrix of inputs
-  eval_xmat <- as.matrix(eval_data[, x])
+  if (relevant && !is.null(rel_x)) {
+    eval_xmat <- as.matrix(eval_data[, x[rel_x]])
+  } else {
+    eval_xmat <- as.matrix(eval_data[, x])
+  }
 
   # matrix of outputs
   eval_ymat <- as.matrix(eval_data[, y])
+
+  # scaling setup
+  scaling <- object[["control"]][["scale"]]
+
+  if (!is.null(scaling) && scaling$is_scaled) {
+
+    if (relevant) {
+      sx <- scaling$mean_x[rel_x]
+    } else {
+      sx <- scaling$mean_x
+    }
+
+    sy <- scaling$mean_y
+
+    # apply scaling
+    eval_xmat <- sweep(eval_xmat, 2, sx, "/")
+    eval_ymat <- sweep(eval_ymat, 2, sy, "/")
+
+    if (!is.null(direction) && (is.matrix(direction) || is.data.frame(direction))) {
+
+      dir_x <- as.matrix(direction[, 1:nX])
+      dir_y <- as.matrix(direction[, (nX + 1):(nX + nY)])
+
+      if (relevant) {
+        if (ncol(dir_x) == length(scaling$mean_x)) {
+          dir_x <- dir_x[, rel_x, drop = FALSE]
+        }
+      }
+
+      # apply scaling
+      dir_x_scaled <- sweep(dir_x, 2, sx, "/")
+      dir_y_scaled <- sweep(dir_y, 2, sy, "/")
+
+      # rebuild direction vectors
+      direction <- cbind(dir_x_scaled, dir_y_scaled)
+
+    }
+
+  }
 
   if (measure == "rad_out") {
 
@@ -803,7 +878,8 @@ aces_scores <- function (
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
       convexity = TRUE,
-      returns = returns
+      returns = returns,
+      type = "objective"
       )
 
   } else if (measure == "rad_inp") {
@@ -814,12 +890,11 @@ aces_scores <- function (
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
       convexity = TRUE,
-      returns = returns
+      returns = returns,
+      type = "objective"
     )
 
   } else if (measure == "ddf") {
-
-    if (is.null(direction)) direction <- "mean"
 
     scores <- ddf (
       tech_xmat = tech_xmat,
@@ -828,7 +903,8 @@ aces_scores <- function (
       eval_ymat = eval_ymat,
       direction = direction,
       convexity = TRUE,
-      returns = returns
+      returns = returns,
+      type = "objective"
     )
 
   } else if (measure == "rsl_out") {
@@ -839,7 +915,8 @@ aces_scores <- function (
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
       convexity = TRUE,
-      returns = returns
+      returns = returns,
+      type = "objective"
       )
 
   } else if (measure == "rsl_inp") {
@@ -850,20 +927,23 @@ aces_scores <- function (
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
       convexity = TRUE,
-      returns = returns
+      returns = returns,
+      type = "objective"
     )
 
-  } else if (measure == "wam") {
+  } else if (grepl("wam", measure)) {
 
     scores <- wam (
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
       eval_xmat = eval_xmat,
       eval_ymat = eval_ymat,
-      weights = weights,
+      weights = measure,
       convexity = TRUE,
-      returns = returns
+      returns = returns,
+      type = "objective"
     )
+
   }
 
   # model name
@@ -879,7 +959,7 @@ aces_scores <- function (
   # row names of the new data.frame
   rownames(scores) <- row.names(eval_data)
 
-  return(round(scores, digits))
+  return(scores)
 
 }
 
@@ -980,7 +1060,7 @@ rf_aces_scores <- function (
     digits = 3
     ) {
 
-  # Possible error messages:
+  # error handling
   display_errors_scores (
     data = eval_data,
     x = x,

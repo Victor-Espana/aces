@@ -12,14 +12,14 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
+#' @param scale_data
+#' A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.
+#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
 #'
 #' @param model_type
 #' A \code{character} string specifying the nature of the estimated production frontier. It can be either: \code{"envelopment"} or \code{"stochastic"}.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure when fitting the model. It can be either: \code{"add"} or \code{"mul"}.
 #'
 #' @param max_degree
 #' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
@@ -36,14 +36,14 @@
 #' @param err_red
 #' A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs.
 #'
+#' @param kn_grid
+#' Grid of knots to perform ACES. It can be: \code{-1} or a \code{list}.
+#'
 #' @param minspan
 #' A \code{numeric} value specifying the minimum number of observations between two adjacent knots. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.
 #'
 #' @param endspan
 #' A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.
-#'
-#' @param kn_grid
-#' Grid of knots to perform ACES. It can be: \code{-1} or a \code{list}.
 #'
 #' @param kn_penalty
 #' A positive \code{numeric} value specifying the Generalized Cross Validation penalty per knot.
@@ -57,16 +57,16 @@ display_errors_aces <- function (
     data,
     x,
     y,
+    scale_data,
     quick_aces,
-    error_type,
     max_degree,
     inter_cost,
     metric,
     max_terms,
     err_red,
+    kn_grid,
     minspan,
     endspan,
-    kn_grid,
     kn_penalty
     ) {
 
@@ -96,13 +96,12 @@ display_errors_aces <- function (
     warning("Rows with NA values have been omitted .\n")
   }
 
-  if (quick_aces != TRUE && quick_aces != FALSE) {
-    stop("quick_aces must be a boolean")
+  if (scale_data != TRUE && scale_data != FALSE) {
+    stop("scale_data must be a boolean")
   }
 
-  # error_type must be "add" or "mul"
-  if (!is.null(error_type) && !error_type %in% c("add", "mul")) {
-    stop("Not available error_type. Please, check help(\"aces\")")
+  if (quick_aces != TRUE && quick_aces != FALSE) {
+    stop("quick_aces must be a boolean")
   }
 
   # max_degree must be a valid number
@@ -151,51 +150,43 @@ display_errors_aces <- function (
   }
 
   # kn_penalty must be a semi-positive number
-  if (!is.null(kn_penalty) && kn_penalty < 0) {
-    stop("kn_penalty must be greater than 0.")
+  if (is.null(kn_penalty) || kn_penalty < 0) {
+    stop("kn_penalty must be a number equal or greater than 0.")
   }
 
 }
 
-#' @title Error Messaging in Adaptive Constrained Enveloping Splines (ACES) functions II
+#' @title Argument Validation for Efficiency Score Computation
 #'
 #' @description
-#' This function displays error messages if hyperparameters are incorrectly specified in ACES functions aimed at computing efficiency scores.
+#' Validates input data and hyperparameters for efficiency estimation functions in the ACES framework. It halts execution with a descriptive error message if any parameter is misspecified.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' A \code{data.frame} or \code{matrix} containing the DMUs to be evaluated.
 #'
 #' @param x
-#' Column indexes of input variables in \code{data}.
+#' \code{numeric} vector of column indexes for input variables in \code{data}.
 #'
 #' @param y
-#' Column indexes of output variables in \code{data}.
+#' \code{numeric} vector of column indexes for output variables in \code{data}.
 #'
 #' @param object
-#' An \code{aces} or \code{rf-aces} object.
+#' An \code{aces} or \code{rf_aces} object.
 #'
 #' @param method
-#' Model prediction method used to compute predictions of inputs and obtain a new vector of outputs.
+#' Prediction method (\code{"aces"}, \code{"aces_cubic"}, \code{"rf_aces"}, etc.) used to obtain virtual outputs.
 #'
 #' @param measure
-#' Mathematical programming model to compute the efficiency scores.
+#' Mathematical programming model (\code{"rad_out"}, \code{"ddf"}, \code{"rsl_out"}, etc.).
 #'
 #' @param returns
-#' Type of returns to scale for computing the efficiency scores.
+#' Returns to scale assumption: \code{"constant"} (CRS) or \code{"variable"} (VRS).
 #'
 #' @param direction
-#' Vector direction for DMU projection in Directional Distance Function when computing the efficiency scores.
-#'
-#' @param weights
-#' Weights for the additive model.
-#'
-#' @param digits
-#' Number of digits to round efficiency scores.
-#'
-#' @importFrom stats na.omit
+#' Projection vector for DDF.
 #'
 #' @return
-#' This function returns error messages if hyperparameters are incorrectly specified.
+#' None. The function is used for its side effect of generating \code{stop()} messages upon validation failure.
 
 display_errors_scores <- function (
     data,
@@ -205,15 +196,8 @@ display_errors_scores <- function (
     method,
     measure,
     returns,
-    direction,
-    weights,
-    digits
+    direction
     ) {
-
-  # index of variables
-  # inputs are common in all the models
-  # outputs and netputs are common (but interchangeable) in all the models
-  # then, we can select just the first element of the ACES object.
 
   var_indexes <- sort (
     c (
@@ -246,17 +230,29 @@ display_errors_scores <- function (
   if (inherits(object, "aces")) {
     allowed_methods <- c("aces", "aces_cubic", "aces_quintic", "aces_forward")
     if (!(method %in% allowed_methods)) {
-      stop(paste0("Invalid method '", method, "' for object of class 'aces'. ",
-                  "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."))
+      stop (
+        paste0 (
+          "Invalid method '", method, "' for object of class 'aces'. ",
+          "Please choose one of: ", paste(allowed_methods, collapse = ", "), "."
+        )
+      )
     }
   }
 
   # Valid measures
-  valid_measures <- c("rad_out", "rad_inp", "ddf", "rsl_out", "rsl_inp", "wam", "rf_aces_rad_out")
+  valid_measures <- c (
+    "rad_out", "rad_inp", "ddf", "rsl_out", "rsl_inp",
+    "wam_mip", "wam_nor", "wam_ram", "wam_bam",
+    "rf_aces_rad_out"
+    )
 
   if (!(measure %in% valid_measures)) {
-    stop(paste0("Invalid measure '", measure, "'. ",
-                "Please choose one of: ", paste(valid_measures, collapse = ", "), "."))
+    stop (
+      paste0 (
+        "Invalid measure '", measure, "'. ",
+        "Please choose one of: ", paste(valid_measures, collapse = ", "), "."
+        )
+      )
   }
 
   # Enforce compatibility of rf_aces_rad_out with class rf_aces only
@@ -269,20 +265,39 @@ display_errors_scores <- function (
     stop(paste(returns, "is not available. Please, check help(\"aces_scores\")"))
   }
 
-  # direction must be valid
-  if (!is.null(direction) && !direction %in% c("mean", "briec")) {
-    stop(paste(direction, "is not available. Please, check help(\"aces_scores\")"))
+  # direction must be a matrix with size [n x (nX+nY)]
+  if (!is.null(direction)) {
+
+    # Check if it is a valid data structure
+    if (is.matrix(direction) || is.data.frame(direction)) {
+
+      # Check rows: must match evaluated DMUs
+      if (nrow(direction) != nrow(data)) {
+        stop(paste("The direction matrix must have", nrow(data), "rows (one per DMU)."))
+      }
+
+      # Check columns: must be exactly nX + nY
+      if (ncol(direction) != (length(x) + length(y))) {
+        stop(paste("The direction matrix must have", length(x) + length(y), "columns (inputs + outputs)."))
+      }
+
+      # Optional but recommended: check if numeric
+      if (!all(sapply(as.data.frame(direction), is.numeric))) {
+        stop("All elements in the direction matrix must be numeric.")
+      }
+
+    } else {
+
+      stop("Invalid 'direction' type. A numeric matrix or data.frame is required.")
+
+    }
+
+  } else if (measure == "ddf") {
+
+    stop("Directional Distance Function (ddf) requires a 'direction' matrix.")
+
   }
 
-  # weights must be valid
-  if (!is.null(weights) && !weights %in% c("ONE", "MIP", "NOR", "RAM", "BAM")) {
-    stop(paste(weights, "is not available. Please, check help(\"aces_scores\")"))
-  }
-
-  # digits must be a non-negative integer
-  if (!is.numeric(digits) || digits < 0 || floor(digits) != digits) {
-    stop("digits must be a non-negative integer.")
-  }
 }
 
 #' @title Error Messaging in Random-Forest Adaptive Constrained Enveloping Splines (RF-ACES) functions
@@ -299,11 +314,11 @@ display_errors_scores <- function (
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
+#' @param scale_data
+#' A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.
+#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure that the function will use when fitting the model. It can be either: \code{"add"} or \code{"mul"}.
 #'
 #' @param max_degree
 #' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
@@ -347,8 +362,8 @@ display_errors_rf_aces <- function (
     data,
     x,
     y,
+    scale_data,
     quick_aces,
-    error_type,
     max_degree,
     inter_cost,
     metric,
@@ -390,11 +405,6 @@ display_errors_rf_aces <- function (
 
   if (quick_aces != TRUE && quick_aces != FALSE) {
     stop("quick_aces must be a boolean")
-  }
-
-  # error_type must be "add" or "mul"
-  if (!is.null(error_type) && !error_type %in% c("add", "mul")) {
-    stop("Not available error_type. Please, check help(\"aces\")")
   }
 
   # learners must be greater than 0

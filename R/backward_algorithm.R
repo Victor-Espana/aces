@@ -22,6 +22,9 @@
 #' @param dea_scores
 #' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
+#' @param fdh_scores
+#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
 #'
@@ -48,6 +51,7 @@ aces_pruning <- function (
     xi_degree,
     model_type,
     dea_scores,
+    fdh_scores,
     metric,
     forward_model,
     Bp_list,
@@ -259,6 +263,7 @@ aces_pruning <- function (
               B = new_B,
               y_obs = data[, y, drop = F],
               dea_scores = dea_scores,
+              fdh_scores = fdh_scores,
               it_list = new_it_list,
               Bp_list = new_Bp_list,
               shape = shape

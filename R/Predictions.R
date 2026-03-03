@@ -1,121 +1,330 @@
-#' @title Model Prediction for Adaptive Constrained Enveloping Splines (ACES).
+#' @title Compute Efficient Targets using Adaptive Constrained Enveloping Splines (ACES)
 #'
 #' @description
+#' Projects a set of Decision Making Units (DMUs) onto the estimated production frontier. This function calculates the efficient input/output targets required for each DMU to achieve full efficiency, based on the specified ACES model and distance measure.
 #'
-#' This function predicts the expected output using an \code{aces} object.
+#' @param eval_data
+#' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
+#'
+#' @param x
+#' Column indexes of input variables in \code{eval_data}.
+#'
+#' @param y
+#' Column indexes of output variables in \code{eval_data}.
+#'
+#' @param relevant
+#' A \code{logical} indicating if only relevant variables should be included in the technology definition.
 #'
 #' @param object
 #' An \code{aces} object.
 #'
-#' @param newdata
-#' A \code{data.frame} containing the input and netput variables to predict on.
-#'
-#' @param x
-#' Column indexes of input variables in \code{data}.
-#'
 #' @param method
-#' Model for prediction:
+#' Model prediction method used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
-#' \item{\code{"aces_cubic"}}: Cubic Smoothed Adaptive Constrained Enveloping Splines.
-#' \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
+#' \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
 #' }
 #'
-#' @return
+#' @param measure
+#' Mathematical programming model to calculate scores:
+#' \itemize{
+#' \item{\code{rad_out}} Output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+#' \item{\code{rad_inp}} Input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
+#' \item{\code{ddf}}     Directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
+#' \item{\code{rsl_out}} Output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+#' \item{\code{rsl_inp}} Input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
+#' \item{\code{wam_mip}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
+#' \item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
+#' \item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
+#' \item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
+#' }
 #'
-#' A \code{data.frame} with the predicted values through the Adaptive Constrained Enveloping Splines model.
+#' @param returns
+#' Type of returns to scale:
+#' \itemize{
+#' \item{\code{"constant"}} Constant returns to scale.
+#' \item{\code{"variable"}} Variable returns to scale (default).
+#' }
+#'
+#' @param direction
+#' Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}. A \code{matrix} or \code{data.frame} with \code{n} rows (number of DMUs to be evaluated) and \code{nX + nY} columns, containing the direction of the input variables followed by the direction of the output variables in the same order as they appear in the data.
+#'
+#' @references
+#'
+#' \insertRef{espana2024}{aces} \cr \cr
+#' \insertRef{banker1984}{aces} \cr \cr
+#' \insertRef{chambers1998}{aces} \cr \cr
+#' \insertRef{fare1978}{aces} \cr \cr
+#' \insertRef{cooper1999}{aces} \cr \cr
+#' \insertRef{lovell1995}{aces} \cr \cr
+#' \insertRef{cooper2011}{aces}
+#'
+#' @importFrom dplyr summarise %>% mutate_if
+#' @importFrom stats median quantile sd
+#'
+#' @return
+#' A \code{data.frame} with input and output targets computed through an Adaptive Constrained Enveloping Splines model.
 #'
 #' @export
-
-predict.aces <- function (
-    object,
-    newdata,
+#'
+get_targets <- function (
+    eval_data,
     x,
-    method = "aces"
+    y,
+    relevant = FALSE,
+    object,
+    method = "aces",
+    measure = "rad_out",
+    returns = "variable",
+    direction = NULL
     ) {
 
-  # number of outputs
-  nY <- length(object[["data"]][["y"]])
-
-  # determine error type
-  error_type <- object[["control"]][["error_type"]]
-
-  # output predictions
-  y_hat_aux <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
-
-  # check if training and test names are equal
-  tr_names <- object[["data"]][["xnames"]]
-  ts_names <- colnames(newdata)[x]
-
-  if (!identical(sort(tr_names), sort(ts_names))) {
-    stop("Different variable names in training data and newdata.")
-  }
-
-  # data in [x, y] format with interaction and / or transformation of variables included
-  data <- set_data (
-    data = newdata,
+  # handle errors:
+  display_errors_scores (
+    data = eval_data,
     x = x,
-    y = NULL,
-    max_degree = object[["control"]][["max_degree"]],
-    error_type = error_type
+    y = y,
+    object = object,
+    method = method,
+    measure = measure,
+    returns = returns,
+    direction = direction
   )
 
-  # technology
-  tecno <- object[["technology"]][[method]]
+  # number of inputs
+  nX <- length(x)
 
-  if (!method %in% c("aces_forward", "aces", "aces_cubic", "aces_quintic")) {
-    stop("Not available method. Please, check help(\"predict\")")
+  # number of outputs
+  nY <- length(y)
+
+  # =================== #
+  # Data for technology #
+  # =================== #
+
+  # matrix of inputs
+  tech_xmat <- as.matrix(object[["technology"]][[method]][["xmat"]])
+
+  # auxiliar variable for using only relevant variables
+  rel_x <- NULL
+
+  if (relevant) {
+
+    # set of knots
+    knots <- object[["methods"]][[method]][["knots"]]
+
+    # variable degree
+    xi_degree <- object[["control"]][["xi_degree"]]
+    colnames(xi_degree) <- names(object[["control"]][["kn_grid"]])
+
+    # check participating variables
+    participating_vars <- intersect(xi_degree[1, ], unique(knots$xi))
+
+    # names of participant variables
+    participating_vars_names <- colnames(xi_degree)[participating_vars]
+
+    # extract individual variables assuming interaction variable names use "_"
+    split_vars <- unique(unlist(strsplit(participating_vars_names, "_")))
+
+    # get the column indices for the unique variables
+    rel_x <- sort(match(split_vars, colnames(xi_degree)))
+
+    # update technology
+    tech_xmat <- as.matrix(tech_xmat[, rel_x, drop = FALSE])
+
   }
 
-  # model
-  aces_model <- object[["methods"]][[method]]
+  # matrix of outputs
+  tech_ymat <- as.matrix(object[["technology"]][[method]][["ymat"]])
 
-  # set of knots
-  knots <- aces_model[["knots"]]
+  # ======================= #
+  # Data for evaluated DMUs #
+  # ======================= #
 
-  # matrix of basis function
-  B <- set_Bmat (
-    newdata = data,
-    model = aces_model,
-    knots = knots,
-    method = method
-    )
-
-  if (error_type == "add") {
-
-    for (out in 1:nY) {
-      y_hat_aux[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
-    }
-
+  # matrix of inputs
+  if (relevant && !is.null(rel_x)) {
+    eval_xmat <- as.matrix(eval_data[, x[rel_x]])
   } else {
+    eval_xmat <- as.matrix(eval_data[, x])
+  }
 
-    for (out in 1:nY) {
-      y_hat_aux[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
-      y_hat_aux[, out] <- exp(y_hat_aux[, out])
+  # matrix of outputs
+  eval_ymat <- as.matrix(eval_data[, y])
+
+  # scaling setup
+  scaling <- object[["control"]][["scale"]]
+
+  if (!is.null(scaling) && scaling$is_scaled) {
+
+    if (relevant) {
+      sx <- scaling$mean_x[rel_x]
+    } else {
+      sx <- scaling$mean_x
+    }
+
+    sy <- scaling$mean_y
+
+    # apply scaling
+    eval_xmat <- sweep(eval_xmat, 2, sx, "/")
+    eval_ymat <- sweep(eval_ymat, 2, sy, "/")
+
+    if (!is.null(direction) && (is.matrix(direction) || is.data.frame(direction))) {
+
+      dir_x <- as.matrix(direction[, 1:nX])
+      dir_y <- as.matrix(direction[, (nX + 1):(nX + nY)])
+
+      if (relevant) {
+        if (ncol(dir_x) == length(scaling$mean_x)) {
+          dir_x <- dir_x[, rel_x, drop = FALSE]
+        }
+      }
+
+      # apply scaling
+      dir_x_scaled <- sweep(dir_x, 2, sx, "/")
+      dir_y_scaled <- sweep(dir_y, 2, sy, "/")
+
+      # rebuild direction vectors
+      direction <- cbind(dir_x_scaled, dir_y_scaled)
+
     }
 
   }
 
-  # compute DEA scores
-  scores <- rad_out (
-    tech_xmat = tecno[["xmat"]],
-    tech_ymat = tecno[["ymat"]],
-    eval_xmat = as.matrix(newdata[, x]),
-    eval_ymat = as.matrix(y_hat_aux),
-    convexity = TRUE,
-    returns = "variable"
+  # ========== #
+  # Get Scores #
+  # ========== #
+
+  if (measure == "rad_out") {
+
+    scores <- rad_out (
+      tech_xmat = tech_xmat,
+      tech_ymat = tech_ymat,
+      eval_xmat = eval_xmat,
+      eval_ymat = eval_ymat,
+      convexity = TRUE,
+      returns = returns,
+      type = "variables"
+    )[, 1]
+
+  } else if (measure == "rad_inp") {
+
+    scores <- rad_inp (
+      tech_xmat = tech_xmat,
+      tech_ymat = tech_ymat,
+      eval_xmat = eval_xmat,
+      eval_ymat = eval_ymat,
+      convexity = TRUE,
+      returns = returns,
+      type = "variables"
+    )[, 1]
+
+  } else if (measure == "ddf") {
+
+    scores <- ddf (
+      tech_xmat = tech_xmat,
+      tech_ymat = tech_ymat,
+      eval_xmat = eval_xmat,
+      eval_ymat = eval_ymat,
+      direction = direction,
+      convexity = TRUE,
+      returns = returns,
+      type = "variables"
+    )[, 1]
+
+  } else if (measure == "rsl_out") {
+
+    scores <- rsl_out (
+      tech_xmat = tech_xmat,
+      tech_ymat = tech_ymat,
+      eval_xmat = eval_xmat,
+      eval_ymat = eval_ymat,
+      convexity = TRUE,
+      returns = returns,
+      type = "variables"
+    )[, 1:nY]
+
+  } else if (measure == "rsl_inp") {
+
+    scores <- rsl_inp (
+      tech_xmat = tech_xmat,
+      tech_ymat = tech_ymat,
+      eval_xmat = eval_xmat,
+      eval_ymat = eval_ymat,
+      convexity = TRUE,
+      returns = returns,
+      type = "variables"
+    )[, 1:nX]
+
+  } else if (grepl("wam", measure)) {
+
+    scores <- wam (
+      tech_xmat = tech_xmat,
+      tech_ymat = tech_ymat,
+      eval_xmat = eval_xmat,
+      eval_ymat = eval_ymat,
+      weights = measure,
+      convexity = TRUE,
+      returns = returns,
+      type = "variables"
+    )[, 1:(nX + nY)]
+
+  }
+
+  # =========== #
+  # Get Targets #
+  # =========== #
+
+  if (measure == "rad_out") {
+    x_hat <- eval_xmat
+    y_hat <- eval_ymat * scores
+
+  } else if (measure == "rad_inp") {
+    x_hat <- eval_xmat * scores
+    y_hat <- eval_ymat
+
+  } else if (measure == "ddf") {
+    x_hat <- eval_xmat - scores * direction[, 1:nX]
+    y_hat <- eval_ymat + scores * direction[, (nX + 1):(nX + nY)]
+
+  } else if (measure == "rsl_out") {
+    x_hat <- eval_xmat
+    y_hat <- eval_ymat * scores
+
+  } else if (measure == "rsl_inp") {
+    x_hat <- eval_xmat * scores
+    y_hat <- eval_ymat
+
+  } else if (grepl("wam", measure)) {
+
+    # extract scaled slacks directly from the linear programming solution
+    slacks_x <- scores[, 1:nX, drop = FALSE]
+    slacks_y <- scores[, (nX + 1):(nX + nY), drop = FALSE]
+
+    x_hat <- eval_xmat - slacks_x
+    y_hat <- eval_ymat + slacks_y
+
+  }
+
+  if (!is.null(scaling) && scaling$is_scaled) {
+
+    # restore the targets to their original scale
+    x_hat <- sweep(x_hat, 2, sx, "*")
+    y_hat <- sweep(y_hat, 2, sy, "*")
+
+  }
+
+  # save names
+  colnames(x_hat) <- paste(object[["data"]][["xnames"]][rel_x], "_hat", sep = "")
+  colnames(y_hat) <- paste(object[["data"]][["ynames"]], "_hat", sep = "")
+
+  # return predictions
+  targets <- data.frame (
+    x_hat,
+    y_hat
   )
 
-  # remove unfeasibilities
-  scores[scores < -10000 | scores > 10000] <- NA
-
-  # predictions
-  y_hat <- as.data.frame(y_hat_aux * scores)
-
-  names(y_hat) <- paste(object[["data"]][["ynames"]], "_pred", sep = "")
-
-  return(y_hat)
+  return(targets)
 
 }
 
@@ -158,9 +367,6 @@ predict.rf_aces <- function (
   # number of outputs
   nY <- length(object[["data"]][["y"]])
 
-  # determine error type
-  error_type <- object[["control"]][["error_type"]]
-
   # check if training and test names are equal
   tr_names <- object[["data"]][["xnames"]]
   ts_names <- colnames(newdata)[c(x)]
@@ -169,13 +375,39 @@ predict.rf_aces <- function (
     stop("Different variable names in training data and newdata.")
   }
 
+  # =========================== #
+  # 1. SCALING INPUTS           #
+  # =========================== #
+
+  # scaling parameters
+  scaling <- object[["control"]][["scale"]]
+
+  # data to work with
+  data_work <- newdata
+
+  if (!is.null(scaling) && scaling$is_scaled) {
+
+    # original inputs
+    raw_x_pred <- as.matrix(data_work[, x])
+
+    # scaled inputs
+    scaled_x_pred <- sweep(raw_x_pred, 2, scaling$mean_x, "/")
+
+    # update data
+    data_work[, x] <- scaled_x_pred
+
+  }
+
+  # =========================== #
+  # 2. PREDICTION               #
+  # =========================== #
+
   # data in [x, y] format with interaction of variables included
   data <- set_data (
-    data = newdata,
+    data = data_work,
     x = x,
     y = NULL,
-    max_degree = object[["control"]][["max_degree"]],
-    error_type = error_type
+    max_degree = object[["control"]][["max_degree"]]
   )
 
   # technology
@@ -207,19 +439,9 @@ predict.rf_aces <- function (
       method = method
     )
 
-    if (error_type == "add") {
-
-      for (out in 1:nY) {
-        y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
-      }
-
-    } else {
-
-      for (out in 1:nY) {
-        y_hat[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
-        y_hat[, out] <- exp(y_hat[, out])
-      }
-
+    # prediction
+    for (out in 1:nY) {
+      y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
     }
 
     y_hat_RF[[t]] <- as.data.frame(y_hat)
@@ -258,6 +480,14 @@ predict.rf_aces <- function (
 
   # predictions
   y_hat <- as.data.frame(y_hat_aux * scores)
+
+  # =========================== #
+  # 3. RESTORE ORIGINAL SCALE   #
+  # =========================== #
+
+  if (!is.null(scaling) && scaling$is_scaled) {
+    y_hat <- sweep(y_hat, 2, scaling$mean_y, "*")
+  }
 
   names(y_hat) <- paste(object[["data"]][["ynames"]], "_pred", sep = "")
 

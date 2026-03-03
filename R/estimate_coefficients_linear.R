@@ -16,6 +16,9 @@
 #' @param dea_scores
 #' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
+#' @param fdh_scores
+#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
 #'
@@ -34,6 +37,7 @@ estimate_coefficients <- function (
     B,
     y_obs,
     dea_scores,
+    fdh_scores,
     it_list,
     Bp_list,
     shape
@@ -45,6 +49,7 @@ estimate_coefficients <- function (
       B = B,
       y_obs = y_obs,
       dea_scores = dea_scores,
+      fdh_scores = fdh_scores,
       it_list = it_list,
       Bp_list = Bp_list,
       shape = shape
@@ -81,6 +86,9 @@ estimate_coefficients <- function (
 #' @param dea_scores
 #' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
+#' @param fdh_scores
+#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
 #'
@@ -98,6 +106,7 @@ estimate_coefficients_envelopment <- function (
     B,
     y_obs,
     dea_scores,
+    fdh_scores,
     it_list,
     Bp_list,
     shape
@@ -129,21 +138,25 @@ estimate_coefficients_envelopment <- function (
 
   for (out in 1:nY) {
 
+    # envelopment indicator
+    env_ind <- fdh_scores[, out] < 1 + 1e-5
+    num_env <- sum(env_ind)
+
     # select an output
-    y_ind <- y_obs[, out]
+    y_ind <- y_obs[env_ind, out]
 
     # ==================================================== #
     # vars: c(coef_0, coef_1, ..., coef_P, e_1, ... , e_n) #
     # ==================================================== #
 
-    objVal <- c(rep(0, p), deaw[, out])
+    objVal <- c(rep(0, p), deaw[env_ind, out])
 
     # ==================================================== #
     # A: envelopment + concavity + monotonicity            #
     # ==================================================== #
 
     # envelopment: y_hat - e = y
-    EMat <- cbind(B, diag(rep(- 1, N), N))
+    EMat <- cbind(B[env_ind, ], diag(rep(- 1, num_env), num_env))
 
     # matrix of coefficients
     Amat <- rbind(EMat)
@@ -154,7 +167,7 @@ estimate_coefficients_envelopment <- function (
       MMat <- monotonocity_matrix (
         it_list = it_list,
         Bp_list = Bp_list,
-        N = N
+        N = num_env
       )
 
       # add MMat to Amat
@@ -167,7 +180,7 @@ estimate_coefficients_envelopment <- function (
 
       CMat <- concavity_matrix(
         Bp_list = Bp_list,
-        N = N
+        N = num_env
       )
 
       # add CMat to Amat
@@ -179,13 +192,13 @@ estimate_coefficients_envelopment <- function (
     # b: envelopment + concavity + monotonicity            #
     # ==================================================== #
 
-    bvec <- c(y_ind, rep(0, nrow(Amat) - N))
+    bvec <- c(y_ind, rep(0, nrow(Amat) - num_env))
 
     # ==================================================== #
     # directions of inequalities                           #
     # ==================================================== #
 
-    dirs <- c(rep("==", N), rep(">=", nrow(Amat) - N))
+    dirs <- c(rep("==", num_env), rep(">=", nrow(Amat) - num_env))
 
     # ==================================================== #
     # lower and upper bounds                               #
@@ -206,13 +219,9 @@ estimate_coefficients_envelopment <- function (
     )
 
     if (sols[["status"]] == 0) {
-
       coefs[, out] <- sols$solution[1:p]
-
     } else {
-
       coefs[, out] <- rep(0, p)
-
     }
 
   }

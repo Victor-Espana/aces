@@ -15,15 +15,11 @@
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
+#' @param scale_data
+#' A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.
+#'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure to use. Options are:
-#' \itemize{
-#'   \item{\code{"add"}}: Additive error structure.
-#'   \item{\code{"mul"}}: Multiplicative error structure.
-#' }
 #'
 #' @param mul_BF
 #' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
@@ -49,7 +45,6 @@
 #' \itemize{
 #'   \item{\code{mono}}: A \code{logical} indicating if non-decreasing monotonicity should be enforced.
 #'   \item{\code{conc}}: A \code{logical} indicating if concavity should be enforced.
-#'   \item{\code{ptto}}: A \code{logical} indicating if the estimator should satisfy \code{f(0) = 0}.
 #' }
 #'
 #' @param learners
@@ -120,8 +115,8 @@ rf_aces <- function (
     data,
     x,
     y,
+    scale_data = TRUE,
     quick_aces = TRUE,
-    error_type = "add",
     mul_BF = list (
       "max_degree" = 1,
       "inter_cost" = 0.05
@@ -129,8 +124,7 @@ rf_aces <- function (
     metric = "mse",
     shape = list (
       "mono" = TRUE,
-      "conc" = TRUE,
-      "ptto" = FALSE
+      "conc" = TRUE
       ),
     learners = 100,
     bag_size = nrow(data),
@@ -146,13 +140,16 @@ rf_aces <- function (
     endspan = - 1
     ) {
 
-  # possible error messages:
+  # ====================== #
+  # DISPLAY ERRORS RF-ACES #
+  # ====================== #
+
   display_errors_rf_aces (
     data = data,
     x = x,
     y = y,
+    scale_data = scale_data,
     quick_aces = quick_aces,
-    error_type = error_type,
     max_degree = mul_BF[["max_degree"]],
     inter_cost = mul_BF[["inter_cost"]],
     metric = metric,
@@ -166,11 +163,38 @@ rf_aces <- function (
     kn_grid = kn_grid
   )
 
-  if (shape[["ptto"]]) {
-    data <- rbind(data, rep(1e-10, ncol(data)))
+  # =================== #
+  #    SCALING SETUP    #
+  # =================== #
+
+  # Factores por defecto (Neutros)
+  sx <- rep(1, length(x))
+  sy <- rep(1, length(y))
+
+  # Copia de trabajo
+  data_algo <- data
+
+  if (scale_data) {
+    # 1. Extraer matrices crudas
+    raw_x <- as.matrix(data[, x])
+    raw_y <- as.matrix(data[, y])
+
+    # 2. Calcular factores (Media)
+    sx <- colMeans(raw_x, na.rm = TRUE)
+    sx[sx == 0] <- 1
+
+    sy <- colMeans(raw_y, na.rm = TRUE)
+    sy[sy == 0] <- 1
+
+    # 3. Aplicar escalado
+    data_algo[, x] <- sweep(raw_x, 2, sx, "/")
+    data_algo[, y] <- sweep(raw_y, 2, sy, "/")
   }
 
-  # RF-ACES models
+  # ========= #
+  # ALGORITHM #
+  # ========= #
+
   RF_ACES <- vector("list", learners)
 
   # Progress Bar
@@ -211,14 +235,12 @@ rf_aces <- function (
       x_vars = x,
       y_vars = y,
       quick_aces = quick_aces,
-      error_type = error_type,
       max_degree = mul_BF[["max_degree"]],
       inter_cost = mul_BF[["inter_cost"]],
       metric = metric,
       shape = list (
         "mono" = shape[["mono"]],
-        "conc" = shape[["conc"]],
-        "ptto" = shape[["ptto"]]
+        "conc" = shape[["conc"]]
       ),
       max_feats = max_feats,
       max_terms = max_terms,
@@ -340,8 +362,7 @@ rf_aces <- function (
       data = data,
       x = x,
       y = y,
-      max_degree = 1,
-      error_type = "add"
+      max_degree = 1
     )
   )
 
@@ -393,7 +414,6 @@ rf_aces <- function (
 
   RF_ACES[["control"]] <- list (
     "quick_aces" = quick_aces,
-    "error_type" = error_type,
     "max_degree" = mul_BF[["max_degree"]],
     "inter_cost" = mul_BF[["inter_cost"]],
     "xi_degree" = RF_ACES[["models"]][[1]][["control"]][["xi_degree"]],
@@ -409,8 +429,14 @@ rf_aces <- function (
     "endspan" = endspan,
     "kn_grid" = kn_grid,
     "kn_penalty" = NULL,
+    "psi" = 0.05,
     "wc" = NULL,
-    "wq" = NULL
+    "wq" = NULL,
+    scale = list (
+      is_scaled = scale_data,
+      mean_x = sx,
+      mean_y = sy
+    )
   )
 
   # change the order
@@ -440,9 +466,6 @@ rf_aces <- function (
 #'
 #' @param quick_aces
 #' A \code{logical} indicating if the fast version of ACES should be employed.
-#'
-#' @param error_type
-#' A \code{character} string specifying the error structure when fitting the model.
 #'
 #' @param max_degree
 #' Maximum degree of interaction between variables.
@@ -487,7 +510,6 @@ rf_aces_algorithm <- function (
     x_vars,
     y_vars,
     quick_aces,
-    error_type,
     max_degree,
     inter_cost,
     metric,
@@ -508,8 +530,7 @@ rf_aces_algorithm <- function (
     data = data,
     x = x_vars,
     y = y_vars,
-    max_degree = max_degree,
-    error_type = error_type
+    max_degree = max_degree
   )
 
   # samples size
@@ -521,11 +542,15 @@ rf_aces_algorithm <- function (
 
   # maximum features before and after interaction variables
   max_feats <- max_feats / length(x_vars)
-  max_feats <- max_feats * length(x)
+  max_feats <- round(max_feats * length(x), 0)
 
   # set number of inputs and outputs
   nX <- length(x)
   nY <- length(y)
+
+  # ================== #
+  # VARIABLE FILTERING #
+  # ================== #
 
   # variable importance
   var_imp <- matrix (
@@ -593,6 +618,10 @@ rf_aces_algorithm <- function (
 
   x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[- x_drop]
 
+  # ========== #
+  # DEA SCORES #
+  # ========== #
+
   table_scores[, 1] <- rad_out (
     tech_xmat = as.matrix(DMUs[, x_filtered]),
     tech_ymat = as.matrix(DMUs[, y_vars]),
@@ -617,6 +646,39 @@ rf_aces_algorithm <- function (
 
   # weights for error metrics based on DEA
   dea_scores <-  table_scores[, 2:ncol(table_scores)]
+
+  # ========== #
+  # FDH SCORES #
+  # ========== #
+
+  table_scores[, 1] <- rad_out (
+    tech_xmat = as.matrix(DMUs[, x_filtered]),
+    tech_ymat = as.matrix(DMUs[, y_vars]),
+    eval_xmat = as.matrix(DMUs[, x_filtered]),
+    eval_ymat = as.matrix(DMUs[, y_vars]),
+    convexity = FALSE,
+    returns = "variable"
+  )[, 1]
+
+  for (out in 1:nY) {
+
+    table_scores[, 1 + out] <- rad_out (
+      tech_xmat = as.matrix(DMUs[, x_filtered]),
+      tech_ymat = as.matrix(DMUs[, y_vars[out]]),
+      eval_xmat = as.matrix(DMUs[, x_filtered]),
+      eval_ymat = as.matrix(DMUs[, y_vars[out]]),
+      convexity = FALSE,
+      returns = "variable"
+    )[, 1]
+
+  }
+
+  # weights for error metrics based on DEA
+  fdh_scores <-  table_scores[, 2:ncol(table_scores), drop = FALSE]
+
+  # ==================== #
+  # VARIABLE INTERACTION #
+  # ==================== #
 
   # matrix with:
   # row 1: the index of the variable
@@ -753,6 +815,7 @@ rf_aces_algorithm <- function (
         inter_cost = inter_cost,
         model_type = "envelopment",
         dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
         metric = metric,
         forward_model = rf_aces,
         Bp_list = Bp_list,
@@ -783,6 +846,7 @@ rf_aces_algorithm <- function (
         inter_cost = inter_cost,
         model_type = "envelopment",
         dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
         metric = metric,
         forward_model = rf_aces,
         Bp_list = Bp_list,
@@ -876,9 +940,7 @@ rf_aces_algorithm <- function (
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces[["Bmatx"]] %*% rf_aces[["coefs"]],
-    error_type = error_type,
-    table_scores = table_scores,
-    ptto = shape[["ptto"]]
+    table_scores = table_scores
   )
 
   # ======================= #
@@ -935,9 +997,7 @@ rf_aces_algorithm <- function (
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_cubic[["Bmatx"]] %*% rf_aces_cubic[["coefs"]],
-    error_type = error_type,
-    table_scores = table_scores,
-    ptto = shape[["ptto"]]
+    table_scores = table_scores
   )
 
   rf_aces_quintic <- quintic_aces (
@@ -960,9 +1020,7 @@ rf_aces_algorithm <- function (
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_quintic[["Bmatx"]] %*% rf_aces_quintic[["coefs"]],
-    error_type = error_type,
-    table_scores = table_scores,
-    ptto = shape[["ptto"]]
+    table_scores = table_scores
   )
 
   # =========== #
@@ -974,7 +1032,6 @@ rf_aces_algorithm <- function (
     x = x_vars,
     y = y_vars,
     quick_aces = quick_aces,
-    error_type = error_type,
     max_degree = max_degree,
     inter_cost = inter_cost,
     xi_degree = xi_degree,
@@ -1108,6 +1165,9 @@ compute_oob <- function (
 #' @param repeats
 #' Number of times the variable importance procedure is repeated.
 #'
+#' @param normalize
+#' A \code{logical} value indicating whether to rescale the importance scores so that the most important variable has a value of 100 and all other variables are expressed relative to it.
+#'
 #' @references
 #' \insertRef{breiman2001}{aces} \cr
 #'
@@ -1119,14 +1179,14 @@ rf_aces_varimp <- function (
     x,
     y,
     object,
-    repeats = 1
+    repeats = 1,
+    normalize = TRUE
     ) {
 
   # RF-ACES configuration
   control_features <- object[["control"]]
 
   quick_aces <- control_features[["quick_aces"]]
-  error_type <- control_features[["error_type"]]
   max_degree <- control_features[["max_degree"]]
   inter_cost <- control_features[["inter_cost"]]
   metric <- control_features[["metric"]]
@@ -1153,11 +1213,12 @@ rf_aces_varimp <- function (
   # out-of-bag error of the complete model
   oob <- object[["forest"]][[length(object[["forest"]])]][["OOB"]]
 
-  # out-of-bag excluding the j-th input variable
-  oob_j <- c()
-
   # compute oob shuffling each variable "j"
   for (j in 1:length(x)) {
+
+    # out-of-bag excluding the j-th input variable
+    oob_j <- c()
+
     for (n in 1:repeats) {
 
       print (
@@ -1176,7 +1237,6 @@ rf_aces_varimp <- function (
         x = x,
         y = y,
         quick_aces = quick_aces,
-        error_type = error_type,
         mul_BF = list (
           "max_degree" = max_degree,
           "inter_cost" = inter_cost
@@ -1194,19 +1254,47 @@ rf_aces_varimp <- function (
         endspan = endspan
         )
 
-        # out-of-bag error for the model with the jth variable shuffled
+        # out-of-bag error for the model with the j-th variable shuffled
         oob_j <- c(oob_j, model_j[["forest"]][[length(model_j[["forest"]])]][["OOB"]])
 
       }
 
       # add oob_j to the matrix of variable importance
-      mat_varimp[j, "importance"] <- round(100 * ((mean(oob_j) - oob) / mean(oob_j)), 2)
+      mat_varimp[j, "importance"] <- round(100 * ((mean(oob_j) - oob) / oob), 2)
 
   }
 
-  ranking <- mat_varimp[order(mat_varimp[, 1], decreasing = TRUE), ]
+  # ranking of variable importance
+  var_ord <- order(mat_varimp[, 1], decreasing = TRUE, na.last = TRUE)
 
-  return(rankings)
+  ranking <- data.frame(
+    variable   = rownames(mat_varimp)[var_ord],
+    importance = as.numeric(mat_varimp[var_ord, 1]),
+    row.names  = NULL,
+    check.names = FALSE
+  )
+
+  if (normalize) {
+
+    imp <- ranking[,"importance"]
+
+    # shift negative values
+    mn <- suppressWarnings(min(imp[is.finite(imp)], na.rm = TRUE))
+    if (is.finite(mn) && mn < 0) {
+      imp <- imp - mn  # ahora imp >= 0
+    }
+
+    # scale [0,100]
+    mx <- suppressWarnings(max(imp[is.finite(imp)], na.rm = TRUE))
+    if (is.finite(mx) && mx > 0) {
+      ranking[,"importance"] <- round(100 * imp / mx, 2)
+    } else {
+      warning("Normalization skipped: non-positive or non-finite max after shift.")
+      ranking[,"importance"] <- round(imp, 2)
+    }
+  }
+
+  return(ranking)
 
 }
 
@@ -1295,8 +1383,7 @@ rf_aces_p_predict <- function (
       data = newdata,
       x = x,
       y = y,
-      max_degree = 1,
-      error_type = "add"
+      max_degree = 1
     )
   )
 
@@ -1336,16 +1423,12 @@ rf_aces_p_predict <- function (
   # number of outputs
   nY <- length(RF_ACES[["data"]][["y"]])
 
-  # determine error type
-  error_type <- RF_ACES[["control"]][["error_type"]]
-
   # data in [x, y] format with interaction of variables included
   data <- set_data (
     data = newdata,
     x = x,
     y = NULL,
-    max_degree = RF_ACES[["control"]][["max_degree"]],
-    error_type = error_type
+    max_degree = RF_ACES[["control"]][["max_degree"]]
   )
 
   # technology
@@ -1377,19 +1460,8 @@ rf_aces_p_predict <- function (
       method = method
     )
 
-    if (error_type == "add") {
-
-      for (out in 1:nY) {
-        y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
-      }
-
-    } else {
-
-      for (out in 1:nY) {
-        y_hat[, out] <- B %*% aces_model[["coefs"]][, out, drop = F]
-        y_hat[, out] <- exp(y_hat[, out])
-      }
-
+    for (out in 1:nY) {
+      y_hat[, out] <- pmax(0, B %*% aces_model[["coefs"]][, out, drop = F])
     }
 
     y_hat_RF[[t]] <- as.data.frame(y_hat)

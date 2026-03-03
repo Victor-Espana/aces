@@ -23,7 +23,10 @@
 #' A \code{character} string specifying the nature of the production frontier.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A \code{matrix} containing DEA-VRS scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
+#' @param fdh_scores
+#' A \code{matrix} containing FDH scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param metric
 #' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
@@ -74,6 +77,7 @@ add_basis_function <- function (
     inter_cost,
     model_type,
     dea_scores,
+    fdh_scores,
     metric,
     forward_model,
     Bp_list,
@@ -271,6 +275,7 @@ add_basis_function <- function (
         B = new_B,
         y_obs = data[, y, drop = F],
         dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
         it_list = it_list,
         Bp_list = Bp_list_aux,
         shape = shape

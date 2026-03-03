@@ -14,7 +14,7 @@
 #' A \code{matrix} of the observed output data.
 #'
 #' @param dea_scores
-#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param n_pair
 #' An \code{integer} specifying the number of coefficients associated with the paired basis functions.
@@ -78,7 +78,7 @@ estimate_coefficients_smoothed <- function (
 #' A \code{matrix} of the observed output data.
 #'
 #' @param dea_scores
-#' An indicator vector with ones for efficient DMUs and zeros for inefficient DMUs.
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param n_pair
 #' An \code{integer} specifying the number of coefficients associated with the paired basis functions.
