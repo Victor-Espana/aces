@@ -9,6 +9,7 @@ cubic_aces(
   x,
   y,
   dea_scores,
+  fdh_scores,
   model_type,
   metric,
   shape,
@@ -26,7 +27,9 @@ cubic_aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{dea_scores}{An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.}
+\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+
+\item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
 

@@ -133,7 +133,10 @@ set_triplet_knots <- function (
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param dea_scores
-#' An indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
+#' @param fdh_scores
+#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param model_type
 #' A \code{character} string specifying the nature of the production frontier that the function will estimate.
@@ -172,6 +175,7 @@ cubic_aces <- function (
     x,
     y,
     dea_scores,
+    fdh_scores,
     model_type,
     metric,
     shape,
@@ -296,6 +300,7 @@ cubic_aces <- function (
         B = B[, c(1, paired, not_paired)],
         y = data[, y, drop = F],
         dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
         it_list = NULL,
         Bp_list = NULL,
         shape = shape
@@ -456,7 +461,10 @@ create_cubic_basis <- function (
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param dea_scores
-#' Indicator vector with 1s for efficient DMUs and 0s for inefficient DMUs.
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#'
+#' @param fdh_scores
+#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param model_type
 #' A \code{character} string specifying the nature of the production frontier that the function will estimate.
@@ -497,6 +505,7 @@ quintic_aces <- function (
     x,
     y,
     dea_scores,
+    fdh_scores,
     model_type,
     metric,
     shape,
@@ -621,6 +630,7 @@ quintic_aces <- function (
         B = B[, c(1, paired, not_paired)],
         y = data[, y, drop = F],
         dea_scores = dea_scores,
+        fdh_scores = fdh_scores,
         it_list = NULL,
         Bp_list = NULL,
         shape = shape

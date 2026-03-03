@@ -11,6 +11,7 @@ aces_pruning(
   xi_degree,
   model_type,
   dea_scores,
+  fdh_scores,
   metric,
   forward_model,
   Bp_list,
@@ -30,6 +31,8 @@ aces_pruning(
 \item{model_type}{A \code{character} string specifying the nature of the production frontier.}
 
 \item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+
+\item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 

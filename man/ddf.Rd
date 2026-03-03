@@ -4,7 +4,16 @@
 \alias{ddf}
 \title{The Directional Distance Function}
 \usage{
-ddf(tech_xmat, tech_ymat, eval_xmat, eval_ymat, direction, convexity, returns)
+ddf(
+  tech_xmat,
+  tech_ymat,
+  eval_xmat,
+  eval_ymat,
+  direction,
+  convexity,
+  returns,
+  type
+)
 }
 \arguments{
 \item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
@@ -15,19 +24,17 @@ ddf(tech_xmat, tech_ymat, eval_xmat, eval_ymat, direction, convexity, returns)
 
 \item{eval_ymat}{A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.}
 
-\item{direction}{Direction of the vector to project on the frontier. Options are:
-\itemize{
-\item{\code{"mean"}} Projection vector given by the average value of inputs and outputs of all DMUs.
-\item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
-}}
+\item{direction}{Direction of the vector to project on the frontier.}
 
 \item{convexity}{A \code{logical} value indicating if a convex technology is assumed.}
 
-\item{returns}{Type of returns to scale.}
+\item{returns}{Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+
+\item{type}{A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.}
 }
 \value{
 A \code{vector} of \code{"numeric"} scores computed through the directional distance function in the envelopment format.
 }
 \description{
-This function computes efficiency scores through the directional distance function in the envelopment format.
+This function computes efficiency scores through the Directional Distance Function in the envelopment format.
 }

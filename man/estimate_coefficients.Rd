@@ -9,6 +9,7 @@ estimate_coefficients(
   B,
   y_obs,
   dea_scores,
+  fdh_scores,
   it_list,
   Bp_list,
   shape
@@ -22,6 +23,8 @@ estimate_coefficients(
 \item{y_obs}{A \code{matrix} of the observed output data.}
 
 \item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+
+\item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{it_list}{A \code{list} containing the set of intervals by input.}
 

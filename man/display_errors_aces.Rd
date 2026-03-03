@@ -8,16 +8,16 @@ display_errors_aces(
   data,
   x,
   y,
+  scale_data,
   quick_aces,
-  error_type,
   max_degree,
   inter_cost,
   metric,
   max_terms,
   err_red,
+  kn_grid,
   minspan,
   endspan,
-  kn_grid,
   kn_penalty
 )
 }
@@ -28,9 +28,9 @@ display_errors_aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
 
-\item{error_type}{A \code{character} string specifying the error structure when fitting the model. It can be either: \code{"add"} or \code{"mul"}.}
+\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{max_degree}{A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.}
 
@@ -42,11 +42,11 @@ display_errors_aces(
 
 \item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs.}
 
+\item{kn_grid}{Grid of knots to perform ACES. It can be: \code{-1} or a \code{list}.}
+
 \item{minspan}{A \code{numeric} value specifying the minimum number of observations between two adjacent knots. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
 
 \item{endspan}{A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
-
-\item{kn_grid}{Grid of knots to perform ACES. It can be: \code{-1} or a \code{list}.}
 
 \item{kn_penalty}{A positive \code{numeric} value specifying the Generalized Cross Validation penalty per knot.}
 

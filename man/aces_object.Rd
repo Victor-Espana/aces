@@ -9,7 +9,6 @@ aces_object(
   x,
   y,
   quick_aces,
-  error_type,
   max_degree,
   inter_cost,
   xi_degree,
@@ -21,6 +20,7 @@ aces_object(
   endspan,
   kn_grid,
   kn_penalty,
+  psi,
   wc,
   wq,
   aces_forward,
@@ -38,8 +38,6 @@ aces_object(
 \item{y}{Column indexes of output variables in \code{data}.}
 
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
-
-\item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 
 \item{max_degree}{Maximum degree of interaction between variables.}
 
@@ -62,6 +60,8 @@ aces_object(
 \item{kn_grid}{Design of the grid of knots to perform ACES}
 
 \item{kn_penalty}{Generalized Cross Validation (GCV) penalty per knot.}
+
+\item{psi}{Trimming factor for output predictions.}
 
 \item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure.}
 

@@ -8,8 +8,8 @@ display_errors_rf_aces(
   data,
   x,
   y,
+  scale_data,
   quick_aces,
-  error_type,
   max_degree,
   inter_cost,
   metric,
@@ -30,9 +30,9 @@ display_errors_rf_aces(
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
 
-\item{error_type}{A \code{character} string specifying the error structure that the function will use when fitting the model. It can be either: \code{"add"} or \code{"mul"}.}
+\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
 
 \item{max_degree}{A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.}
 

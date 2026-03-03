@@ -9,7 +9,6 @@ aces_algorithm(
   x_vars,
   y_vars,
   quick_aces,
-  error_type,
   max_degree,
   inter_cost,
   metric,
@@ -30,8 +29,6 @@ aces_algorithm(
 \item{y_vars}{Column indexes of output variables in \code{data}.}
 
 \item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
-
-\item{error_type}{A \code{character} string specifying the error structure when fitting the model.}
 
 \item{max_degree}{Maximum degree of interaction between variables.}
 

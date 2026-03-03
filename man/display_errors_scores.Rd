@@ -2,45 +2,30 @@
 % Please edit documentation in R/display_errors.R
 \name{display_errors_scores}
 \alias{display_errors_scores}
-\title{Error Messaging in Adaptive Constrained Enveloping Splines (ACES) functions II}
+\title{Argument Validation for Efficiency Score Computation}
 \usage{
-display_errors_scores(
-  data,
-  x,
-  y,
-  object,
-  method,
-  measure,
-  returns,
-  direction,
-  weights,
-  digits
-)
+display_errors_scores(data, x, y, object, method, measure, returns, direction)
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the DMUs to be evaluated.}
 
-\item{x}{Column indexes of input variables in \code{data}.}
+\item{x}{\code{numeric} vector of column indexes for input variables in \code{data}.}
 
-\item{y}{Column indexes of output variables in \code{data}.}
+\item{y}{\code{numeric} vector of column indexes for output variables in \code{data}.}
 
-\item{object}{An \code{aces} or \code{rf-aces} object.}
+\item{object}{An \code{aces} or \code{rf_aces} object.}
 
-\item{method}{Model prediction method used to compute predictions of inputs and obtain a new vector of outputs.}
+\item{method}{Prediction method (\code{"aces"}, \code{"aces_cubic"}, \code{"rf_aces"}, etc.) used to obtain virtual outputs.}
 
-\item{measure}{Mathematical programming model to compute the efficiency scores.}
+\item{measure}{Mathematical programming model (\code{"rad_out"}, \code{"ddf"}, \code{"rsl_out"}, etc.).}
 
-\item{returns}{Type of returns to scale for computing the efficiency scores.}
+\item{returns}{Returns to scale assumption: \code{"constant"} (CRS) or \code{"variable"} (VRS).}
 
-\item{direction}{Vector direction for DMU projection in Directional Distance Function when computing the efficiency scores.}
-
-\item{weights}{Weights for the additive model.}
-
-\item{digits}{Number of digits to round efficiency scores.}
+\item{direction}{Projection vector for DDF.}
 }
 \value{
-This function returns error messages if hyperparameters are incorrectly specified.
+None. The function is used for its side effect of generating \code{stop()} messages upon validation failure.
 }
 \description{
-This function displays error messages if hyperparameters are incorrectly specified in ACES functions aimed at computing efficiency scores.
+Validates input data and hyperparameters for efficiency estimation functions in the ACES framework. It halts execution with a descriptive error message if any parameter is misspecified.
 }
