@@ -10,7 +10,6 @@ cubic_aces(
   y,
   dea_scores,
   fdh_scores,
-  model_type,
   metric,
   shape,
   kn_grid,
@@ -30,8 +29,6 @@ cubic_aces(
 \item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 
 \item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
-
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
 
 \item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
 

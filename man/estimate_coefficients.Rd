@@ -5,7 +5,6 @@
 \title{Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES)}
 \usage{
 estimate_coefficients(
-  model_type,
   B,
   y_obs,
   dea_scores,
@@ -16,8 +15,6 @@ estimate_coefficients(
 )
 }
 \arguments{
-\item{model_type}{A \code{character} string specifying the nature of the production frontier.}
-
 \item{B}{A \code{matrix} of linear basis functions derived from input variables.}
 
 \item{y_obs}{A \code{matrix} of the observed output data.}

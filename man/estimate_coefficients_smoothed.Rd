@@ -4,19 +4,9 @@
 \alias{estimate_coefficients_smoothed}
 \title{Estimate Coefficients for Smooth Adaptive Constrained Enveloping Splines (ACES) Fitting}
 \usage{
-estimate_coefficients_smoothed(
-  model_type,
-  B,
-  y_obs,
-  dea_scores,
-  n_pair,
-  n_lsub,
-  shape
-)
+estimate_coefficients_smoothed(B, y_obs, dea_scores, n_pair, n_lsub, shape)
 }
 \arguments{
-\item{model_type}{A \code{character} string specifying the nature of the production frontier that the function will estimate.}
-
 \item{B}{A \code{matrix} of cubic or quintic basis functions.}
 
 \item{y_obs}{A \code{matrix} of the observed output data.}

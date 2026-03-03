@@ -10,7 +10,6 @@ add_basis_function(
   y,
   xi_degree,
   inter_cost,
-  model_type,
   dea_scores,
   fdh_scores,
   metric,
@@ -35,8 +34,6 @@ add_basis_function(
 \item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
 
 \item{inter_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to justify adding a higher-degree basis function.}
-
-\item{model_type}{A \code{character} string specifying the nature of the production frontier.}
 
 \item{dea_scores}{A \code{matrix} containing DEA-VRS scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
 

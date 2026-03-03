@@ -49,8 +49,6 @@ display_errors_aces(
 \item{endspan}{A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
 
 \item{kn_penalty}{A positive \code{numeric} value specifying the Generalized Cross Validation penalty per knot.}
-
-\item{model_type}{A \code{character} string specifying the nature of the estimated production frontier. It can be either: \code{"envelopment"} or \code{"stochastic"}.}
 }
 \value{
 This function returns error messages if hyperparameters are incorrectly specified.
