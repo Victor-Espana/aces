@@ -53,7 +53,8 @@ aces_pruning <- function(
   Bp_list,
   shape,
   kn_penalty
-) {
+  ) {
+
   # number of inputs
   nX <- length(x)
 
