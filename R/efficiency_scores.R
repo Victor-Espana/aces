@@ -47,8 +47,7 @@ rad_out <- function(
   convexity,
   returns,
   type
-  ) {
-
+) {
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -98,7 +97,6 @@ rad_out <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
-
     # update RHS of input constraints
     for (xi in 1:nX) {
       set.rhs(lps, b = eval_xmat[d, xi], constraints = xi)
@@ -118,11 +116,9 @@ rad_out <- function(
     } else if (type == "variables") {
       scores[d, 1] <- get.variables(lps)[1]
     }
-
   }
 
   return(scores)
-
 }
 
 #' @title Input-Oriented Radial Model
@@ -174,8 +170,7 @@ rad_inp <- function(
   convexity,
   returns,
   type
-  ) {
-
+) {
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -225,7 +220,6 @@ rad_inp <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
-
     # update coefficient of theta in input constraints
     for (xi in 1:nX) {
       set.mat(lps, xi, 1, -eval_xmat[d, xi])
@@ -242,15 +236,12 @@ rad_inp <- function(
     # get scores
     if (type == "objective") {
       scores[d, 1] <- get.objective(lps)
-
     } else if (type == "variables") {
       scores[d, 1] <- get.variables(lps)[1]
-
     }
   }
 
   return(scores)
-
 }
 
 
@@ -310,8 +301,7 @@ ddf <- function(
   convexity,
   returns,
   type
-  ) {
-
+) {
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -368,7 +358,6 @@ ddf <- function(
   # ============================== #
 
   for (d in 1:eval_dmu) {
-
     # update input constraints: coefficient of beta and RHS
     for (xi in 1:nX) {
       set.mat(lps, xi, 1, G_x[d, xi])
@@ -393,39 +382,47 @@ ddf <- function(
   }
 
   return(scores)
-
 }
 
-#' @title The output-oriented Russell model
+#' @title Output-Oriented Russell Model
 #'
 #' @description
-#' This function computes efficiency scores through the output-oriented Russell model in the envelopment format.
+#' Computes efficiency scores through the output-oriented Russell model
+#' in the envelopment format.
 #'
 #' @param tech_xmat
-#' A \code{matrix} containing the observed input variables used to define the technology.
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
+#' containing the input variables that define the technology.
 #'
 #' @param tech_ymat
-#' A \code{matrix} containing the observed output variables used to define the technology.
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output variables that define the technology.
 #'
 #' @param eval_xmat
-#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
+#' containing the input data.
 #'
 #' @param eval_ymat
-#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output data.
 #'
 #' @param convexity
-#' A \code{logical} value indicating if a convex technology is assumed.
+#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
+#' If \code{FALSE}, the intensity variables are set to binary (FDH).
 #'
 #' @param returns
-#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
 #'
 #' @param type
-#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
+#' A \code{character} string specifying the return value:
+#' \code{"objective"} for the optimal objective value, or
+#' \code{"variables"} for the optimal values of \eqn{\phi_r} (one per output).
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
+#'   set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{vector} of \code{"numeric"} scores computed through the output-oriented Russell model.
+#' A \code{matrix} with \code{N} rows containing the efficiency scores.
 
 rsl_out <- function(
   tech_xmat,
@@ -453,38 +450,55 @@ rsl_out <- function(
     scores <- matrix(nrow = eval_dmu, ncol = nY)
   }
 
+  # objective function: max (1/nY) * sum(phi_r)
+  objVal <- matrix(ncol = nY + tech_dmu, nrow = 1)
+  objVal[1:nY] <- 1 / nY
+
+  # ======================== #
+  # Build LP model structure #
+  # ======================== #
+
+  lps <- make.lp(nrow = 0, ncol = tech_dmu + nY)
+  lp.control(lps, sense = "max")
+  set.objfn(lps, objVal)
+
+  # input constraints: sum(lambda_j * x_ji) <= x_di
+  for (xi in 1:nX) {
+    add.constraint(lps, xt = c(rep(0, nY), tech_xmat[, xi]), "<=", rhs = 0)
+  }
+
+  # output constraints: -y_dr*phi_r + sum(lambda_j * y_jr) >= 0
+  for (yi in 1:nY) {
+    phi <- rep(0, nY)
+    phi[yi] <- -1
+    add.constraint(lps, xt = c(phi, tech_ymat[, yi]), ">=", rhs = 0)
+  }
+
+  # lower bounds: phi >= 1
+  set.bounds(lps, lower = rep(1, nY), columns = 1:nY)
+
+  # technology constraint
+  if (returns == "variable") {
+    add.constraint(lprec = lps, xt = c(rep(0, nY), rep(1, tech_dmu)), type = "=", rhs = 1)
+
+    if (!convexity) {
+      set.type(lps, columns = 1:tech_dmu + nY, type = c("binary"))
+    }
+  }
+
+  # ============================= #
+  # Solve for each evaluated DMU  #
+  # ============================= #
+
   for (d in 1:eval_dmu) {
-    objVal <- matrix(ncol = nY + tech_dmu, nrow = 1)
-    objVal[1:nY] <- 1 / nY
-
-    # structure for lpSolve
-    lps <- make.lp(nrow = 0, ncol = tech_dmu + nY)
-    lp.control(lps, sense = "max")
-    set.objfn(lps, objVal)
-
-    # inputs
+    # update RHS of input constraints
     for (xi in 1:nX) {
-      add.constraint(lps, xt = c(rep(0, nY), tech_xmat[, xi]), "<=", rhs = eval_xmat[d, xi])
+      set.rhs(lps, b = eval_xmat[d, xi], constraints = xi)
     }
 
-    # outputs
+    # update coefficient of phi_r in output constraints
     for (yi in 1:nY) {
-      phi <- rep(0, nY)
-      phi[yi] <- eval_ymat[d, yi]
-      add.constraint(lps, xt = c(-phi, tech_ymat[, yi]), ">=", rhs = 0)
-    }
-
-    # lower bounds: phi >= 1
-    set.bounds(lps, lower = rep(1, nY), columns = 1:nY)
-
-    # technology
-    if (returns == "variable") {
-      if (convexity) {
-        add.constraint(lprec = lps, xt = c(rep(0, nY), rep(1, tech_dmu)), type = "=", rhs = 1)
-      } else {
-        add.constraint(lprec = lps, xt = c(rep(0, nY), rep(1, tech_dmu)), type = "=", rhs = 1)
-        set.type(lps, columns = 1:tech_dmu + nY, type = c("binary"))
-      }
+      set.mat(lps, nX + yi, yi, -eval_ymat[d, yi])
     }
 
     # solve model
@@ -501,36 +515,45 @@ rsl_out <- function(
   return(scores)
 }
 
-#' @title The input-oriented Russell model
+#' @title Input-Oriented Russell Model
 #'
 #' @description
-#' This function computes efficiency scores through the input-oriented Russell model in the envelopment format.
+#' Computes efficiency scores through the input-oriented Russell model
+#' in the envelopment format.
 #'
 #' @param tech_xmat
-#' A \code{matrix} containing the observed input variables used to define the technology.
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
+#' containing the input variables that define the technology.
 #'
 #' @param tech_ymat
-#' A \code{matrix} containing the observed output variables used to define the technology.
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output variables that define the technology.
 #'
 #' @param eval_xmat
-#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
+#' containing the input data.
 #'
 #' @param eval_ymat
-#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output data.
 #'
 #' @param convexity
-#' A \code{logical} value indicating if a convex technology is assumed.
+#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
+#' If \code{FALSE}, the intensity variables are set to binary (FDH).
 #'
 #' @param returns
-#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
 #'
 #' @param type
-#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
+#' A \code{character} string specifying the return value:
+#' \code{"objective"} for the optimal objective value, or
+#' \code{"variables"} for the optimal values of \eqn{\theta_i} (one per input).
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
+#'   set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{vector} of \code{"numeric"} scores computed through the input-oriented Russell model.
+#' A \code{matrix} with \code{N} rows containing the efficiency scores.
 
 rsl_inp <- function(
   tech_xmat,
@@ -541,7 +564,7 @@ rsl_inp <- function(
   returns,
   type
 ) {
-  # number of DMUs in theta technology
+  # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
   # number of DMUs to be evaluated
@@ -558,38 +581,55 @@ rsl_inp <- function(
     scores <- matrix(nrow = eval_dmu, ncol = nX)
   }
 
+  # objective function: min (1/nX) * sum(theta_i)
+  objVal <- matrix(ncol = nX + tech_dmu, nrow = 1)
+  objVal[1:nX] <- 1 / nX
+
+  # ======================== #
+  # Build LP model structure #
+  # ======================== #
+
+  lps <- make.lp(nrow = 0, ncol = nX + tech_dmu)
+  lp.control(lps, sense = "min")
+  set.objfn(lps, objVal)
+
+  # input constraints: -x_di*theta_i + sum(lambda_j * x_ji) <= 0
+  for (xi in 1:nX) {
+    theta <- rep(0, nX)
+    theta[xi] <- -1
+    add.constraint(lps, xt = c(theta, tech_xmat[, xi]), "<=", rhs = 0)
+  }
+
+  # output constraints: sum(lambda_j * y_jr) >= y_dr
+  for (yi in 1:nY) {
+    add.constraint(lps, xt = c(rep(0, nX), tech_ymat[, yi]), ">=", rhs = 0)
+  }
+
+  # upper bounds: theta <= 1
+  set.bounds(lps, upper = rep(1, nX), columns = 1:nX)
+
+  # technology constraint
+  if (returns == "variable") {
+    add.constraint(lprec = lps, xt = c(rep(0, nX), rep(1, tech_dmu)), type = "=", rhs = 1)
+
+    if (!convexity) {
+      set.type(lps, columns = 1:tech_dmu + nX, type = c("binary"))
+    }
+  }
+
+  # ============================= #
+  # Solve for each evaluated DMU  #
+  # ============================= #
+
   for (d in 1:eval_dmu) {
-    objVal <- matrix(ncol = nX + tech_dmu, nrow = 1)
-    objVal[1:nX] <- 1 / nX
-
-    # structure for lpSolve
-    lps <- make.lp(nrow = 0, ncol = nX + tech_dmu)
-    lp.control(lps, sense = "min")
-    set.objfn(lps, objVal)
-
-    # inputs
+    # update coefficient of theta_i in input constraints
     for (xi in 1:nX) {
-      theta <- rep(0, nX)
-      theta[xi] <- eval_xmat[d, xi]
-      add.constraint(lps, xt = c(-theta, tech_xmat[, xi]), "<=", rhs = 0)
+      set.mat(lps, xi, xi, -eval_xmat[d, xi])
     }
 
-    # outputs
+    # update RHS of output constraints
     for (yi in 1:nY) {
-      add.constraint(lps, xt = c(rep(0, nX), tech_ymat[, yi]), ">=", rhs = eval_ymat[d, yi])
-    }
-
-    # upper bounds: theta <= 1
-    set.bounds(lps, upper = rep(1, nX), columns = 1:nX)
-
-    # technology
-    if (returns == "variable") {
-      if (convexity) {
-        add.constraint(lprec = lps, xt = c(rep(0, nX), rep(1, tech_dmu)), type = "=", rhs = 1)
-      } else {
-        add.constraint(lprec = lps, xt = c(rep(0, nX), rep(1, tech_dmu)), type = "=", rhs = 1)
-        set.type(lps, columns = 1:tech_dmu + nX, type = c("binary"))
-      }
+      set.rhs(lps, b = eval_ymat[d, yi], constraints = nX + yi)
     }
 
     # solve model
@@ -606,45 +646,53 @@ rsl_inp <- function(
   return(scores)
 }
 
-#' @title The Weighted Additive Model
+#' @title Weighted Additive Model
 #'
 #' @description
-#' This function computes efficiency scores through a Weighted Additive Model.
+#' Computes efficiency scores through a Weighted Additive Model
+#' in the envelopment format.
 #'
 #' @param tech_xmat
-#' A \code{matrix} containing the observed input variables used to define the technology.
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
+#' containing the input variables that define the technology.
 #'
 #' @param tech_ymat
-#' A \code{matrix} containing the observed output variables used to define the technology.
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output variables that define the technology.
 #'
 #' @param eval_xmat
-#' A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.
+#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
+#' containing the input data.
 #'
 #' @param eval_ymat
-#' A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output data.
 #'
 #' @param weights Weights for the additive model:
 #' \itemize{
-#' \item{\code{"wam.one"}} Weighted Additive Model.
-#' \item{\code{"wam.mip"}} Measure of Inefficiency Proportions.
-#' \item{\code{"wam.nor"}} Normalized Weighted Additive Model.
-#' \item{\code{"wam.ram"}} Range Adjusted Measure.
-#' \item{\code{"wam.bam"}} Bounded Adjusted Measure.
+#' \item{\code{"wam_mip"}} Measure of Inefficiency Proportions.
+#' \item{\code{"wam_nor"}} Normalized Weighted Additive Model.
+#' \item{\code{"wam_ram"}} Range Adjusted Measure.
+#' \item{\code{"wam_bam"}} Bounded Adjusted Measure.
 #' }
 #'
 #' @param convexity
-#' A \code{logical} value indicating if a convex technology is assumed.
+#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
+#' If \code{FALSE}, the intensity variables are set to binary (FDH).
 #'
 #' @param returns
-#' Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
 #'
 #' @param type
-#' A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.
+#' A \code{character} string specifying the return value:
+#' \code{"objective"} for the optimal objective value, or
+#' \code{"variables"} for the optimal slack values.
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds get.objective
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
+#'   set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{vector} of \code{"numeric"} scores computed through the Weighted Additive Model.
+#' A \code{matrix} with \code{N} rows containing the efficiency scores.
 
 wam <- function(
   tech_xmat,
@@ -673,59 +721,76 @@ wam <- function(
     scores <- matrix(nrow = eval_dmu, ncol = nX + nY)
   }
 
-  for (d in 1:eval_dmu) {
-    # objective function
-    objVal <- matrix(ncol = nX + nY + tech_dmu, nrow = 1)
+  # precompute weights that do not change across DMUs
+  objVal <- matrix(ncol = nX + nY + tech_dmu, nrow = 1)
 
-    # Weights
+  if (weights == "wam_nor") {
+    objVal[1:(nX + nY)] <- c(1 / apply(eval_xmat, 2, sd), 1 / apply(eval_ymat, 2, sd))
+  } else if (weights == "wam_ram") {
+    xranges <- apply(eval_xmat, 2, max) - apply(eval_xmat, 2, min)
+    yranges <- apply(eval_ymat, 2, max) - apply(eval_ymat, 2, min)
+    objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * xranges), 1 / ((nX + nY) * yranges))
+  }
+
+  # ======================== #
+  # Build LP model structure #
+  # ======================== #
+
+  lps <- make.lp(nrow = 0, ncol = nX + nY + tech_dmu)
+  lp.control(lps, sense = "max")
+  set.objfn(lps, objVal)
+
+  # input constraints: s_xi + sum(lambda_j * x_ji) = x_di
+  for (xi in 1:nX) {
+    x_slack <- rep(0, nX)
+    x_slack[xi] <- 1
+    slacks <- c(x_slack, rep(0, nY))
+
+    add.constraint(lps, xt = c(slacks, tech_xmat[, xi]), "=", rhs = 0)
+  }
+
+  # output constraints: -s_yr + sum(lambda_j * y_jr) = y_dr
+  for (yi in 1:nY) {
+    y_slack <- rep(0, nY)
+    y_slack[yi] <- -1
+    slacks <- c(rep(0, nX), y_slack)
+
+    add.constraint(lps, xt = c(slacks, tech_ymat[, yi]), "=", rhs = 0)
+  }
+
+  # technology constraint
+  if (returns == "variable") {
+    add.constraint(lprec = lps, xt = c(rep(0, nX + nY), rep(1, tech_dmu)), type = "=", rhs = 1)
+
+    if (!convexity) {
+      set.type(lps, columns = 1:tech_dmu + (nX + nY), type = c("binary"))
+    }
+  }
+
+  # ============================= #
+  # Solve for each evaluated DMU  #
+  # ============================= #
+
+  for (d in 1:eval_dmu) {
+    # update objective function for DMU-specific weights
     if (weights == "wam_mip") {
-      # Measure of Inefficiency Proportions
       objVal[1:(nX + nY)] <- c(1 / eval_xmat[d, ], 1 / eval_ymat[d, ])
-    } else if (weights == "wam_nor") {
-      # Normalized Weighted Additive Model
-      objVal[1:(nX + nY)] <- c(1 / apply(eval_xmat, 2, sd), 1 / apply(eval_ymat, 2, sd))
-    } else if (weights == "wam_ram") {
-      # Range Adjusted Measure
-      xranges <- apply(eval_xmat, 2, max) - apply(eval_xmat, 2, min)
-      yranges <- apply(eval_ymat, 2, max) - apply(eval_ymat, 2, min)
-      objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * xranges), 1 / ((nX + nY) * yranges))
+      set.objfn(lps, objVal)
     } else if (weights == "wam_bam") {
-      # Bounded Adjusted Measure
       p1 <- eval_xmat[d, ] - apply(eval_xmat, 2, min)
       p2 <- apply(eval_ymat, 2, max) - eval_ymat[d, ]
       objVal[1:(nX + nY)] <- c(1 / ((nX + nY) * p1), 1 / ((nX + nY) * p2))
+      set.objfn(lps, objVal)
     }
 
-    # structure for lpSolve
-    lps <- make.lp(nrow = 0, ncol = nX + nY + tech_dmu)
-    lp.control(lps, sense = "max")
-    set.objfn(lps, objVal)
-
-    # inputs
+    # update RHS of input constraints
     for (xi in 1:nX) {
-      x_slack <- rep(0, nX)
-      x_slack[xi] <- 1
-      slacks <- c(x_slack, rep(0, nY))
-
-      add.constraint(lps, xt = c(slacks, tech_xmat[, xi]), "=", rhs = eval_xmat[d, xi])
+      set.rhs(lps, b = eval_xmat[d, xi], constraints = xi)
     }
 
-    # outputs
+    # update RHS of output constraints
     for (yi in 1:nY) {
-      y_slack <- rep(0, nY)
-      y_slack[yi] <- -1
-      slacks <- c(rep(0, nX), y_slack)
-
-      add.constraint(lps, xt = c(slacks, tech_ymat[, yi]), "=", rhs = eval_ymat[d, yi])
-    }
-
-    if (returns == "variable") {
-      if (convexity) {
-        add.constraint(lprec = lps, xt = c(rep(0, nX + nY), rep(1, tech_dmu)), type = "=", rhs = 1)
-      } else {
-        add.constraint(lprec = lps, xt = c(rep(0, nX + nY), rep(1, tech_dmu)), type = "=", rhs = 1)
-        set.type(lps, columns = 1:tech_dmu + (nX + nY), type = c("binary"))
-      }
+      set.rhs(lps, b = eval_ymat[d, yi], constraints = nX + yi)
     }
 
     # solve model
