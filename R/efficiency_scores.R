@@ -3,16 +3,13 @@
 #' @description
 #' Computes efficiency scores through the output-oriented radial model
 #' (also known as the BCC output model) in the envelopment format.
-#' The LP model structure is built once and reused across all evaluated DMUs,
-#' updating only the right-hand side values and the DMU-specific coefficients
-#' of the efficiency variable \eqn{\phi} in each iteration.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{K} rows (reference DMUs) and \code{nX} columns
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
 #' containing the input variables that define the technology.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{K} rows and \code{nY} columns containing the
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
 #' output variables that define the technology.
 #'
 #' @param eval_xmat
@@ -50,7 +47,8 @@ rad_out <- function(
   convexity,
   returns,
   type
-) {
+  ) {
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -68,20 +66,20 @@ rad_out <- function(
   objVal <- matrix(ncol = 1 + tech_dmu, nrow = 1)
   objVal[1] <- 1
 
-  # =============================== #
-  # Build LP model structure (once) #
-  # =============================== #
+  # ======================== #
+  # Build LP model structure #
+  # ======================== #
 
   lps <- make.lp(nrow = 0, ncol = 1 + tech_dmu)
   lp.control(lps, sense = "max")
   set.objfn(lps, objVal)
 
-  # input constraints (rows 1..nX): 0*phi + sum(lambda_j * x_ji) <= x_di
+  # input constraints: 0*phi + sum(lambda_j * x_ji) <= x_di
   for (xi in 1:nX) {
     add.constraint(lps, xt = c(0, tech_xmat[, xi]), "<=", rhs = 0)
   }
 
-  # output constraints (rows nX+1..nX+nY): -y_dr*phi + sum(lambda_j * y_jr) >= 0
+  # output constraints: -y_dr*phi + sum(lambda_j * y_jr) >= 0
   for (yi in 1:nY) {
     add.constraint(lps, xt = c(-1, tech_ymat[, yi]), ">=", rhs = 0)
   }
@@ -95,11 +93,12 @@ rad_out <- function(
     }
   }
 
-  # ============================== #
-  # Solve for each evaluated DMU   #
-  # ============================== #
+  # ============================= #
+  # Solve for each evaluated DMU  #
+  # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update RHS of input constraints
     for (xi in 1:nX) {
       set.rhs(lps, b = eval_xmat[d, xi], constraints = xi)
@@ -119,9 +118,11 @@ rad_out <- function(
     } else if (type == "variables") {
       scores[d, 1] <- get.variables(lps)[1]
     }
+
   }
 
   return(scores)
+
 }
 
 #' @title Input-Oriented Radial Model
@@ -129,16 +130,13 @@ rad_out <- function(
 #' @description
 #' Computes efficiency scores through the input-oriented radial model
 #' (also known as the BCC input model) in the envelopment format.
-#' The LP model structure is built once and reused across all evaluated DMUs,
-#' updating only the right-hand side values and the DMU-specific coefficients
-#' of the efficiency variable \eqn{\theta} in each iteration.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{K} rows (reference DMUs) and \code{nX} columns
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
 #' containing the input variables that define the technology.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{K} rows and \code{nY} columns containing the
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
 #' output variables that define the technology.
 #'
 #' @param eval_xmat
@@ -176,7 +174,8 @@ rad_inp <- function(
   convexity,
   returns,
   type
-) {
+  ) {
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -194,20 +193,20 @@ rad_inp <- function(
   objVal <- matrix(ncol = 1 + tech_dmu, nrow = 1)
   objVal[1] <- 1
 
-  # =============================== #
-  # Build LP model structure (once) #
-  # =============================== #
+  # ======================== #
+  # Build LP model structure #
+  # ======================== #
 
   lps <- make.lp(nrow = 0, ncol = 1 + tech_dmu)
   lp.control(lps, sense = "min")
   set.objfn(lps, objVal)
 
-  # input constraints (rows 1..nX): -x_di*theta + sum(lambda_j * x_ji) <= 0
+  # input constraints: -x_di*theta + sum(lambda_j * x_ji) <= 0
   for (xi in 1:nX) {
     add.constraint(lps, xt = c(-1, tech_xmat[, xi]), "<=", rhs = 0)
   }
 
-  # output constraints (rows nX+1..nX+nY): sum(lambda_j * y_jr) >= y_dr
+  # output constraints: sum(lambda_j * y_jr) >= y_dr
   for (yi in 1:nY) {
     add.constraint(lps, xt = c(0, tech_ymat[, yi]), ">=", rhs = 0)
   }
@@ -221,11 +220,12 @@ rad_inp <- function(
     }
   }
 
-  # ============================== #
-  # Solve for each evaluated DMU   #
-  # ============================== #
+  # ============================= #
+  # Solve for each evaluated DMU  #
+  # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update coefficient of theta in input constraints
     for (xi in 1:nX) {
       set.mat(lps, xi, 1, -eval_xmat[d, xi])
@@ -242,12 +242,15 @@ rad_inp <- function(
     # get scores
     if (type == "objective") {
       scores[d, 1] <- get.objective(lps)
+
     } else if (type == "variables") {
       scores[d, 1] <- get.variables(lps)[1]
+
     }
   }
 
   return(scores)
+
 }
 
 
@@ -255,16 +258,14 @@ rad_inp <- function(
 #'
 #' @description
 #' Computes efficiency scores through the Directional Distance Function (DDF)
-#' in the envelopment format. The LP model structure is built once and reused
-#' across all evaluated DMUs, updating only the right-hand side values and the
-#' DMU-specific directional coefficients of \eqn{\beta} in each iteration.
+#' in the envelopment format.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{K} rows (reference DMUs) and \code{nX} columns
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
 #' containing the input variables that define the technology.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{K} rows and \code{nY} columns containing the
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
 #' output variables that define the technology.
 #'
 #' @param eval_xmat
@@ -309,7 +310,8 @@ ddf <- function(
   convexity,
   returns,
   type
-) {
+  ) {
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -332,19 +334,19 @@ ddf <- function(
   objVal[1] <- 1
 
   # =============================== #
-  # Build LP model structure (once) #
+  # Build LP model structure #
   # =============================== #
 
   lps <- make.lp(nrow = 0, ncol = 1 + tech_dmu)
   lp.control(lps, sense = "max")
   set.objfn(lps, objVal)
 
-  # input constraints (rows 1..nX): g_xi*beta + sum(lambda_j * x_ji) <= x_di
+  # input constraints: g_xi*beta + sum(lambda_j * x_ji) <= x_di
   for (xi in 1:nX) {
     add.constraint(lps, xt = c(1, tech_xmat[, xi]), "<=", rhs = 0)
   }
 
-  # output constraints (rows nX+1..nX+nY): -g_yr*beta + sum(lambda_j * y_jr) >= y_dr
+  # output constraints: -g_yr*beta + sum(lambda_j * y_jr) >= y_dr
   for (yi in 1:nY) {
     add.constraint(lps, xt = c(-1, tech_ymat[, yi]), ">=", rhs = 0)
   }
@@ -366,6 +368,7 @@ ddf <- function(
   # ============================== #
 
   for (d in 1:eval_dmu) {
+
     # update input constraints: coefficient of beta and RHS
     for (xi in 1:nX) {
       set.mat(lps, xi, 1, G_x[d, xi])
@@ -390,6 +393,7 @@ ddf <- function(
   }
 
   return(scores)
+
 }
 
 #' @title The output-oriented Russell model

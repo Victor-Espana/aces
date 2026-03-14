@@ -2,28 +2,37 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{rad_inp}
 \alias{rad_inp}
-\title{The input-oriented radial model}
+\title{Input-Oriented Radial Model}
 \usage{
 rad_inp(tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns, type)
 }
 \arguments{
-\item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
+\item{tech_xmat}{A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
+containing the input variables that define the technology.}
 
-\item{tech_ymat}{A \code{matrix} containing the observed output variables used to define the technology.}
+\item{tech_ymat}{A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+output variables that define the technology.}
 
-\item{eval_xmat}{A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.}
+\item{eval_xmat}{A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
+containing the input data.}
 
-\item{eval_ymat}{A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.}
+\item{eval_ymat}{A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+output data.}
 
-\item{convexity}{A \code{logical} value indicating if a convex technology is assumed.}
+\item{convexity}{A \code{logical} indicating whether a convex technology (DEA) is assumed.
+If \code{FALSE}, the intensity variables are set to binary (FDH).}
 
-\item{returns}{Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+\item{returns}{Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).}
 
-\item{type}{A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.}
+\item{type}{A \code{character} string specifying the return value:
+\code{"objective"} for the optimal objective value, or
+\code{"variables"} for the optimal value of the efficiency variable \eqn{\theta}.}
 }
 \value{
-A \code{vector} of \code{"numeric"} scores computed through the input-oriented radial model in the envelopment format.
+A \code{matrix} with \code{N} rows and 1 column containing the efficiency
+scores.
 }
 \description{
-This function computes efficiency scores through the input-oriented radial model in the envelopment format.
+Computes efficiency scores through the input-oriented radial model
+(also known as the BCC input model) in the envelopment format.
 }

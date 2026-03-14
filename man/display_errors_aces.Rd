@@ -24,35 +24,58 @@ display_errors_aces(
 \arguments{
 \item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
 
-\item{x}{Column indexes of input variables in \code{data}.}
+\item{x}{A non-empty \code{numeric} or \code{integer} vector of column indexes for the
+input variables in \code{data}. Indexes must be valid column positions and must
+not overlap with \code{y}.}
 
-\item{y}{Column indexes of output variables in \code{data}.}
+\item{y}{A non-empty \code{numeric} or \code{integer} vector of column indexes for the
+output variables in \code{data}. Indexes must be valid column positions and must
+not overlap with \code{x}.}
 
-\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
+\item{scale_data}{A single \code{logical} value (\code{TRUE} or \code{FALSE}) indicating whether
+inputs and outputs should be scaled by their column means before estimation.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{quick_aces}{A single \code{logical} value (\code{TRUE} or \code{FALSE}) indicating whether
+the fast version of ACES should be used.}
 
-\item{max_degree}{A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.}
+\item{max_degree}{Either a positive \code{integer} specifying the maximum degree of interaction
+between input variables (must not exceed the number of inputs), or a \code{list}
+where each element is an \code{integer} vector of column indexes defining an
+explicit interaction term.}
 
-\item{inter_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1-degree BF to incorporate a higher degree BF.}
+\item{inter_cost}{A \code{numeric} value in \eqn{[0, 1]} specifying the minimum percentage
+improvement over the best 1-degree basis function required to incorporate a
+higher-degree basis function.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.}
+\item{metric}{A single \code{character} string specifying the lack-of-fit criterion used to
+evaluate model performance. Valid options are: \code{"mae"}, \code{"mape"},
+\code{"mse"}, \code{"msle"}, \code{"rmse"}, \code{"nrmse1"}, \code{"nrmse2"}.}
 
-\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during the forward step.}
+\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during
+the forward step.}
 
-\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs.}
+\item{err_red}{A \code{numeric} value in \eqn{[0, 1]} specifying the minimum relative error
+reduction required to add a new pair of 1-degree basis functions.}
 
-\item{kn_grid}{Grid of knots to perform ACES. It can be: \code{-1} or a \code{list}.}
+\item{kn_grid}{Either \code{-1} (default Friedman knot selection) or a \code{list} of length
+equal to the number of inputs, where each element is a \code{numeric} vector of
+knot candidates for the corresponding input variable.}
 
-\item{minspan}{A \code{numeric} value specifying the minimum number of observations between two adjacent knots. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
+\item{minspan}{An \code{integer} specifying the minimum number of observations between two
+adjacent knots. Must be \code{-2}, \code{-1}, or a positive integer.}
 
-\item{endspan}{A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
+\item{endspan}{An \code{integer} specifying the minimum number of observations before the first
+and after the last knot. Must be \code{-2}, \code{-1}, or a positive integer.}
 
-\item{kn_penalty}{A positive \code{numeric} value specifying the Generalized Cross Validation penalty per knot.}
+\item{kn_penalty}{A non-negative \code{numeric} value specifying the Generalized Cross Validation
+(GCV) penalty per knot. Default is \code{2}.}
 }
 \value{
-This function returns error messages if hyperparameters are incorrectly specified.
+\code{NULL} invisibly. The function is called exclusively for its side effect of
+stopping execution with an informative error message when an argument is
+misspecified.
 }
 \description{
-This function displays error messages if hyperparameters are incorrectly specified in ACES functions aimed at estimating production functions.
+Validates all input arguments for the \code{\link{aces}} function and halts
+execution with a descriptive error message if any argument is misspecified.
 }
