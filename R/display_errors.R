@@ -88,9 +88,10 @@ display_errors_aces <- function(
   minspan,
   endspan,
   kn_penalty
-) {
+  ) {
+
   # =========== #
-  #    DATA      #
+  #    DATA     #
   # =========== #
 
   # data must be a data.frame or a matrix
@@ -104,7 +105,7 @@ display_errors_aces <- function(
   }
 
   # =========== #
-  #   x AND y   #
+  #   x and y   #
   # =========== #
 
   # x must be a non-empty numeric/integer vector
@@ -245,7 +246,7 @@ display_errors_aces <- function(
   }
 
   # ============= #
-  #   SPAN        #
+  #     span      #
   # ============= #
 
   # minspan must be -2, -1, or a positive integer
