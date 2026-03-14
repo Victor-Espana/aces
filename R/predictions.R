@@ -133,6 +133,10 @@ get_targets <- function (
     # update technology
     tech_xmat <- as.matrix(tech_xmat[, rel_x, drop = FALSE])
 
+  } else {
+
+    rel_x <- x
+
   }
 
   # matrix of outputs
