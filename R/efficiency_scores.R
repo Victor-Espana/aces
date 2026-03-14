@@ -97,6 +97,7 @@ rad_out <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update RHS of input constraints
     for (xi in 1:nX) {
       set.rhs(lps, b = eval_xmat[d, xi], constraints = xi)
@@ -220,6 +221,7 @@ rad_inp <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update coefficient of theta in input constraints
     for (xi in 1:nX) {
       set.mat(lps, xi, 1, -eval_xmat[d, xi])
@@ -358,6 +360,7 @@ ddf <- function(
   # ============================== #
 
   for (d in 1:eval_dmu) {
+
     # update input constraints: coefficient of beta and RHS
     for (xi in 1:nX) {
       set.mat(lps, xi, 1, G_x[d, xi])
@@ -379,6 +382,7 @@ ddf <- function(
     } else if (type == "variables") {
       scores[d, 1] <- get.variables(lps)[1]
     }
+
   }
 
   return(scores)
@@ -432,7 +436,8 @@ rsl_out <- function(
   convexity,
   returns,
   type
-) {
+  ) {
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -491,6 +496,7 @@ rsl_out <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update RHS of input constraints
     for (xi in 1:nX) {
       set.rhs(lps, b = eval_xmat[d, xi], constraints = xi)
@@ -510,6 +516,7 @@ rsl_out <- function(
     } else if (type == "variables") {
       scores[d, 1:nY] <- get.variables(lps)[1:nY]
     }
+
   }
 
   return(scores)
@@ -563,7 +570,8 @@ rsl_inp <- function(
   convexity,
   returns,
   type
-) {
+  ) {
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -622,6 +630,7 @@ rsl_inp <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update coefficient of theta_i in input constraints
     for (xi in 1:nX) {
       set.mat(lps, xi, xi, -eval_xmat[d, xi])
@@ -641,6 +650,7 @@ rsl_inp <- function(
     } else if (type == "variables") {
       scores[d, 1:nX] <- get.variables(lps)[1:nX]
     }
+
   }
 
   return(scores)
@@ -703,7 +713,8 @@ wam <- function(
   convexity,
   returns,
   type
-) {
+  ) {
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -772,10 +783,12 @@ wam <- function(
   # ============================= #
 
   for (d in 1:eval_dmu) {
+
     # update objective function for DMU-specific weights
     if (weights == "wam_mip") {
       objVal[1:(nX + nY)] <- c(1 / eval_xmat[d, ], 1 / eval_ymat[d, ])
       set.objfn(lps, objVal)
+
     } else if (weights == "wam_bam") {
       p1 <- eval_xmat[d, ] - apply(eval_xmat, 2, min)
       p2 <- apply(eval_ymat, 2, max) - eval_ymat[d, ]
@@ -802,6 +815,7 @@ wam <- function(
     } else if (type == "variables") {
       scores[d, 1:(nX + nY)] <- get.variables(lps)[1:(nX + nY)]
     }
+
   }
 
   return(scores)
@@ -810,7 +824,8 @@ wam <- function(
 #' @title Compute Efficiency Scores using an Adaptive Constrained Enveloping Splines model.
 #'
 #' @description
-#' This function computes the efficiency scores for each Decision-Making-Unit (DMU) using an Adaptive Constrained Enveloping Splines (ACES) model.
+#' This function computes the efficiency scores for each Decision-Making-Unit
+#' (DMU) using an Adaptive Constrained Enveloping Splines (ACES) model.
 #'
 #' @param eval_data
 #' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
@@ -888,7 +903,8 @@ get_scores <- function(
   measure = "rad_out",
   returns = "variable",
   direction = NULL
-) {
+  ) {
+
   # handle errors:
   display_errors_scores(
     data = eval_data,
