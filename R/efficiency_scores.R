@@ -46,7 +46,7 @@ rad_out <- function(
   eval_ymat,
   convexity,
   returns,
-  type
+  type = "objective"
 ) {
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
@@ -170,7 +170,7 @@ rad_inp <- function(
   eval_ymat,
   convexity,
   returns,
-  type
+  type = "objective"
 ) {
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
@@ -302,7 +302,7 @@ ddf <- function(
   direction,
   convexity,
   returns,
-  type
+  type = "objective"
 ) {
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
@@ -435,7 +435,7 @@ rsl_out <- function(
   eval_ymat,
   convexity,
   returns,
-  type
+  type = "objective"
   ) {
 
   # number of DMUs in the technology
@@ -569,7 +569,7 @@ rsl_inp <- function(
   eval_ymat,
   convexity,
   returns,
-  type
+  type = "objective"
   ) {
 
   # number of DMUs in the technology
@@ -712,7 +712,7 @@ wam <- function(
   weights,
   convexity,
   returns,
-  type
+  type = "objective"
   ) {
 
   # number of DMUs in the technology
