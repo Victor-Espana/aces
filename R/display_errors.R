@@ -249,16 +249,16 @@ display_errors_aces <- function(
   #     span      #
   # ============= #
 
-  # minspan must be -2, -1, or a positive integer
+  # minspan must be -2, -1, or a non-negative integer
   if (!is.numeric(minspan) || length(minspan) != 1 || is.na(minspan) ||
-    floor(minspan) != minspan || (minspan < -2) || (minspan == 0)) {
-    stop("'minspan' must be -2, -1, or a positive integer.")
+    floor(minspan) != minspan || (minspan < -2)) {
+    stop("'minspan' must be -2, -1, or a non-negative integer.")
   }
 
-  # endspan must be -2, -1, or a positive integer
+  # endspan must be -2, -1, or a non-negative integer
   if (!is.numeric(endspan) || length(endspan) != 1 || is.na(endspan) ||
-    floor(endspan) != endspan || (endspan < -2) || (endspan == 0)) {
-    stop("'endspan' must be -2, -1, or a positive integer.")
+    floor(endspan) != endspan || (endspan < -2)) {
+    stop("'endspan' must be -2, -1, or a non-negative integer.")
   }
 
   # ============= #
