@@ -319,8 +319,8 @@ get_targets <- function (
   }
 
   # save names
-  colnames(x_hat) <- paste(object[["data"]][["xnames"]][rel_x], "_hat", sep = "")
-  colnames(y_hat) <- paste(object[["data"]][["ynames"]], "_hat", sep = "")
+  colnames(x_hat) <- paste(names(eval_data)[rel_x], "_hat", sep = "")
+  colnames(y_hat) <- paste(names(eval_data)[y], "_hat", sep = "")
 
   # return predictions
   targets <- data.frame (
