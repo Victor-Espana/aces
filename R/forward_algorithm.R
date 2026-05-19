@@ -229,15 +229,35 @@ add_basis_function <- function(
       # Update B matrix #
       # =============== #
 
-      new_B <- matrix(1, nrow = nrow(data))
-
-      for (v in 1:length(Bp_list_aux)) {
-        if (!is.null(Bp_list_aux[[v]][["paired"]])) {
-          for (l in 1:length(Bp_list_aux[[v]][["paired"]])) {
-            bf_jp <- Bp_list_aux[[v]][["paired"]][[l]][["Bp"]]
-            new_B <- cbind(new_B, bf_jp)
-          }
+      # compute insertion position using ORIGINAL Bp_list (before adding new knot)
+      col_offset <- 1L
+      for (v in x[x < xi]) {
+        if (!is.null(Bp_list[[v]][["paired"]])) {
+          col_offset <- col_offset + 2L * length(Bp_list[[v]][["paired"]])
         }
+      }
+
+      if (!is.null(Bp_list[[xi]][["paired"]])) {
+        existing_knots_xi <- sapply(Bp_list[[xi]][["paired"]], "[[", "t")
+        knots_before <- sum(existing_knots_xi < knots[i])
+      } else {
+        knots_before <- 0L
+      }
+
+      col_insert <- col_offset + knots_before * 2L
+
+      existing_B <- forward_model[["B"]]
+
+      if (col_insert < ncol(existing_B)) {
+        new_B <- cbind(
+          existing_B[, 1:col_insert, drop = FALSE],
+          new_pair[[1]],
+          new_pair[[2]],
+          existing_B[, (col_insert + 1):ncol(existing_B), drop = FALSE]
+        )
+      } else {
+        new_B <- cbind(existing_B, new_pair[[1]], new_pair[[2]])
+
       }
 
       # ===================== #

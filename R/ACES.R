@@ -102,7 +102,7 @@ aces <- function(
   x,
   y,
   scale_data = TRUE,
-  quick_aces = TRUE,
+  quick_aces = FALSE,
   mul_BF = list(
     "max_degree" = 1,
     "inter_cost" = 0.05
