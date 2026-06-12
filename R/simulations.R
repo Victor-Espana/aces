@@ -273,7 +273,7 @@ cobb_douglas_X3Y3 <- function (
 
     b1 <- b2 <- b3 <- 1 / 3
 
-  } else if (return_scale == "DRS") {
+  } else if (returns == "DRS") {
 
     b1 <- b2 <- b3 <- 0.267
 

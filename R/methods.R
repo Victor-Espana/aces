@@ -8,7 +8,7 @@ print.aces <- function(
 
   model <- x[["methods"]][[method]]
   if (is.null(model)) {
-    cat(sprintf("No modelel '%s' stored in this aces object.\n", method))
+    cat(sprintf("No model '%s' stored in this aces object.\n", method))
     return(invisible(x))
   }
 

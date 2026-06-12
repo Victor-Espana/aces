@@ -169,7 +169,7 @@ add_basis_function <- function(
     if (is.null(knots)) next
 
     # shuffle the knots randomly
-    knots <- sample(knots)
+    knots <- sort(knots)
 
     for (i in 1:length(knots)) {
       Bp_list_aux <- Bp_list

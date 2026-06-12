@@ -382,11 +382,11 @@ rf_aces <- function(
     ),
     "rf_aces_cubic" = list(
       "xmat" = as.matrix(rf_aces_cubic_technology[, 1:length(x)]),
-      "ymat" = as.matrix(rf_aces_cubic_technology[, (length(x) + 1):ncol(rf_aces_technology)])
+      "ymat" = as.matrix(rf_aces_cubic_technology[, (length(x) + 1):ncol(rf_aces_cubic_technology)])
     ),
     "rf_aces_quintic" = list(
       "xmat" = as.matrix(rf_aces_quintic_technology[, 1:length(x)]),
-      "ymat" = as.matrix(rf_aces_quintic_technology[, (length(x) + 1):ncol(rf_aces_technology)])
+      "ymat" = as.matrix(rf_aces_quintic_technology[, (length(x) + 1):ncol(rf_aces_quintic_technology)])
     )
   )
 
@@ -407,7 +407,7 @@ rf_aces <- function(
     "quick_aces" = quick_aces,
     "max_degree" = mul_BF[["max_degree"]],
     "inter_cost" = mul_BF[["inter_cost"]],
-    "xi_degree" = RF_ACES[["models"]][[1]][["control"]][["xi_degree"]],
+    "xi_degree" = RF_ACES[["forest"]][[1]][["control"]][["xi_degree"]],
     "metric" = metric,
     "shape" = shape,
     "learners" = rf_list[["learners"]],
