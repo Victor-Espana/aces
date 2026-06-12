@@ -80,6 +80,9 @@
 #' @param kn_penalty
 #' A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.
 #'
+#' @param high_speed
+#' A \code{logical} indicating whether to use the high-speed implementations of the internal optimization routines (reformulated LP solved through its dual, FDH scores by enumeration, vectorized knot bookkeeping). These are mathematically equivalent to the legacy implementations: they reach the same optimal value and the same fitted values, although when the underlying LP has multiple optimal solutions a different (equally optimal) vertex may be returned. Set to \code{FALSE} to reproduce exactly the legacy implementation. Default is \code{TRUE}.
+#'
 #' @references
 #'
 #' \insertRef{espana2024}{aces} \cr \cr
@@ -117,8 +120,20 @@ aces <- function(
   kn_grid = -1,
   minspan = -1,
   endspan = -1,
-  kn_penalty = 2
+  kn_penalty = 2,
+  high_speed = TRUE
 ) {
+
+  # ==================== #
+  #   HIGH-SPEED MODE    #
+  # ==================== #
+
+  # high_speed = TRUE uses the *_high_speed implementations;
+  # high_speed = FALSE reproduces exactly the legacy implementation.
+  # The option is restored when the function exits.
+  old_hs <- getOption("aces.high_speed", TRUE)
+  options(aces.high_speed = isTRUE(high_speed))
+  on.exit(options(aces.high_speed = old_hs), add = TRUE)
   # =================== #
   # DISPLAY ERRORS ACES #
   # =================== #

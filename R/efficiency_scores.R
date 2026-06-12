@@ -48,6 +48,23 @@ rad_out <- function(
   returns,
   type = "objective"
 ) {
+  # high-speed mode: FDH-VRS scores have a closed-form solution by
+  # enumeration over dominating units, so the MILP with binary intensity
+  # variables is not needed. The objective value and the value of phi
+  # coincide, so this applies to either "type". Set
+  # options(aces.high_speed = FALSE) to use the legacy MILP.
+  if (!convexity && returns == "variable" &&
+      isTRUE(getOption("aces.high_speed", TRUE))) {
+    return(
+      rad_out_fdh(
+        tech_xmat = tech_xmat,
+        tech_ymat = tech_ymat,
+        eval_xmat = eval_xmat,
+        eval_ymat = eval_ymat
+      )
+    )
+  }
+
   # number of DMUs in the technology
   tech_dmu <- nrow(tech_xmat)
 
@@ -117,6 +134,79 @@ rad_out <- function(
     } else if (type == "variables") {
       scores[d, 1] <- get.variables(lps)[1]
     }
+  }
+
+  return(scores)
+}
+
+#' @title Output-Oriented Radial Model under a Free Disposal Hull Technology (High-Speed Version)
+#'
+#' @description
+#' Computes output-oriented radial efficiency scores under a Free Disposal
+#' Hull (FDH) technology with variable returns to scale by enumeration:
+#' \deqn{\phi_d = \max_{j : x_j \le x_d} \min_r (y_{jr} / y_{dr})}
+#' This is mathematically equivalent to the mixed-integer formulation with
+#' binary intensity variables, but avoids solving one MILP per DMU.
+#'
+#' @param tech_xmat
+#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
+#' containing the input variables that define the technology.
+#'
+#' @param tech_ymat
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output variables that define the technology.
+#'
+#' @param eval_xmat
+#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
+#' containing the input data.
+#'
+#' @param eval_ymat
+#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
+#' output data.
+#'
+#' @return
+#' A \code{matrix} with \code{N} rows and 1 column containing the efficiency
+#' scores.
+
+rad_out_fdh <- function(
+  tech_xmat,
+  tech_ymat,
+  eval_xmat,
+  eval_ymat
+) {
+  # number of DMUs to be evaluated
+  eval_dmu <- nrow(eval_xmat)
+
+  # number of inputs
+  nX <- ncol(tech_xmat)
+
+  # transposed technology inputs (for vectorized dominance check)
+  t_tech_xmat <- t(tech_xmat)
+
+  # initialize vector of scores
+  scores <- matrix(nrow = eval_dmu, ncol = 1)
+
+  for (d in 1:eval_dmu) {
+    # dominating units: x_j <= x_d component-wise
+    dominates <- colSums(t_tech_xmat <= eval_xmat[d, ]) == nX
+
+    # infeasible if no unit dominates the evaluated DMU
+    if (!any(dominates)) {
+      scores[d, 1] <- NA
+      next
+    }
+
+    # output ratios y_jr / y_dr for dominating units
+    ratios <- tech_ymat[dominates, , drop = FALSE] /
+      matrix(
+        eval_ymat[d, ],
+        nrow = sum(dominates),
+        ncol = ncol(tech_ymat),
+        byrow = TRUE
+      )
+
+    # phi_d = max_j min_r (y_jr / y_dr)
+    scores[d, 1] <- max(apply(ratios, 1, min))
   }
 
   return(scores)
