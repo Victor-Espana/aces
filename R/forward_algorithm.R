@@ -387,7 +387,7 @@ add_basis_function <- function(
 #' @title Generate the Set of Eligible Knots
 #'
 #' @description
-#' This function generates a vector of knots that can be used to create a new pair of basis functions during the forward algorithm.
+#' This function generates a vector of knots that can be used to create a new pair of basis functions during the forward algorithm. It uses vectorized operations to compute the index bookkeeping for the minimum span.
 #'
 #' @param data
 #' A \code{matrix} containing the variables in the model.
@@ -412,222 +412,11 @@ add_basis_function <- function(
 #'
 #' @param kn_grid
 #' Grid of virtual knots to perform ACES.
-#'
-#' @importFrom dplyr %>%
 #'
 #' @return
 #' Numeric vector with the knots values for the variable.
 
 set_knots <- function(
-  data,
-  nX,
-  var_idx,
-  minspan,
-  endspan,
-  kn_list,
-  bf,
-  kn_grid
-) {
-  set_knots_high_speed(
-    data = data,
-    nX = nX,
-    var_idx = var_idx,
-    minspan = minspan,
-    endspan = endspan,
-    kn_list = kn_list,
-    bf = bf,
-    kn_grid = kn_grid
-  )
-}
-
-#' @title Generate the Set of Eligible Knots (Legacy Version)
-#'
-#' @description
-#' Original (loop-based) implementation of \code{set_knots}.
-#'
-#' @param data
-#' A \code{matrix} containing the variables in the model.
-#'
-#' @param nX
-#' Number of inputs.
-#'
-#' @param var_idx
-#' Index of the input variable that creates the new pair of basis functions.
-#'
-#' @param minspan
-#' Minimum number of observations between two adjacent knots.
-#'
-#' @param endspan
-#' Minimum number of observations before the first and after the final knot.
-#'
-#' @param kn_list
-#' A \code{list} containing the set of selected knots.
-#'
-#' @param bf
-#' A \code{list} with the basis function for the expansion of the model.
-#'
-#' @param kn_grid
-#' Grid of virtual knots to perform ACES.
-#'
-#' @return
-#' Numeric vector with the knots values for the variable.
-
-set_knots_legacy <- function(
-  data,
-  nX,
-  var_idx,
-  minspan,
-  endspan,
-  kn_list,
-  bf,
-  kn_grid
-) {
-  # sample size
-  N <- nrow(data)
-
-  # minimum number of observations between two adjacent knots
-  sp1 <- ifelse(length(minspan) > 1, minspan[var_idx], minspan)
-
-  # minimum number of observations before the first and after the final knot.
-  sp2 <- ifelse(length(endspan) > 1, endspan[var_idx], endspan)
-
-  # observations in the space of the basis function.
-  nobs_bf <- bf[["Bp"]] != 0
-
-  # minimum span for Friedman's approach
-  if (sp1 == -1) {
-    sp1 <- floor(min(N * 0.1, -log2(-(1 / (nX * sum(nobs_bf))) * log(1 - 0.05)) / 2.5))
-  }
-
-  # boolean: possible knots
-  kn_idx <- rep(TRUE, length(kn_grid[[var_idx]]))
-
-  # Set to FALSE the first and last "Le" observations
-  if (sp2 != 0) {
-    set_sp2_idx <- c(1:sp2, (length(kn_idx) - sp2 + 1):length(kn_idx))
-  } else {
-    set_sp2_idx <- c()
-  }
-
-  # Set to FALSE adjacent "L" observations
-  if (!is.null(kn_list[[var_idx]])) {
-    # used knots values
-    used_kn_val <- sapply(kn_list[[var_idx]], "[[", "t")
-
-    # used knots indexes
-    used_kn_idx <- c()
-
-    for (kn in 1:length(used_kn_val)) {
-      used_kn_idx <- c(
-        used_kn_idx,
-        which(kn_grid[[var_idx]][order(kn_grid[[var_idx]])] == used_kn_val[kn])
-      )
-    }
-
-    set_sp1_idx <- c()
-
-    for (idx in 1:length(used_kn_idx)) {
-      set_sp1_idx <- append(
-        set_sp1_idx,
-        (used_kn_idx[idx] - sp1):(used_kn_idx[idx] + sp1)
-      )
-    }
-
-    # indexes must be greater than 0 and lower than N
-    set_sp1_idx <- unique(sort(set_sp1_idx[set_sp1_idx > 0 & set_sp1_idx <= sum(nobs_bf)]))
-  } else {
-    set_sp1_idx <- c()
-  }
-
-  # set of observations to FALSE based on minspan and endspan
-  kn_idx[sort(unique(c(set_sp1_idx, set_sp2_idx)))] <- FALSE
-
-  # define knots
-  if (all(kn_idx == FALSE)) {
-    knots <- NULL
-  } else {
-    # minimum value of observations in the basis function
-    minimum <- min(data[nobs_bf, var_idx])
-
-    # maximum value of observations in the basis function
-    maximum <- max(data[nobs_bf, var_idx])
-
-    # exclude observations according to the minspan and the endspan
-    varknots <- kn_grid[[var_idx]][order(kn_grid[[var_idx]])][kn_idx]
-
-    # knots between minimum and maximum
-    knots <- varknots[varknots >= minimum & varknots <= maximum]
-  }
-
-  if (length(knots) <= 1) knots <- NULL
-
-  return(knots)
-}
-
-#' @title Generate a Pair of Linear Basis Functions
-#'
-#' @description
-#' This function generates two new linear basis functions from a variable and a knot.
-#'
-#' @param data
-#' A \code{matrix} containing the variables in the model.
-#'
-#' @param var_idx
-#' Index of the input variable that creates the new pair of basis functions.
-#'
-#' @param knot
-#' Knot for creating the new pair of basis functions.
-#'
-#' @return
-#' A \code{list} with the new pair of basis functions.
-
-create_linear_basis <- function(
-  data,
-  var_idx,
-  knot
-) {
-  # create (xi-t)+ and (t-xi)+
-  hinge1 <- pmax(0, data[, var_idx] - knot)
-  hinge2 <- pmax(0, knot - data[, var_idx])
-
-  return(list(hinge1, hinge2))
-}
-
-#' @title Generate the Set of Eligible Knots (High-Speed Version)
-#'
-#' @description
-#' Vectorized implementation of \code{set_knots}. It returns exactly the same
-#' set of eligible knots as \code{set_knots_legacy}: the index bookkeeping for
-#' the minimum span is computed with vectorized operations instead of loops.
-#'
-#' @param data
-#' A \code{matrix} containing the variables in the model.
-#'
-#' @param nX
-#' Number of inputs.
-#'
-#' @param var_idx
-#' Index of the input variable that creates the new pair of basis functions.
-#'
-#' @param minspan
-#' Minimum number of observations between two adjacent knots.
-#'
-#' @param endspan
-#' Minimum number of observations before the first and after the final knot.
-#'
-#' @param kn_list
-#' A \code{list} containing the set of selected knots.
-#'
-#' @param bf
-#' A \code{list} with the basis function for the expansion of the model.
-#'
-#' @param kn_grid
-#' Grid of virtual knots to perform ACES.
-#'
-#' @return
-#' Numeric vector with the knots values for the variable.
-
-set_knots_high_speed <- function(
   data,
   nX,
   var_idx,
@@ -708,3 +497,33 @@ set_knots_high_speed <- function(
 
   return(knots)
 }
+
+#' @title Generate a Pair of Linear Basis Functions
+#'
+#' @description
+#' This function generates two new linear basis functions from a variable and a knot.
+#'
+#' @param data
+#' A \code{matrix} containing the variables in the model.
+#'
+#' @param var_idx
+#' Index of the input variable that creates the new pair of basis functions.
+#'
+#' @param knot
+#' Knot for creating the new pair of basis functions.
+#'
+#' @return
+#' A \code{list} with the new pair of basis functions.
+
+create_linear_basis <- function(
+  data,
+  var_idx,
+  knot
+) {
+  # create (xi-t)+ and (t-xi)+
+  hinge1 <- pmax(0, data[, var_idx] - knot)
+  hinge2 <- pmax(0, knot - data[, var_idx])
+
+  return(list(hinge1, hinge2))
+}
+

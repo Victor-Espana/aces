@@ -1,7 +1,11 @@
 #' @title Compute Efficient Targets using Adaptive Constrained Enveloping Splines (ACES)
 #'
 #' @description
-#' Projects a set of Decision Making Units (DMUs) onto the estimated production frontier. This function calculates the efficient input/output targets required for each DMU to achieve full efficiency, based on the specified ACES model and distance measure.
+#' Projects a set of Decision Making Units (DMUs) onto the estimated production
+#' frontier. This function calculates the efficient input/output targets required
+#' for each DMU to achieve full efficiency, based on the specified ACES or RF-ACES
+#' model and distance measure. The function automatically detects the class of the
+#' fitted object and applies the appropriate methodology.
 #'
 #' @param eval_data
 #' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
@@ -16,15 +20,18 @@
 #' A \code{logical} indicating if only relevant variables should be included in the technology definition.
 #'
 #' @param object
-#' An \code{aces} object.
+#' An \code{aces} or \code{rf_aces} object.
 #'
 #' @param method
-#' Model prediction method used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
+#' Model prediction method:
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
 #' }
 #'
 #' @param measure
@@ -39,6 +46,7 @@
 #' \item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
 #' \item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
 #' \item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
+#' \item{\code{rf_aces_rad_out}} Output-oriented radial measure derived from RF-ACES prediction. Only for \code{rf_aces} objects. \insertCite{espana2024rf;textual}{aces}.
 #' }
 #'
 #' @param returns
@@ -54,6 +62,7 @@
 #' @references
 #'
 #' \insertRef{espana2024}{aces} \cr \cr
+#' \insertRef{espana2024rf}{aces} \cr \cr
 #' \insertRef{banker1984}{aces} \cr \cr
 #' \insertRef{chambers1998}{aces} \cr \cr
 #' \insertRef{fare1978}{aces} \cr \cr
@@ -75,11 +84,16 @@ get_targets <- function (
     y,
     relevant = FALSE,
     object,
-    method = "aces",
+    method = NULL,
     measure = "rad_out",
     returns = "variable",
     direction = NULL
     ) {
+
+  # default method based on object class
+  if (is.null(method)) {
+    method <- if (inherits(object, "rf_aces")) "rf_aces" else "aces"
+  }
 
   # handle errors:
   display_errors_scores (
@@ -110,16 +124,21 @@ get_targets <- function (
   rel_x <- NULL
 
   if (relevant) {
-
-    # set of knots
-    knots <- object[["methods"]][[method]][["knots"]]
+    if (inherits(object, "rf_aces")) {
+      # aggregate knots across all trees
+      all_xi <- unique(unlist(lapply(object[["forest"]], function(tree) {
+        tree[["methods"]][[method]][["knots"]]$xi
+      })))
+    } else {
+      all_xi <- unique(object[["methods"]][[method]][["knots"]]$xi)
+    }
 
     # variable degree
     xi_degree <- object[["control"]][["xi_degree"]]
     colnames(xi_degree) <- names(object[["control"]][["kn_grid"]])
 
     # check participating variables
-    participating_vars <- intersect(xi_degree[1, ], unique(knots$xi))
+    participating_vars <- intersect(xi_degree[1, ], all_xi)
 
     # names of participant variables
     participating_vars_names <- colnames(xi_degree)[participating_vars]
@@ -198,6 +217,30 @@ get_targets <- function (
   # ========== #
   # Get Scores #
   # ========== #
+
+  if (measure == "rf_aces_rad_out") {
+    # RF-ACES specific: targets are the forest predictions (already in original scale)
+    y_hat_point <- rf_aces_predict(
+      object = object,
+      eval_data = eval_data,
+      x = x,
+      method = method
+    )
+
+    # inputs remain unchanged; outputs are the predicted frontier values
+    if (!is.null(scaling) && scaling$is_scaled) {
+      x_hat <- sweep(eval_xmat, 2, sx, "*")
+    } else {
+      x_hat <- eval_xmat
+    }
+    y_hat <- as.matrix(y_hat_point)
+
+    colnames(x_hat) <- paste(names(eval_data)[rel_x], "_hat", sep = "")
+    colnames(y_hat) <- paste(names(eval_data)[y], "_hat", sep = "")
+
+    targets <- data.frame(x_hat, y_hat)
+    return(targets)
+  }
 
   if (measure == "rad_out") {
 
@@ -336,16 +379,18 @@ get_targets <- function (
 #'
 #' @description
 #'
-#' This function predicts the expected output by an \code{rf_aces} object.
+#' This function predicts the expected output by an \code{rf_aces} object. It
+#' computes the mean prediction across all trees in the forest and projects the
+#' result onto the estimated technology via DEA.
 #'
 #' @param object
 #' A \code{rf_aces} object.
 #'
-#' @param newdata
+#' @param eval_data
 #' A \code{data.frame} containing the input and netput variables to predict on.
 #'
 #' @param x
-#' Input indexes in \code{newdata}.
+#' Input indexes in \code{eval_data}.
 #'
 #' @param method
 #' Model for prediction:
@@ -358,26 +403,16 @@ get_targets <- function (
 #' @return
 #'
 #' A \code{data.frame} with the predicted values through the Random Forest Adaptive Constrained Enveloping Splines model.
-#'
-#' @export
 
-predict.rf_aces <- function (
+rf_aces_predict <- function (
     object,
-    newdata,
+    eval_data,
     x,
     method = "rf_aces"
     ) {
 
   # number of outputs
   nY <- length(object[["data"]][["y"]])
-
-  # check if training and test names are equal
-  tr_names <- object[["data"]][["xnames"]]
-  ts_names <- colnames(newdata)[c(x)]
-
-  if (!identical(sort(tr_names), sort(ts_names))) {
-    stop("Different variable names in training data and newdata.")
-  }
 
   # =========================== #
   # 1. SCALING INPUTS           #
@@ -387,19 +422,10 @@ predict.rf_aces <- function (
   scaling <- object[["control"]][["scale"]]
 
   # data to work with
-  data_work <- newdata
+  data_work <- eval_data
 
   if (!is.null(scaling) && scaling$is_scaled) {
-
-    # original inputs
-    raw_x_pred <- as.matrix(data_work[, x])
-
-    # scaled inputs
-    scaled_x_pred <- sweep(raw_x_pred, 2, scaling$mean_x, "/")
-
-    # update data
-    data_work[, x] <- scaled_x_pred
-
+    data_work[, x] <- sweep(as.matrix(eval_data[, x]), 2, scaling$mean_x, "/")
   }
 
   # =========================== #
@@ -426,7 +452,7 @@ predict.rf_aces <- function (
   for (t in 1:RF_models) {
 
     # output predictions
-    y_hat <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
+    y_hat <- as.data.frame(matrix(NA, nrow = nrow(eval_data), ncol = nY))
 
     # select an element from the forest
     model <- object[["forest"]][[t]]
@@ -453,27 +479,20 @@ predict.rf_aces <- function (
   }
 
   # point estimation
-  y_hat_aux <- as.data.frame(matrix(NA, nrow = nrow(newdata), ncol = nY))
+  y_hat_aux <- as.data.frame(matrix(NA, nrow = nrow(eval_data), ncol = nY))
 
   # mean prediction
   for (var in 1:nY) {
-
-    # select "var" variable for each data.frame
     rf_estimation <- lapply(y_hat_RF, function(df) df[, var])
-
-    # transform to matrix
     matrix_var <- do.call(cbind, rf_estimation)
-
-    # mean predictions
     y_hat_aux[, var] <- rowMeans(matrix_var, na.rm = TRUE)
-
   }
 
-  # compute DEA scores
+  # compute DEA scores to project onto the technology
   scores <- rad_out (
     tech_xmat = tecno[["xmat"]],
     tech_ymat = tecno[["ymat"]],
-    eval_xmat = as.matrix(newdata[, x]),
+    eval_xmat = as.matrix(eval_data[, x]),
     eval_ymat = as.matrix(y_hat_aux),
     convexity = TRUE,
     returns = "variable"
@@ -497,6 +516,30 @@ predict.rf_aces <- function (
 
   return(y_hat)
 
+}
+
+#' @title Model Prediction for RF-ACES (S3 method)
+#'
+#' @description
+#' S3 predict method for \code{rf_aces} objects. Wraps \code{rf_aces_predict}.
+#'
+#' @param object A \code{rf_aces} object.
+#' @param newdata A \code{data.frame} with input variables.
+#' @param x Input indexes in \code{newdata}.
+#' @param method Model for prediction.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return A \code{data.frame} with predicted values.
+#'
+#' @export
+
+predict.rf_aces <- function (object, newdata, x, method = "rf_aces", ...) {
+  rf_aces_predict(
+    object = object,
+    eval_data = newdata,
+    x = x,
+    method = method
+  )
 }
 
 #' @title Build (B) Matrix of Basis Functions

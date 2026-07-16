@@ -134,14 +134,12 @@ rad_out <- function(
   return(scores)
 }
 
-#' @title Output-Oriented Radial Model under a Free Disposal Hull Technology (High-Speed Version)
+#' @title Output-Oriented Radial Model under a Free Disposal Hull Technology
 #'
 #' @description
 #' Computes output-oriented radial efficiency scores under a Free Disposal
 #' Hull (FDH) technology with variable returns to scale by enumeration:
 #' \deqn{\phi_d = \max_{j : x_j \le x_d} \min_r (y_{jr} / y_{dr})}
-#' This is mathematically equivalent to the mixed-integer formulation with
-#' binary intensity variables, but avoids solving one MILP per DMU.
 #'
 #' @param tech_xmat
 #' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
@@ -910,7 +908,9 @@ wam <- function(
 #'
 #' @description
 #' This function computes the efficiency scores for each Decision-Making-Unit
-#' (DMU) using an Adaptive Constrained Enveloping Splines (ACES) model.
+#' (DMU) using an Adaptive Constrained Enveloping Splines (ACES) or Random
+#' Forest ACES (RF-ACES) model. The function automatically detects the class
+#' of the fitted object and applies the appropriate methodology.
 #'
 #' @param eval_data
 #' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
@@ -925,15 +925,18 @@ wam <- function(
 #' A \code{logical} indicating if only relevant variables should be included in the technology definition.
 #'
 #' @param object
-#' An \code{aces} object.
+#' An \code{aces} or \code{rf_aces} object.
 #'
 #' @param method
-#' Model prediction method used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
+#' Model prediction method:
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
 #' }
 #'
 #' @param measure
@@ -948,6 +951,7 @@ wam <- function(
 #' \item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
 #' \item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
 #' \item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
+#' \item{\code{rf_aces_rad_out}} Output-oriented radial measure derived from RF-ACES prediction. Only for \code{rf_aces} objects. \insertCite{espana2024rf;textual}{aces}.
 #' }
 #'
 #' @param returns
@@ -963,6 +967,7 @@ wam <- function(
 #' @references
 #'
 #' \insertRef{espana2024}{aces} \cr \cr
+#' \insertRef{espana2024rf}{aces} \cr \cr
 #' \insertRef{banker1984}{aces} \cr \cr
 #' \insertRef{chambers1998}{aces} \cr \cr
 #' \insertRef{fare1978}{aces} \cr \cr
@@ -984,11 +989,16 @@ get_scores <- function(
   y,
   relevant = FALSE,
   object,
-  method = "aces",
+  method = NULL,
   measure = "rad_out",
   returns = "variable",
   direction = NULL
   ) {
+
+  # default method based on object class
+  if (is.null(method)) {
+    method <- if (inherits(object, "rf_aces")) "rf_aces" else "aces"
+  }
 
   # handle errors:
   display_errors_scores(
@@ -1019,15 +1029,21 @@ get_scores <- function(
   rel_x <- NULL
 
   if (relevant) {
-    # set of knots
-    knots <- object[["methods"]][[method]][["knots"]]
+    if (inherits(object, "rf_aces")) {
+      # aggregate knots across all trees
+      all_xi <- unique(unlist(lapply(object[["forest"]], function(tree) {
+        tree[["methods"]][[method]][["knots"]]$xi
+      })))
+    } else {
+      all_xi <- unique(object[["methods"]][[method]][["knots"]]$xi)
+    }
 
     # variable degree
     xi_degree <- object[["control"]][["xi_degree"]]
     colnames(xi_degree) <- names(object[["control"]][["kn_grid"]])
 
     # check participating variables
-    participating_vars <- intersect(xi_degree[1, ], unique(knots$xi))
+    participating_vars <- intersect(xi_degree[1, ], all_xi)
 
     # names of participant variables
     participating_vars_names <- colnames(xi_degree)[participating_vars]
@@ -1094,7 +1110,26 @@ get_scores <- function(
     }
   }
 
-  if (measure == "rad_out") {
+  # ============ #
+  # Compute scores
+  # ============ #
+
+  if (measure == "rf_aces_rad_out") {
+    # RF-ACES specific: predict with the forest and compute ratio
+    y_hat_point <- rf_aces_predict(
+      object = object,
+      eval_data = eval_data,
+      x = x,
+      method = method
+    )
+
+    # ratio y_hat / y_obs
+    ratios <- as.data.frame(y_hat_point / eval_data[, y])
+
+    # score: minimum ratio by row
+    scores <- apply(ratios, 1, min)
+
+  } else if (measure == "rad_out") {
     scores <- rad_out(
       tech_xmat = tech_xmat,
       tech_ymat = tech_ymat,
@@ -1174,227 +1209,3 @@ get_scores <- function(
   return(scores)
 }
 
-#' @title Compute Efficiency Scores using a Random Forest-Adaptive Constrained Enveloping Splines (RF-ACES) model.
-#'
-#' @description
-#'
-#' This function computes the efficiency scores for each Decision-Making-Unit (DMU) by first generating a virtual dataset using a Random Forest-Adaptive Constrained Enveloping Splines (ACES) model. It then constructs a standard DEA technology based on this virtual dataset and evaluates the efficiency scores according to a user-defined measure.
-#'
-#' @param eval_data
-#' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
-#'
-#' @param x
-#' Column indexes of input variables in \code{eval_data}. The user may choose to include only the variables considered relevant based on the results of the \code{rf_aces_varimp} function.
-#'
-#' @param y
-#' Column indexes of output variables in \code{eval_data}.
-#'
-#' @param object
-#' A \code{rf_aces} object.
-#'
-#' @param method
-#' Model prediction used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
-#' \itemize{
-#' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines model.
-#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines model.
-#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines model.
-#' }
-#'
-#' #' @param measure
-#' Mathematical programming model to calculate scores:
-#' \itemize{
-#' \item{\code{rad_out}} The output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{rad_inp}} The input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{ddf}}     The directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
-#' \item{\code{rsl_out}} The output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{rsl_inp}} The input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{wam}}     A weighted additive model.
-#' \item{\code{rf_aces_rad_out}} The output-oriented radial efficiency measure derived from the Random Forest-Adaptive Constrained Enveloping Splines model proposed by \insertCite{espana2024rf;textual}{aces}.
-#' }
-#'
-#' @param returns
-#' Type of returns to scale:
-#' \itemize{
-#' \item{\code{"constant"}} Constant returns to scale.
-#' \item{\code{"variable"}} Variable returns to scale (default).
-#' }
-#'
-#' @param direction
-#' Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}.
-#' \itemize{
-#' \item{\code{"mean"}}  Projection vector given by the average value of inputs and outputs of all DMUs. Applied if \code{direction = NULL}.
-#' \item{\code{"briec"}} Projection vector given by the value of inputs and outputs of the evaluated DMU.
-#' }
-#'
-#' @param weights
-#' Weights for the additive model. Only applied if \code{measure = "wam"}.
-#' \itemize{
-#' \item{\code{"ONE"}} Weighted Additive Model proposed by \insertCite{charnes1985;textual}{aces}.
-#' \item{\code{"MIP"}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{"NOR"}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
-#' \item{\code{"RAM"}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{"BAM"}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
-#' }
-#'
-#' @param digits
-#' Number of decimal places to which efficiency scores are rounded.
-#'
-#' @importFrom dplyr summarise %>% mutate_if
-#' @importFrom stats median quantile sd
-#'
-#' @references
-#'
-#' \insertRef{espana2024rf}{aces} \cr \cr
-#' \insertRef{banker1984}{aces} \cr \cr
-#' \insertRef{chambers1998}{aces} \cr \cr
-#' \insertRef{fare1978}{aces} \cr \cr
-#' \insertRef{charnes1985}{aces} \cr \cr
-#' \insertRef{cooper1999}{aces} \cr \cr
-#' \insertRef{lovell1995}{aces} \cr \cr
-#' \insertRef{cooper2011}{aces}
-#'
-#' @export
-#'
-#' @return
-#' A \code{data.frame} with the efficiency scores computed through a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.
-
-rf_aces_scores <- function(
-  eval_data,
-  x,
-  y,
-  object,
-  method = "rf_aces",
-  measure = "rad_out",
-  returns = "variable",
-  direction = NULL,
-  weights = NULL,
-  digits = 3
-) {
-  # error handling
-  display_errors_scores(
-    data = eval_data,
-    x = x,
-    y = y,
-    object = object,
-    method = method,
-    measure = measure,
-    returns = returns,
-    direction = direction,
-    weights = weights,
-    digits = digits
-  )
-
-  # number of inputs
-  nX <- length(x)
-
-  # number of outputs
-  nY <- length(y)
-
-  # =================== #
-  # Data for technology #
-  # =================== #
-
-  # matrix of inputs
-  tech_xmat <- as.matrix(object[["technology"]][[method]][["xmat"]])
-
-  # matrix of outputs
-  tech_ymat <- as.matrix(object[["technology"]][[method]][["ymat"]])
-
-  # ======================= #
-  # Data for evaluated DMUs #
-  # ======================= #
-
-  # matrix of inputs
-  eval_xmat <- as.matrix(eval_data[, x])
-
-  # matrix of outputs
-  eval_ymat <- as.matrix(eval_data[, y])
-
-  if (measure == "rad_out") {
-    scores <- rad_out(
-      tech_xmat = tech_xmat,
-      tech_ymat = tech_ymat,
-      eval_xmat = eval_xmat,
-      eval_ymat = eval_ymat,
-      convexity = TRUE,
-      returns = returns
-    )
-  } else if (measure == "rad_inp") {
-    scores <- rad_inp(
-      tech_xmat = tech_xmat,
-      tech_ymat = tech_ymat,
-      eval_xmat = eval_xmat,
-      eval_ymat = eval_ymat,
-      convexity = TRUE,
-      returns = returns
-    )
-  } else if (measure == "ddf") {
-    if (is.null(direction)) direction <- "mean"
-
-    scores <- ddf(
-      tech_xmat = tech_xmat,
-      tech_ymat = tech_ymat,
-      eval_xmat = eval_xmat,
-      eval_ymat = eval_ymat,
-      direction = direction,
-      convexity = TRUE,
-      returns = returns
-    )
-  } else if (measure == "rsl_out") {
-    scores <- rsl_out(
-      tech_xmat = tech_xmat,
-      tech_ymat = tech_ymat,
-      eval_xmat = eval_xmat,
-      eval_ymat = eval_ymat,
-      convexity = TRUE,
-      returns = returns
-    )
-  } else if (measure == "rsl_inp") {
-    scores <- rsl_inp(
-      tech_xmat = tech_xmat,
-      tech_ymat = tech_ymat,
-      eval_xmat = eval_xmat,
-      eval_ymat = eval_ymat,
-      convexity = TRUE,
-      returns = returns
-    )
-  } else if (measure == "wam") {
-    scores <- wam(
-      tech_xmat = tech_xmat,
-      tech_ymat = tech_ymat,
-      eval_xmat = eval_xmat,
-      eval_ymat = eval_ymat,
-      weights = weights,
-      convexity = TRUE,
-      returns = returns
-    )
-  } else {
-    y_hat_point <- predict(
-      object = object,
-      newdata = eval_data,
-      x = x,
-      method = method
-    )
-
-    # ratio y_hat / y_obs
-    ratios <- as.data.frame(y_hat_point / eval_data[, y])
-
-    # score: minimum ratio by row
-    scores <- apply(ratios, 1, min)
-  }
-
-  # model name
-  model <- ifelse(returns == "constant", "aces_crt", "aces_vrt")
-  model <- paste(model, measure, sep = "_")
-
-  # transform scores as a data.frame format
-  scores <- as.data.frame(scores)
-
-  # column names of the new data.frame
-  colnames(scores) <- model
-
-  # row names of the new data.frame
-  rownames(scores) <- row.names(eval_data)
-
-  return(round(scores, digits))
-}

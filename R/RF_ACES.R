@@ -116,7 +116,7 @@ rf_aces <- function(
   x,
   y,
   scale_data = TRUE,
-  quick_aces = TRUE,
+  quick_aces = FALSE,
   mul_BF = list(
     "max_degree" = 1,
     "inter_cost" = 0.05
@@ -221,12 +221,12 @@ rf_aces <- function(
     )
 
     # data for the m-model
-    data_bag <- data[sample_bag, ]
+    data_bag <- data_algo[sample_bag, ]
 
     # out of bag data for the m-model
-    inb_idxs <- 1:nrow(data) %in% sample_bag
-    oob_idxs <- which(!(1:nrow(data) %in% sample_bag))
-    data_oob <- data[oob_idxs, ]
+    inb_idxs <- 1:nrow(data_algo) %in% sample_bag
+    oob_idxs <- which(!(1:nrow(data_algo) %in% sample_bag))
+    data_oob <- data_algo[oob_idxs, ]
 
     RF_ACES[[m]] <- rf_aces_algorithm(
       data = data_bag,
@@ -248,13 +248,28 @@ rf_aces <- function(
       kn_grid = kn_grid
     )
 
-    # predictions
-    Bmatx <- RF_ACES[[m]][["methods"]][["rf_aces"]][["Bmatx"]]
-    coefs <- RF_ACES[[m]][["methods"]][["rf_aces"]][["coefs"]]
-    y_hat <- Bmatx %*% coefs
+    # predictions for OOB observations
+    aces_model <- RF_ACES[[m]][["methods"]][["rf_aces"]]
+    coefs <- aces_model[["coefs"]]
+    knots <- aces_model[["knots"]]
 
-    # select out-of-bag indices
-    y_hat <- y_hat[oob_idxs, ]
+    oob_expanded <- set_data(
+      data = data_oob,
+      x = x,
+      y = y,
+      max_degree = mul_BF[["max_degree"]]
+    )
+
+    x_algo <- 1:(ncol(oob_expanded) - length(y))
+
+    B_oob <- set_Bmat(
+      newdata = oob_expanded[, x_algo, drop = FALSE],
+      model = aces_model,
+      knots = knots,
+      method = "rf_aces"
+    )
+
+    y_hat <- B_oob %*% coefs
 
     oob_pred[[m]] <- matrix(
       c(
@@ -266,7 +281,7 @@ rf_aces <- function(
 
     # OOB performance
     oob_mse <- compute_oob(
-      data = data,
+      data = data_algo,
       y = y,
       oob_idxs = oob_idxs,
       oob_pred = oob_pred,
@@ -276,20 +291,23 @@ rf_aces <- function(
     # out-of-bag error
     RF_ACES[[m]][["OOB"]] <- oob_mse
 
-    # early stopping RF-ACES based on moving average
-    oob_trend <- c(oob_trend, oob_mse)
+    # store bag indices for variable importance
+    RF_ACES[[m]][["sample_bag"]] <- sample_bag
 
+    # early stopping RF-ACES based on moving average
     if (m > ma_window) {
-      # compute moving average over the last `ma_window` iterations
+      # compute moving average over the previous `ma_window` iterations
       oob_ma <- mean(tail(oob_trend, ma_window))
 
-      # current oob greater than moving average over last oob
+      # current oob greater than or equal to moving average
       if (oob_mse >= oob_ma) {
         stopping_condition_counter <- stopping_condition_counter + 1
       } else {
         stopping_condition_counter <- 0
       }
     }
+
+    oob_trend <- c(oob_trend, oob_mse)
 
     if (stopping_condition_counter == tolerance) {
       cat("\n")
@@ -418,7 +436,7 @@ rf_aces <- function(
     "err_red" = err_red,
     "minspan" = minspan,
     "endspan" = endspan,
-    "kn_grid" = kn_grid,
+    "kn_grid" = RF_ACES[["forest"]][[1]][["control"]][["kn_grid"]],
     "kn_penalty" = NULL,
     "psi" = 0.05,
     "wc" = NULL,
@@ -892,7 +910,9 @@ rf_aces_algorithm <- function(
   )
 
   # generate technology
+  var_names <- colnames(DMUs[, c(x_vars, y_vars)])
   technology[["rf_aces"]] <- generate_technology(
+    var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces[["Bmatx"]] %*% rf_aces[["coefs"]],
@@ -949,6 +969,7 @@ rf_aces_algorithm <- function(
 
   # generate technology
   technology[["rf_aces_cubic"]] <- generate_technology(
+    var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_cubic[["Bmatx"]] %*% rf_aces_cubic[["coefs"]],
@@ -971,6 +992,7 @@ rf_aces_algorithm <- function(
 
   # generate technology
   technology[["rf_aces_quintic"]] <- generate_technology(
+    var_names = var_names,
     tech_xmat = DMUs[, x_vars],
     tech_ymat1 = DMUs[, y_vars],
     tech_ymat2 = rf_aces_quintic[["Bmatx"]] %*% rf_aces_quintic[["coefs"]],
@@ -997,6 +1019,7 @@ rf_aces_algorithm <- function(
     endspan = endspan,
     kn_grid = kn_grid,
     kn_penalty = NULL,
+    psi = NULL,
     wc = rf_aces_cubic[["w"]],
     wq = rf_aces_quintic[["w"]],
     aces_forward = rf_aces,
@@ -1010,6 +1033,7 @@ rf_aces_algorithm <- function(
 
   RF_ACES[["control"]] <- list(
     "xi_degree" = RF_ACES[["control"]][["xi_degree"]],
+    "kn_grid" = RF_ACES[["control"]][["kn_grid"]],
     "wc" = RF_ACES[["control"]][["wc"]],
     "wq" = RF_ACES[["control"]][["wq"]]
   )
@@ -1099,7 +1123,12 @@ compute_oob <- function(
 #' @title Compute Variable Importance for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
 #'
 #' @description
-#' Computes a robust measure of variable importance for a fitted Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model. Importance scores are obtained by evaluating the increase in prediction error when permuting each input variable as in \insertCite{breiman2001;textual}{aces}.
+#' Computes a measure of variable importance for a fitted Random Forest Adaptive
+#' Constrained Enveloping Splines (RF-ACES) model using the permutation approach
+#' of \insertCite{breiman2001;textual}{aces}. For each tree, the out-of-bag (OOB)
+#' samples are used to predict with the trained model. Then, a single input
+#' variable is permuted in those OOB samples and predictions are recomputed.
+#' The increase in prediction error quantifies the importance of that variable.
 #'
 #' @param data
 #' A \code{data.frame} or \code{matrix} containing the variables in the model.
@@ -1114,7 +1143,7 @@ compute_oob <- function(
 #' A \code{rf_aces} object.
 #'
 #' @param repeats
-#' Number of times the variable importance procedure is repeated.
+#' Number of times the permutation is repeated per variable (results are averaged).
 #'
 #' @param normalize
 #' A \code{logical} value indicating whether to rescale the importance scores so that the most important variable has a value of 100 and all other variables are expressed relative to it.
@@ -1122,8 +1151,10 @@ compute_oob <- function(
 #' @references
 #' \insertRef{breiman2001}{aces} \cr
 #'
+#' @export
+#'
 #' @return
-#' This function returns a metric of variable importance for each input variable.
+#' A \code{data.frame} with variable importance scores for each input variable.
 
 rf_aces_varimp <- function(
   data,
@@ -1133,89 +1164,160 @@ rf_aces_varimp <- function(
   repeats = 1,
   normalize = TRUE
 ) {
-  # RF-ACES configuration
-  control_features <- object[["control"]]
+  # number of outputs
+  nY <- length(y)
 
-  quick_aces <- control_features[["quick_aces"]]
-  max_degree <- control_features[["max_degree"]]
-  inter_cost <- control_features[["inter_cost"]]
-  metric <- control_features[["metric"]]
-  shape <- control_features[["shape"]]
-  learners <- control_features[["learners"]]
-  bag_size <- control_features[["bag_size"]]
-  max_feats <- control_features[["max_feats"]]
-  early_stopping <- control_features[["early_stopping"]]
-  max_terms <- control_features[["max_terms"]]
-  err_red <- control_features[["err_red"]]
-  kn_grid <- control_features[["kn_grid"]]
-  minspan <- control_features[["minspan"]]
-  endspan <- control_features[["endspan"]]
+  # number of trees
+  n_trees <- length(object[["forest"]])
 
-  # initialize matrix of variable importance
-  mat_varimp <- matrix(
-    0,
-    nrow = length(x)
+  # metric used during training
+  metric <- object[["control"]][["metric"]]
+
+  # max_degree for building the data matrix
+  max_degree <- object[["control"]][["max_degree"]]
+
+  # sample size
+  N <- nrow(data)
+
+  # scaling setup
+  scaling <- object[["control"]][["scale"]]
+  data_work <- data
+
+  if (!is.null(scaling) && scaling$is_scaled) {
+    data_work[, x] <- sweep(as.matrix(data[, x]), 2, scaling$mean_x, "/")
+    data_work[, y] <- sweep(as.matrix(data[, y]), 2, scaling$mean_y, "/")
+  }
+
+  # data in [x, z, y] format with interaction of variables included
+  data_algo <- set_data(
+    data = data_work,
+    x = x,
+    y = y,
+    max_degree = max_degree
   )
 
+  # indexes in the expanded data
+  x_algo <- 1:(ncol(data_algo) - nY)
+  y_algo <- (length(x_algo) + 1):ncol(data_algo)
+
+  # DEA scores for weighting (computed once on the full sample, unscaled data)
+  dea_scores <- matrix(NA, nrow = N, ncol = nY)
+
+  for (out in 1:nY) {
+    dea_scores[, out] <- rad_out(
+      tech_xmat = as.matrix(data[, x]),
+      tech_ymat = as.matrix(data[, y[out]]),
+      eval_xmat = as.matrix(data[, x]),
+      eval_ymat = as.matrix(data[, y[out]]),
+      convexity = TRUE,
+      returns = "variable"
+    )[, 1]
+  }
+
+  # initialize importance accumulator
+  mat_varimp <- matrix(0, nrow = length(x))
   rownames(mat_varimp) <- colnames(data)[x]
   colnames(mat_varimp) <- "importance"
 
-  # out-of-bag error of the complete model
-  oob <- object[["forest"]][[length(object[["forest"]])]][["OOB"]]
+  for (n in 1:repeats) {
+    # for each tree, compute baseline OOB error and permuted OOB error
+    tree_baseline_err <- rep(NA, n_trees)
+    tree_perm_err <- matrix(NA, nrow = n_trees, ncol = length(x))
 
-  # compute oob shuffling each variable "j"
-  for (j in 1:length(x)) {
-    # out-of-bag excluding the j-th input variable
-    oob_j <- c()
+    for (t in 1:n_trees) {
+      tree <- object[["forest"]][[t]]
+      aces_model <- tree[["methods"]][["rf_aces"]]
+      knots <- aces_model[["knots"]]
+      coefs <- aces_model[["coefs"]]
 
-    for (n in 1:repeats) {
-      print(
-        paste0(
-          "Computing variable importance for variable ", colnames(data)[x[j]],
-          ": repeat ", n, " of ", repeats
-        )
+      # OOB indices
+      sample_bag <- tree[["sample_bag"]]
+      if (is.null(sample_bag)) {
+        oob_idxs <- 1:N
+      } else {
+        oob_idxs <- which(!(1:N %in% sample_bag))
+      }
+
+      if (length(oob_idxs) == 0) next
+
+      # OOB data in expanded format
+      oob_data <- data_algo[oob_idxs, , drop = FALSE]
+      y_oob <- as.matrix(oob_data[, y_algo, drop = FALSE])
+
+      # DEA weights for OOB observations
+      weight_oob <- 1 / dea_scores[oob_idxs, , drop = FALSE]
+
+      # build B matrix for OOB observations
+      B_oob <- set_Bmat(
+        newdata = oob_data[, x_algo, drop = FALSE],
+        model = aces_model,
+        knots = knots,
+        method = "rf_aces"
       )
 
-      data_shuffled <- data
-      xvar_shuffled <- data[sample(1:nrow(data)), x[j]]
-      data_shuffled[, x[j]] <- xvar_shuffled
+      # baseline predictions
+      y_hat_oob <- B_oob %*% coefs
 
-      model_j <- rf_aces(
-        data = data_shuffled,
-        x = x,
-        y = y,
-        quick_aces = quick_aces,
-        mul_BF = list(
-          "max_degree" = max_degree,
-          "inter_cost" = inter_cost
-        ),
+      # baseline error for this tree using the configured metric
+      tree_baseline_err[t] <- err_metric(
+        y_obs = y_oob,
+        y_hat = y_hat_oob,
         metric = metric,
-        shape = shape,
-        learners = learners,
-        bag_size = bag_size,
-        max_feats = max_feats,
-        early_stopping = early_stopping,
-        max_terms = max_terms,
-        err_red = err_red,
-        kn_grid = kn_grid,
-        minspan = minspan,
-        endspan = endspan
+        weight = weight_oob
       )
 
-      # out-of-bag error for the model with the j-th variable shuffled
-      oob_j <- c(oob_j, model_j[["forest"]][[length(model_j[["forest"]])]][["OOB"]])
+      # permuted predictions for each variable
+      for (j in 1:length(x)) {
+        # permute the j-th input in OOB data (scaled space)
+        data_perm <- data_work[oob_idxs, , drop = FALSE]
+        data_perm[, x[j]] <- data_perm[sample(nrow(data_perm)), x[j]]
+
+        # rebuild the expanded data with the permuted variable
+        data_perm_algo <- set_data(
+          data = data_perm,
+          x = x,
+          y = y,
+          max_degree = max_degree
+        )
+
+        # build B matrix with permuted OOB data
+        B_perm <- set_Bmat(
+          newdata = data_perm_algo[, x_algo, drop = FALSE],
+          model = aces_model,
+          knots = knots,
+          method = "rf_aces"
+        )
+
+        # permuted predictions
+        y_hat_perm <- B_perm %*% coefs
+
+        # permuted error
+        tree_perm_err[t, j] <- err_metric(
+          y_obs = y_oob,
+          y_hat = y_hat_perm,
+          metric = metric,
+          weight = weight_oob
+        )
+      }
     }
 
-    # add oob_j to the matrix of variable importance
-    mat_varimp[j, "importance"] <- round(100 * ((mean(oob_j) - oob) / oob), 2)
+    # importance = mean increase in error across trees (per variable)
+    for (j in 1:length(x)) {
+      diffs <- tree_perm_err[, j] - tree_baseline_err
+      diffs[!is.finite(diffs)] <- NA
+      mat_varimp[j, 1] <- mat_varimp[j, 1] + mean(diffs, na.rm = TRUE)
+    }
   }
+
+  # average over repeats
+  mat_varimp[, 1] <- 100 * mat_varimp[, 1] / repeats
 
   # ranking of variable importance
   var_ord <- order(mat_varimp[, 1], decreasing = TRUE, na.last = TRUE)
 
   ranking <- data.frame(
     variable = rownames(mat_varimp)[var_ord],
-    importance = as.numeric(mat_varimp[var_ord, 1]),
+    importance = round(as.numeric(mat_varimp[var_ord, 1]), 2),
     row.names = NULL,
     check.names = FALSE
   )
@@ -1223,13 +1325,11 @@ rf_aces_varimp <- function(
   if (normalize) {
     imp <- ranking[, "importance"]
 
-    # shift negative values
     mn <- suppressWarnings(min(imp[is.finite(imp)], na.rm = TRUE))
     if (is.finite(mn) && mn < 0) {
-      imp <- imp - mn # ahora imp >= 0
+      imp <- imp - mn
     }
 
-    # scale [0,100]
     mx <- suppressWarnings(max(imp[is.finite(imp)], na.rm = TRUE))
     if (is.finite(mx) && mx > 0) {
       ranking[, "importance"] <- round(100 * imp / mx, 2)

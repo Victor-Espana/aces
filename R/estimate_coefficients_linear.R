@@ -4,209 +4,6 @@
 #'
 #' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model. These coefficients enforce the desired shape properties, such as monotonicity and concavity to fit the data within the ACES framework.
 #'
-#' @param B
-#' A \code{matrix} of linear basis functions derived from input variables.
-#'
-#' @param y_obs
-#' A \code{matrix} of the observed output data.
-#'
-#' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param it_list
-#' A \code{list} containing the set of intervals by input.
-#'
-#' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
-#'
-#' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
-#'
-#' @return
-#'
-#' A \code{vector} containing the estimated coefficients for the ACES model.
-
-estimate_coefficients <- function(
-  B,
-  y_obs,
-  dea_scores,
-  fdh_scores,
-  it_list,
-  Bp_list,
-  shape
-) {
-  coefs <- estimate_coefficients_high_speed(
-    B = B,
-    y_obs = y_obs,
-    dea_scores = dea_scores,
-    fdh_scores = fdh_scores,
-    it_list = it_list,
-    Bp_list = Bp_list,
-    shape = shape
-  )
-
-  return(coefs)
-}
-
-#' @title Estimate Coefficients in Adaptive Constrained Enveloping Splines: Envelopment Version
-#'
-#' @description
-#'
-#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model in its envelopment version. It solves a mathematical programming problem to determine the coefficients that best fit the observed data while respecting certain shape constraints such as monotonicity and/or concavity. The model aims to envelop the data points, particularly when estimating production functions or efficiency frontiers.
-#'
-#' @param B
-#' A \code{matrix} of linear basis functions derived from input variables.
-#'
-#' @param y_obs
-#' A \code{matrix} of the observed output data.
-#'
-#' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
-#'
-#' @param it_list
-#' A \code{list} containing the set of intervals by input.
-#'
-#' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
-#'
-#' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
-#'
-#' @return
-#'
-#' A \code{vector} containing the estimated coefficients for the ACES model.
-
-estimate_coefficients_envelopment <- function(
-  B,
-  y_obs,
-  dea_scores,
-  fdh_scores,
-  it_list,
-  Bp_list,
-  shape
-) {
-  # monotonicity
-  mono <- shape[["mono"]]
-
-  # concavity
-  conc <- shape[["conc"]]
-
-  # dea weights
-  deaw <- as.matrix(1 / dea_scores)
-
-  # sample size
-  N <- nrow(B)
-
-  # number of basis functions (inputs)
-  p <- ncol(B)
-
-  # number of outputs
-  nY <- ncol(y_obs)
-
-  # number of inputs
-  nX <- length(Bp_list)
-
-  # structure of coefficients
-  coefs <- matrix(NA, nrow = p, ncol = nY)
-
-  for (out in 1:nY) {
-    # envelopment indicator
-    env_ind <- fdh_scores[, out] < 1 + 1e-5
-    num_env <- sum(env_ind)
-
-    # select an output
-    y_ind <- y_obs[env_ind, out]
-
-    # ==================================================== #
-    # vars: c(coef_0, coef_1, ..., coef_P, e_1, ... , e_n) #
-    # ==================================================== #
-
-    objVal <- c(rep(0, p), deaw[env_ind, out])
-
-    # ==================================================== #
-    # A: envelopment + concavity + monotonicity            #
-    # ==================================================== #
-
-    # envelopment: y_hat - e = y
-    EMat <- cbind(B[env_ind, ], diag(rep(-1, num_env), num_env))
-
-    # matrix of coefficients
-    Amat <- rbind(EMat)
-
-    # generate non-decreasing monotonicity matrix
-    if (mono) {
-      MMat <- monotonocity_matrix(
-        it_list = it_list,
-        Bp_list = Bp_list,
-        N = num_env
-      )
-
-      # add MMat to Amat
-      Amat <- rbind(Amat, MMat)
-    }
-
-    # generate concavity matrix
-    if (conc) {
-      CMat <- concavity_matrix(
-        Bp_list = Bp_list,
-        N = num_env
-      )
-
-      # add CMat to Amat
-      Amat <- rbind(Amat, CMat)
-    }
-
-    # ==================================================== #
-    # b: envelopment + concavity + monotonicity            #
-    # ==================================================== #
-
-    bvec <- c(y_ind, rep(0, nrow(Amat) - num_env))
-
-    # ==================================================== #
-    # directions of inequalities                           #
-    # ==================================================== #
-
-    dirs <- c(rep("==", num_env), rep(">=", nrow(Amat) - num_env))
-
-    # ==================================================== #
-    # lower and upper bounds                               #
-    # ==================================================== #
-
-    bnds <- list(lower = list(ind = 1:p, val = rep(-Inf, p)))
-
-    # ==================================================== #
-    # solution of the optimization problem                 #
-    # ==================================================== #
-
-    sols <- Rglpk_solve_LP(
-      obj = objVal,
-      mat = Amat,
-      dir = dirs,
-      rhs = bvec,
-      bounds = bnds
-    )
-
-    if (sols[["status"]] == 0) {
-      coefs[, out] <- sols$solution[1:p]
-    } else {
-      coefs[, out] <- rep(0, p)
-    }
-  }
-
-  return(coefs)
-}
-
-#' @title Estimate Coefficients in ACES: High-Speed Envelopment Version
-#'
-#' @description
-#'
-#' Mathematically equivalent reformulation of \code{estimate_coefficients_envelopment}.
 #' The N error variables are eliminated algebraically: since e = B coefs - y with
 #' e >= 0, minimizing sum(w * e) is equivalent to minimizing (w'B) coefs subject to
 #' B coefs >= y plus the shape constraints. The resulting LP has only p variables.
@@ -216,10 +13,6 @@ estimate_coefficients_envelopment <- function(
 #' constraints. A self-check validates feasibility and strong duality; on any
 #' failure the reduced primal is solved with GLPK as a fallback.
 #'
-#' Note: when the LP has multiple optimal solutions, the returned vertex may
-#' differ from the legacy implementation, with identical objective value and
-#' identical fitted values.
-#'
 #' @param B
 #' A \code{matrix} of linear basis functions derived from input variables.
 #'
@@ -227,10 +20,10 @@ estimate_coefficients_envelopment <- function(
 #' A \code{matrix} of the observed output data.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores.
+#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores.
+#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
 #'
 #' @param it_list
 #' A \code{list} containing the set of intervals by input.
@@ -248,7 +41,7 @@ estimate_coefficients_envelopment <- function(
 #'
 #' A \code{matrix} containing the estimated coefficients for the ACES model.
 
-estimate_coefficients_high_speed <- function(
+estimate_coefficients <- function(
   B,
   y_obs,
   dea_scores,
@@ -256,7 +49,8 @@ estimate_coefficients_high_speed <- function(
   it_list,
   Bp_list,
   shape
-) {
+  ) {
+
   # monotonicity
   mono <- shape[["mono"]]
 
@@ -279,11 +73,11 @@ estimate_coefficients_high_speed <- function(
   SMat <- NULL
 
   if (mono) {
-    SMat <- rbind(SMat, monotonocity_matrix_hs(it_list = it_list, Bp_list = Bp_list))
+    SMat <- rbind(SMat, monotonicity_matrix(it_list = it_list, Bp_list = Bp_list))
   }
 
   if (conc) {
-    SMat <- rbind(SMat, concavity_matrix_hs(Bp_list = Bp_list))
+    SMat <- rbind(SMat, concavity_matrix(Bp_list = Bp_list))
   }
 
   k <- if (is.null(SMat)) 0L else nrow(SMat)
@@ -374,7 +168,7 @@ estimate_coefficients_high_speed <- function(
 #' @title Solve the Reduced Primal LP of ACES with GLPK
 #'
 #' @description
-#' Fallback solver for \code{estimate_coefficients_high_speed}: solves the
+#' Fallback solver for \code{estimate_coefficients}: solves the
 #' reduced primal (p variables) directly with GLPK.
 #'
 #' @param Amat
@@ -399,7 +193,7 @@ estimate_coefficients_reduced <- function(
   bvec,
   cvec,
   p
-) {
+  ) {
   sols <- Rglpk_solve_LP(
     obj = cvec,
     mat = Amat,
@@ -413,4 +207,5 @@ estimate_coefficients_reduced <- function(
   } else {
     return(rep(0, p))
   }
+
 }
