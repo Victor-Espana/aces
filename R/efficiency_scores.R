@@ -48,13 +48,8 @@ rad_out <- function(
   returns,
   type = "objective"
 ) {
-  # high-speed mode: FDH-VRS scores have a closed-form solution by
-  # enumeration over dominating units, so the MILP with binary intensity
-  # variables is not needed. The objective value and the value of phi
-  # coincide, so this applies to either "type". Set
-  # options(aces.high_speed = FALSE) to use the legacy MILP.
-  if (!convexity && returns == "variable" &&
-      isTRUE(getOption("aces.high_speed", TRUE))) {
+  # FDH-VRS scores: closed-form solution by enumeration over dominating units.
+  if (!convexity && returns == "variable") {
     return(
       rad_out_fdh(
         tech_xmat = tech_xmat,

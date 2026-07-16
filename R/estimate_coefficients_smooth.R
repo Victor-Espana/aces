@@ -34,28 +34,14 @@ estimate_coefficients_smoothed <- function(
   n_lsub,
   shape
 ) {
-  # high-speed mode: mathematically equivalent reformulation of the LP.
-  # Set options(aces.high_speed = FALSE) or aces(..., high_speed = FALSE)
-  # to reproduce exactly the legacy implementation.
-  if (isTRUE(getOption("aces.high_speed", TRUE))) {
-    coefs <- estim_coefs_smooth_high_speed(
-      B = B,
-      y_obs = y_obs,
-      dea_scores = dea_scores,
-      n_pair = n_pair,
-      n_lsub = n_lsub,
-      shape = shape
-    )
-  } else {
-    coefs <- estim_coefs_smooth_envelopment(
-      B = B,
-      y_obs = y_obs,
-      dea_scores = dea_scores,
-      n_pair = n_pair,
-      n_lsub = n_lsub,
-      shape = shape
-    )
-  }
+  coefs <- estim_coefs_smooth_high_speed(
+    B = B,
+    y_obs = y_obs,
+    dea_scores = dea_scores,
+    n_pair = n_pair,
+    n_lsub = n_lsub,
+    shape = shape
+  )
 
   return(coefs)
 }

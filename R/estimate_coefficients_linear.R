@@ -38,30 +38,15 @@ estimate_coefficients <- function(
   Bp_list,
   shape
 ) {
-  # high-speed mode: mathematically equivalent reformulation of the LP.
-  # Set options(aces.high_speed = FALSE) or aces(..., high_speed = FALSE)
-  # to reproduce exactly the legacy implementation.
-  if (isTRUE(getOption("aces.high_speed", TRUE))) {
-    coefs <- estimate_coefficients_high_speed(
-      B = B,
-      y_obs = y_obs,
-      dea_scores = dea_scores,
-      fdh_scores = fdh_scores,
-      it_list = it_list,
-      Bp_list = Bp_list,
-      shape = shape
-    )
-  } else {
-    coefs <- estimate_coefficients_envelopment(
-      B = B,
-      y_obs = y_obs,
-      dea_scores = dea_scores,
-      fdh_scores = fdh_scores,
-      it_list = it_list,
-      Bp_list = Bp_list,
-      shape = shape
-    )
-  }
+  coefs <- estimate_coefficients_high_speed(
+    B = B,
+    y_obs = y_obs,
+    dea_scores = dea_scores,
+    fdh_scores = fdh_scores,
+    it_list = it_list,
+    Bp_list = Bp_list,
+    shape = shape
+  )
 
   return(coefs)
 }

@@ -428,15 +428,7 @@ set_knots <- function(
   bf,
   kn_grid
 ) {
-  # high-speed mode: vectorized computation of the eligible-knot set.
-  # Both implementations return exactly the same set of knots.
-  if (isTRUE(getOption("aces.high_speed", TRUE))) {
-    fun <- set_knots_high_speed
-  } else {
-    fun <- set_knots_legacy
-  }
-
-  fun(
+  set_knots_high_speed(
     data = data,
     nX = nX,
     var_idx = var_idx,

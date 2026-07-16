@@ -1,7 +1,7 @@
 Package: aces
 Type: Package
 Title: Adaptive Constrained Enveloping Splines
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
   person(
     given = "Víctor J.", 
