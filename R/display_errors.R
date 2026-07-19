@@ -514,12 +514,12 @@ display_errors_rf_aces <- function(
 
   # x in data
   tryCatch(data[, x], error = function(e) {
-    message("Index values from x are not in data.")
+    stop("Index values from x are not in data.")
   })
 
   # y in data
   tryCatch(data[, y], error = function(e) {
-    message("Index values from y are not in data.")
+    stop("Index values from y are not in data.")
   })
 
   # variables classes are valid

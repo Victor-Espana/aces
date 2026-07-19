@@ -524,7 +524,7 @@ set_knots <- function(
     knots <- varknots[varknots >= minimum & varknots <= maximum]
   }
 
-  if (length(knots) <= 1) knots <- NULL
+  if (length(knots) < 1) knots <- NULL
 
   return(knots)
 }

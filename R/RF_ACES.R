@@ -170,7 +170,8 @@ rf_aces <- function(
   kn_grid = -1,
   minspan = -1,
   endspan = -1
-) {
+  ) {
+
   # ====================== #
   # DISPLAY ERRORS RF-ACES #
   # ====================== #
@@ -611,7 +612,7 @@ rf_aces_algorithm <- function(
 
   # maximum features before and after interaction variables
   max_feats <- max_feats / length(x_vars)
-  max_feats <- round(max_feats * length(x), 0)
+  max_feats <- max(round(max_feats * length(x), 0), 1)
 
   # set number of inputs and outputs
   nX <- length(x)

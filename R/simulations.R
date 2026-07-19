@@ -757,7 +757,7 @@ mult_scenario_XnY1 <- function (
     data[, "yT"] <- log(x1) + 3
 
     # output
-    data[, "y"]  <- y / (1 + u)
+    data[, "y"]  <- data[, "yT"] / (1 + u)
 
   } else if (scenario == "B") {
 
@@ -768,7 +768,7 @@ mult_scenario_XnY1 <- function (
     data[, "yT"] <- 3 + sqrt(x1) + log(x1)
 
     # output
-    data[, "y"]  <- y / (1 + u)
+    data[, "y"]  <- data[, "yT"] / (1 + u)
 
   } else if (scenario == "C") {
 
@@ -780,7 +780,7 @@ mult_scenario_XnY1 <- function (
     data[, "yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * sqrt(x1 * x2)
 
     # output
-    data[, "y"]  <- y / (1 + u)
+    data[, "y"]  <- data[, "yT"] / (1 + u)
 
   } else if (scenario == "D") {
 
@@ -793,7 +793,7 @@ mult_scenario_XnY1 <- function (
     data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 3)
 
     # output
-    data["y"]  <- y / (1 + u)
+    data["y"]  <- data[, "yT"] / (1 + u)
 
   } else if (scenario == "E") {
 
@@ -805,7 +805,7 @@ mult_scenario_XnY1 <- function (
     data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.3 * (x1 * x2) ^ (1 / 3)
 
     # output
-    data["y"]  <- y / (1 + u)
+    data["y"]  <- data[, "yT"] / (1 + u)
 
   } else {
 
@@ -818,7 +818,7 @@ mult_scenario_XnY1 <- function (
     data["yT"] <- 0.1 * x1 + 0.1 * x2 + 0.1 * x3 + 0.3 * (x1 * x2 * x3) ^ (1 / 4)
 
     # output
-    data["y"]  <- y / (1 + u)
+    data["y"]  <- data[, "yT"] / (1 + u)
   }
 
   return(data)
