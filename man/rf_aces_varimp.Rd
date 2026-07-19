@@ -2,12 +2,13 @@
 % Please edit documentation in R/RF_ACES.R
 \name{rf_aces_varimp}
 \alias{rf_aces_varimp}
-\title{Compute Variable Importance for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).}
+\title{Compute RF-ACES Variable Importance}
 \usage{
 rf_aces_varimp(data, x, y, object, repeats = 1, normalize = TRUE)
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{Training data used to fit \code{object}, with the same rows, row order, and
+model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
@@ -15,15 +16,49 @@ rf_aces_varimp(data, x, y, object, repeats = 1, normalize = TRUE)
 
 \item{object}{A \code{rf_aces} object.}
 
-\item{repeats}{Number of times the variable importance procedure is repeated.}
+\item{repeats}{Positive integer giving the number of permutations for each input. Results
+are averaged across repetitions.}
 
-\item{normalize}{A \code{logical} value indicating whether to rescale the importance scores so that the most important variable has a value of 100 and all other variables are expressed relative to it.}
+\item{normalize}{If \code{TRUE}, shift negative scores to start at zero and scale the largest
+score to 100. If \code{FALSE}, return the signed error increase multiplied by
+100.}
 }
 \value{
-This function returns a metric of variable importance for each input variable.
+A data frame with columns \code{variable} and \code{importance}, sorted from
+highest to lowest importance. There is one row for each original input.
 }
 \description{
-Computes a robust measure of variable importance for a fitted Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model. Importance scores are obtained by evaluating the increase in prediction error when permuting each input variable as in \insertCite{breiman2001;textual}{aces}.
+Measures the predictive importance of each original input in an RF-ACES
+model. Each input is permuted in the out-of-bag (OOB) observations, and the
+resulting increase in prediction error is averaged across learners and
+repetitions. Larger positive values indicate greater importance.
+This legacy interface is retained for compatibility; use
+\code{aces_varimp(object, importance = "permutation")} for the unified
+RF-ACES implementation and access to forward and LOCO importance.
+}
+\details{
+The error measure is the one used to fit \code{object}. For each learner, the
+function compares its error before and after permuting one input. Interaction
+variables are then rebuilt, so the result includes the input's main effect
+and every interaction that contains it. The function always evaluates the
+linear \code{"rf_aces"} learner, even when a smoothed method is used elsewhere.
+
+With \code{normalize = FALSE}, the score is 100 times the mean signed change
+in the selected error measure; it is not a percentage increase.
+Positive values mean that permutation worsened prediction, values near zero
+indicate little change, and negative values mean that permutation improved
+prediction. With \code{normalize = TRUE}, negative scores are first shifted
+so that the smallest is zero, and the largest score is scaled to 100. The
+normalized values therefore provide a relative ranking only.
+
+The scores measure predictive sensitivity, not statistical significance or a
+causal effect. Strongly correlated inputs can substitute for one another and
+may therefore receive smaller or less stable permutation scores. Raw scores
+should be compared only when the same error measure and data scale are used.
+
+This function is diagnostic. Its ranking is not used by \code{get_scores()}
+or \code{get_targets()} when \code{relevant = TRUE}; those functions use the
+inputs represented in selected basis functions instead.
 }
 \references{
 \insertRef{breiman2001}{aces} \cr

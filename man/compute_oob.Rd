@@ -2,30 +2,28 @@
 % Please edit documentation in R/RF_ACES.R
 \name{compute_oob}
 \alias{compute_oob}
-\title{Compute Out-of-Bag Error in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).}
+\title{Compute RF-ACES Out-of-Bag Error}
 \usage{
 compute_oob(data, y, oob_idxs, oob_pred, model)
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{oob_pred}{A \code{list} with the Out-Of-Bag predictions for each model.}
+\item{oob_idxs}{Row indexes of observations with at least one OOB prediction. The function
+updates this value from \code{oob_pred} before computing the error.}
 
-\item{model}{Index indicating the model of the ensamble.}
+\item{oob_pred}{A list of OOB predictions. Each element contains predicted outputs and the
+corresponding row index.}
 
-\item{x}{Column indexes of input variables in \code{data}.}
-
-\item{object}{An \code{aces} that has been trained using bagging as in Random Forest.}
-
-\item{oob_data}{A \code{data.frame} containing the out-of-bag samples. These are the sample that were not used during the training of the ACES model and will be used to evaluate its performance.}
-
-\item{inb_idxs}{A \code{vector} of integers representing the indices of the samples that are in the bag.}
+\item{model}{Index of the last learner to include.}
 }
 \value{
-This function returns the Out-of-Bag error metric, which provides an estimate of the model's prediction error on unseen data.
+A single numeric OOB mean squared error.
 }
 \description{
-This function calculates the Out-Of-Bag (OOB) error for a given Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) with a certain number of base learners.
+Combines the OOB predictions available up to a given learner and computes
+their mean squared error against the observed outputs. Repeated predictions
+for the same observation are averaged before the error is calculated.
 }

@@ -2,20 +2,20 @@
 % Please edit documentation in R/forward_algorithm.R
 \name{create_linear_basis}
 \alias{create_linear_basis}
-\title{Generate a Pair of Linear Basis Functions}
+\title{Create Linear Basis Functions}
 \usage{
 create_linear_basis(data, var_idx, knot)
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
-\item{var_idx}{Index of the input variable that creates the new pair of basis functions.}
+\item{var_idx}{Index of the input used to create the basis functions.}
 
-\item{knot}{Knot for creating the new pair of basis functions.}
+\item{knot}{Knot location.}
 }
 \value{
-A \code{list} with the new pair of basis functions.
+A list containing the right and left hinge vectors.
 }
 \description{
-This function generates two new linear basis functions from a variable and a knot.
+Creates the two hinge functions on either side of a knot.
 }

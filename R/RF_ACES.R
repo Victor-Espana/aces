@@ -1,13 +1,27 @@
-#' @title Fit a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.
+#' @title Fit an RF-ACES Model
 #'
 #' @description
 #'
-#' This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces} and Random Forest, introduced by \insertCite{breiman2001;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}, \insertCite{espana2024rf;textual}{aces} and \insertCite{espana2025;textual}{aces}.
+#' Estimates maximum attainable outputs with an ensemble of randomized ACES
+#' learners and uses their results to build an aggregate production technology.
+#' Each learner is trained on a bootstrap sample and considers a random subset
+#' of inputs, following the main ideas of Random Forests.
+#'
+#' @details
+#' When \code{shape$mono} and \code{shape$conc} are both \code{TRUE}, each
+#' learner estimates a non-decreasing and concave production function for every
+#' output. If either restriction is relaxed, its spline models are intermediate
+#' predictors of maximum attainable output. In both cases, RF-ACES constructs
+#' learner-specific technologies and combines their reference points. Their
+#' envelopment supplies the production-set structure used for efficiency
+#' measurement. Aggregating the learners can reduce the variability of a single
+#' ACES fit. See
+#' \insertCite{espana2024rf;textual}{aces} for methodological details.
 #'
 #' @name rf_aces
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' A \code{data.frame} or \code{matrix} containing the model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -16,81 +30,97 @@
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param scale_data
-#' A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.
+#' If \code{TRUE}, divide each input and output by its mean before fitting. This
+#' can improve solver convergence.
 #'
 #' @param quick_aces
-#' A \code{logical} indicating if the fast version of ACES should be employed.
+#' If \code{TRUE}, use Quick ACES. It removes an input only when its Spearman and
+#' Kendall correlations fall below their thresholds for every output, reduces
+#' the knot grid around efficient DMUs, and allocates later candidates according
+#' to recent error reductions. Examining fewer basis functions can substantially
+#' shorten fitting time for larger problems. The internal reduction history is
+#' retained in each learner and can be summarized with \code{aces_varimp()}.
 #'
 #' @param mul_BF
-#' A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
+#' A \code{list} with two elements:
 #' \itemize{
-#' \item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-#' \item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+#'   \item{\code{max_degree}: A positive integer giving the maximum interaction
+#'   degree, or a list of input-index vectors defining the interactions to use.}
+#'   \item{\code{inter_cost}: The minimum relative improvement over the best
+#'   first-degree basis function required to add a higher-degree basis function.
+#'   The default, \code{0.05}, means 5 percent.}
 #' }
 #'
 #' @param metric
-#' A \code{list} specifying the lack-of-fit criterion to evaluate the model performance. Options are:
+#' A character string specifying the lack-of-fit measure:
 #' \itemize{
-#' \item{\code{"mae"}}: Mean Absolute Error.
-#' \item{\code{"mape"}}: Mean Absolute Percentage Error.
-#' \item{\code{"mse"}}: Mean Squared Error.
-#' \item{\code{"msle"}}: Mean Squared Logarithmic Error.
-#' \item{\code{"rmse"}}: Root Mean Squared Error.
-#' \item{\code{"nrmse1"}}: Normalized Root Mean Squared Error (using mean).
-#' \item{\code{"nrmse2"}}: Normalized Root Mean Squared Error (using range).
+#'   \item{\code{"mae"}: Mean absolute error.}
+#'   \item{\code{"mape"}: Mean absolute percentage error.}
+#'   \item{\code{"mse"}: Mean squared error.}
+#'   \item{\code{"msle"}: Mean squared logarithmic error.}
+#'   \item{\code{"rmse"}: Root mean squared error.}
+#'   \item{\code{"nrmse1"}: Root mean squared error divided by the mean.}
+#'   \item{\code{"nrmse2"}: Root mean squared error divided by the range.}
 #' }
 #'
 #' @param shape
-#' A \code{list} specifying shape constraints for the estimator. Items include:
+#' A \code{list} controlling the restrictions imposed during spline estimation:
 #' \itemize{
-#'   \item{\code{mono}}: A \code{logical} indicating if non-decreasing monotonicity should be enforced.
-#'   \item{\code{conc}}: A \code{logical} indicating if concavity should be enforced.
+#'   \item{\code{mono}: Enforce non-decreasing monotonicity.}
+#'   \item{\code{conc}: Enforce concavity.}
 #' }
+#' When both are \code{TRUE}, each learner estimates a production function for
+#' every output. Otherwise, the spline models estimate maximum attainable outputs
+#' before the learner-specific technology is constructed.
 #'
 #' @param learners
-#' An \code{integer} indicating the number of models for bagging.
+#' Positive integer giving the maximum number of ACES learners in the forest.
+#' Fitting may stop earlier when the OOB stopping rule is satisfied.
 #'
 #' @param bag_size
-#' An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.
+#' Positive integer giving the number of observations sampled with replacement
+#' for each learner. Values smaller than the sample size increase diversity
+#' between learners.
 #'
 #' @param max_feats
-#' An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.
+#' Number of inputs randomly considered by each learner. Smaller values increase
+#' randomization; larger values make learners more similar to standard ACES
+#' fits.
 #'
 #' @param early_stopping
-#' A \code{list} specifying the early stopping criteria based on the out-of-bag (OOB) error to unnecessary training by stopping when the OOB error no longer improves. The list should contain the following elements:
+#' A \code{list} that controls early stopping based on out-of-bag (OOB) error:
 #' \itemize{
-#'   \item{\code{ma_window}}: An \code{integer} specifying the size of the moving average window used to smooth the OOB error. A larger value makes the stopping condition more stable but less reactive to short-term fluctuations. Default is 10.
-#'   \item{\code{tolerance}}: An \code{integer} indicating the number of consecutive iterations without significant improvement in the OOB error before stopping the training. Higher values make the model more tolerant to small fluctuations. Default is 5.
+#'   \item{\code{ma_window}: Size of the moving-average window used to smooth
+#'   OOB error. Larger windows are more stable but react more slowly.}
+#'   \item{\code{tolerance}: Number of consecutive iterations without
+#'   improvement before fitting stops. Larger values allow more learners to be
+#'   fitted before stopping.}
 #' }
 #'
 #' @param max_terms
-#' A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.
+#' Positive integer giving the maximum number of terms created during the
+#' forward step. The algorithm may stop earlier when the improvement falls
+#' below \code{err_red}.
 #'
 #' @param err_red
-#' A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.
+#' Minimum relative error reduction required to add a new pair of first-degree
+#' basis functions. Larger values produce simpler models and stop the forward
+#' step sooner.
 #'
 #' @param kn_grid
-#' Specifies the grid of knots to be used in the ACES algorithm. Accepts two options:
-#' \itemize{
-#'    \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
-#'    \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
-#' }
+#' Knot candidates. Use \code{-1} to select eligible knots from the observed
+#' input values following the standard ACES procedure. Alternatively, supply a
+#' list with one numeric vector of candidates for each original input.
 #'
 #' @param minspan
-#' A \code{numeric} specifying the minimum number of observations between two adjacent knots. Options are:
-#' \itemize{
-#' \item{\code{minspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
-#' \item{\code{minspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
-#' \item{\code{minspan = +m}}: A user-specified positive integer.
-#' }
+#' Minimum number of observations between adjacent knots. Use \code{-2} for
+#' the rule in \insertCite{zhang1994;textual}{aces}, \code{-1} for the rule in
+#' \insertCite{friedman1991;textual}{aces}, or a positive integer.
 #'
 #' @param endspan
-#' A \code{numeric} specifying the minimum number of observations before the first and after the final knot. Options are:
-#' \itemize{
-#' \item{\code{endspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
-#' \item{\code{endspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
-#' \item{\code{endspan = +m}}: A user-specified positive integer.
-#' }
+#' Minimum number of observations before the first knot and after the last knot.
+#' Use \code{-2} for the rule in \insertCite{zhang1994;textual}{aces}, \code{-1}
+#' for the rule in \insertCite{friedman1991;textual}{aces}, or a positive integer.
 #'
 #' @references
 #'
@@ -107,7 +137,9 @@
 #'
 #' @return
 #'
-#' A \code{rf_aces} object.
+#' An object of class \code{rf_aces}. It contains the training data and controls,
+#' all fitted learners, OOB information, and the aggregated technology reference
+#' points used for prediction and efficiency measurement.
 #'
 #' @export
 
@@ -160,6 +192,25 @@ rf_aces <- function(
     minspan = minspan,
     endspan = endspan,
     kn_grid = kn_grid
+  )
+
+  # Preserve the exact public fitting specification. It is required by LOCO
+  # importance, which refits the complete forest after removing one input.
+  fit_spec <- list(
+    scale_data = scale_data,
+    quick_aces = quick_aces,
+    mul_BF = mul_BF,
+    metric = metric,
+    shape = shape,
+    learners = learners,
+    bag_size = bag_size,
+    max_feats = max_feats,
+    early_stopping = early_stopping,
+    max_terms = max_terms,
+    err_red = err_red,
+    kn_grid = kn_grid,
+    minspan = minspan,
+    endspan = endspan
   )
 
   # =================== #
@@ -445,7 +496,8 @@ rf_aces <- function(
       is_scaled = scale_data,
       mean_x = sx,
       mean_y = sy
-    )
+    ),
+    fit_spec = fit_spec
   )
 
   # change the order
@@ -458,13 +510,16 @@ rf_aces <- function(
 }
 
 
-#' @title Algorithm of Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
+#' @title Run One RF-ACES Learner
 #'
 #' @description
-#' This function implements the Random Forest Adaptive Constrained Enveloping Splines (ACES) algorithm.
+#' Fits one randomized ACES learner for use in an RF-ACES forest. The function
+#' expands interactions, samples the allowed inputs, estimates maximum attainable
+#' outputs, refines the output vectors, and constructs the learner-specific
+#' technology.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' A \code{data.frame} or \code{matrix} containing the model variables.
 #'
 #' @param x_vars
 #' Column indexes of input variables in \code{data}.
@@ -473,43 +528,50 @@ rf_aces <- function(
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param quick_aces
-#' A \code{logical} indicating if the fast version of ACES should be employed.
+#' If \code{TRUE}, use the Quick ACES input filtering, knot reduction, and
+#' adaptive candidate allocation rules.
 #'
 #' @param max_degree
-#' Maximum degree of interaction between variables.
+#' Maximum interaction degree, or a list of input-index vectors defining the
+#' interactions to use.
 #'
 #' @param inter_cost
-#' Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.
+#' Minimum relative improvement over the best first-degree basis function
+#' required to add a higher-degree basis function.
 #'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.
+#' Character string specifying the lack-of-fit measure.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A list with logical elements \code{mono} and \code{conc}. When both are
+#' \code{TRUE}, estimate a non-decreasing and concave production function for
+#' each output; otherwise, use the spline models as intermediate predictors of
+#' maximum attainable output before constructing the learner-specific technology.
 #'
 #' @param max_feats
-#' An \code{integer} indicating the number of variables randomly chosen at each split.
+#' Number of inputs randomly considered by the learner.
 #'
 #' @param max_terms
-#' Maximum number of terms created before pruning.
+#' Maximum number of terms created during the forward step.
 #'
 #' @param err_red
-#' Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.
+#' Minimum relative error reduction required to add a new pair of first-degree
+#' basis functions.
 #'
 #' @param minspan
 #' Minimum number of observations between two adjacent knots.
 #'
 #' @param endspan
-#' Minimum number of observations before the first and after the final knot.
+#' Minimum number of observations before the first knot and after the last knot.
 #'
 #' @param kn_grid
-#' Grid design for knots placement in RF-ACES.
-#
+#' Knot candidates. Use \code{-1} for automatic selection or supply a list.
+#'
 #' @importFrom dplyr desc
 #'
 #' @return
 #'
-#' A \code{rf-aces} object.
+#' An \code{aces} object representing one RF-ACES learner.
 #'
 #' @export
 
@@ -559,53 +621,28 @@ rf_aces_algorithm <- function(
   # VARIABLE FILTERING #
   # ================== #
 
-  # variable importance
+  # Best candidate reduction for each prepared input in the current iteration.
+  # NA means that the input was not evaluated in that iteration.
   var_imp <- matrix(
-    rep(0, nX),
+    rep(NA_real_, nX),
     nrow = 1
   )
   colnames(var_imp) <- colnames(data)[1:nX]
 
-  x_drop <- c()
+  quick_keep <- rep(TRUE, nX)
+
+  x_filtered <- x_vars
 
   # remove variables with low correlation
   if (quick_aces) {
-    # Spearman’s Rank Correlation
-    spearman_corr <- cor(data, method = "spearman")
-    spearman_corr <- spearman_corr[1:length(x), (length(x) + 1):ncol(data)]
+    correlation_filter <- quick_aces_correlation_filter(data, x, y)
+    quick_keep <- unname(correlation_filter$keep)
 
-    # Kendall’s Tau
-    kendall_corr <- cor(data, method = "kendall")
-    kendall_corr <- kendall_corr[1:length(x), (length(x) + 1):ncol(data)]
-
-    # compute threshold for removing variables
-    t1_quantile <- quantile(spearman_corr[spearman_corr > 0], probs = 0.2)
-    threshold_1 <- min(0.1, t1_quantile)
-
-    t2_quantile <- quantile(kendall_corr[kendall_corr > 0], probs = 0.2)
-    threshold_2 <- min(0.1, t2_quantile)
-
-    # iterate over the variables
-    for (j in 1:nX) {
-      # check for both Spearman and Kendall correlations
-      if (spearman_corr[j] < threshold_1 & kendall_corr[j] < threshold_2) {
-        var_imp[1, j] <- -1
-      }
-    }
-
-    relevant_variables <- c()
-
-    for (col in colnames(var_imp)) {
-      if (var_imp[1, col] == 0) {
-        variables <- unlist(strsplit(col, "_"))
-        relevant_variables <- unique(c(relevant_variables, variables))
-      }
-    }
-
-    relevant_variables <- intersect(colnames(data), relevant_variables)
-
-    # inputs removed
-    x_drop <- x_vars[!which(colnames(data) %in% relevant_variables)]
+    x_filtered <- quick_aces_retained_inputs(
+      keep = quick_keep,
+      x_vars = x_vars,
+      max_degree = max_degree
+    )
   }
 
   # table of scores
@@ -614,8 +651,6 @@ rf_aces_algorithm <- function(
     nrow = nrow(data),
     dimnames = list(NULL, c("y_all", paste("y", 1:nY, sep = "")))
   ) %>% as.data.frame()
-
-  x_filtered <- if (length(x_drop) == 0) x_vars else x_vars[-x_drop]
 
   # ========== #
   # DEA SCORES #
@@ -697,7 +732,7 @@ rf_aces_algorithm <- function(
       }
     }
   } else {
-    xi_degree[2, x_vars] <- 1
+    xi_degree[2, seq_along(x_vars)] <- 1
 
     for (k in 1:length(max_degree)) {
       xi_degree[2, length(x_vars) + k] <- length(max_degree[[k]])
@@ -786,6 +821,9 @@ rf_aces_algorithm <- function(
   # initial error
   err_min <- err
 
+  # number of accepted forward iterations
+  iter <- 0L
+
   while (length(rf_aces[["bf_set"]]) + 2 < max_terms) {
     last_bf <- rf_aces[["bf_set"]][[length(rf_aces[["bf_set"]])]]
 
@@ -811,6 +849,7 @@ rf_aces_algorithm <- function(
         span = c(L_Le[[1]], L_Le[[2]]),
         err_min = err,
         var_imp = var_imp,
+        quick_keep = quick_keep,
         quick_aces = quick_aces
       )
 
@@ -839,6 +878,7 @@ rf_aces_algorithm <- function(
         span = c(L_Le[[1]], L_Le[[2]]),
         err_min = err,
         var_imp = var_imp,
+        quick_keep = quick_keep,
         quick_aces = quick_aces
       )
     }
@@ -850,6 +890,8 @@ rf_aces_algorithm <- function(
 
     # update model
     if (last_bf[["id"]] == 1 || new_err[1] < err[1] * (1 - err_red[1])) {
+      iter <- iter + 1L
+
       # update B
       rf_aces[["B"]] <- B_bf_knt_err[[1]]
 
@@ -864,6 +906,11 @@ rf_aces_algorithm <- function(
 
       # update error
       err <- new_err
+
+      # retain all candidate reductions, not only the variable selected for the
+      # split. The next row belongs to the next accepted iteration.
+      var_imp <- B_bf_knt_err[[6]]
+      var_imp <- rbind(var_imp, rep(NA_real_, nX))
     } else {
       break
     }
@@ -902,11 +949,22 @@ rf_aces_algorithm <- function(
   # rf-aces
   # ==
 
+  variable_reduction <- if (iter > 0L) {
+    var_imp[seq_len(iter), , drop = FALSE]
+  } else {
+    var_imp[FALSE, , drop = FALSE]
+  }
+  rownames(variable_reduction) <- paste0(
+    "iteration_",
+    seq_len(nrow(variable_reduction))
+  )
+
   rf_aces <- list(
     "basis" = rf_aces[["bf_set"]],
     "Bmatx" = rf_aces[["B"]],
     "knots" = kn_forward,
-    "coefs" = rev(rf_aces[["bf_set"]])[[1]][["coefs"]]
+    "coefs" = rev(rf_aces[["bf_set"]])[[1]][["coefs"]],
+    "variable_reduction" = variable_reduction
   )
 
   # generate technology
@@ -1048,39 +1106,34 @@ rf_aces_algorithm <- function(
   return(RF_ACES)
 }
 
-#' @title Compute Out-of-Bag Error in Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
+#' @title Compute RF-ACES Out-of-Bag Error
 #'
 #' @description
 #'
-#' This function calculates the Out-Of-Bag (OOB) error for a given Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) with a certain number of base learners.
+#' Combines the OOB predictions available up to a given learner and computes
+#' their mean squared error against the observed outputs. Repeated predictions
+#' for the same observation are averaged before the error is calculated.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
-#'
-#' @param x
-#' Column indexes of input variables in \code{data}.
+#' A \code{data.frame} or \code{matrix} containing the model variables.
 #'
 #' @param y
 #' Column indexes of output variables in \code{data}.
 #'
-#' @param object
-#' An \code{aces} that has been trained using bagging as in Random Forest.
-#'
-#' @param oob_data
-#' A \code{data.frame} containing the out-of-bag samples. These are the sample that were not used during the training of the ACES model and will be used to evaluate its performance.
-#'
-#' @param inb_idxs
-#' A \code{vector} of integers representing the indices of the samples that are in the bag.
+#' @param oob_idxs
+#' Row indexes of observations with at least one OOB prediction. The function
+#' updates this value from \code{oob_pred} before computing the error.
 #'
 #' @param oob_pred
-#' A \code{list} with the Out-Of-Bag predictions for each model.
+#' A list of OOB predictions. Each element contains predicted outputs and the
+#' corresponding row index.
 #'
 #' @param model
-#' Index indicating the model of the ensamble.
+#' Index of the last learner to include.
 #'
 #' @return
 #'
-#' This function returns the Out-of-Bag error metric, which provides an estimate of the model's prediction error on unseen data.
+#' A single numeric OOB mean squared error.
 
 compute_oob <- function(
   data,
@@ -1120,18 +1173,44 @@ compute_oob <- function(
   return(oob_mse)
 }
 
-#' @title Compute Variable Importance for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
+#' @title Compute RF-ACES Variable Importance
 #'
 #' @description
-#' Computes a measure of variable importance for a fitted Random Forest Adaptive
-#' Constrained Enveloping Splines (RF-ACES) model using the permutation approach
-#' of \insertCite{breiman2001;textual}{aces}. For each tree, the out-of-bag (OOB)
-#' samples are used to predict with the trained model. Then, a single input
-#' variable is permuted in those OOB samples and predictions are recomputed.
-#' The increase in prediction error quantifies the importance of that variable.
+#' Measures the predictive importance of each original input in an RF-ACES
+#' model. Each input is permuted in the out-of-bag (OOB) observations, and the
+#' resulting increase in prediction error is averaged across learners and
+#' repetitions. Larger positive values indicate greater importance.
+#' This legacy interface is retained for compatibility; use
+#' \code{aces_varimp(object, importance = "permutation")} for the unified
+#' RF-ACES implementation and access to forward and LOCO importance.
+#'
+#' @details
+#' The error measure is the one used to fit \code{object}. For each learner, the
+#' function compares its error before and after permuting one input. Interaction
+#' variables are then rebuilt, so the result includes the input's main effect
+#' and every interaction that contains it. The function always evaluates the
+#' linear \code{"rf_aces"} learner, even when a smoothed method is used elsewhere.
+#'
+#' With \code{normalize = FALSE}, the score is 100 times the mean signed change
+#' in the selected error measure; it is not a percentage increase.
+#' Positive values mean that permutation worsened prediction, values near zero
+#' indicate little change, and negative values mean that permutation improved
+#' prediction. With \code{normalize = TRUE}, negative scores are first shifted
+#' so that the smallest is zero, and the largest score is scaled to 100. The
+#' normalized values therefore provide a relative ranking only.
+#'
+#' The scores measure predictive sensitivity, not statistical significance or a
+#' causal effect. Strongly correlated inputs can substitute for one another and
+#' may therefore receive smaller or less stable permutation scores. Raw scores
+#' should be compared only when the same error measure and data scale are used.
+#'
+#' This function is diagnostic. Its ranking is not used by \code{get_scores()}
+#' or \code{get_targets()} when \code{relevant = TRUE}; those functions use the
+#' inputs represented in selected basis functions instead.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' Training data used to fit \code{object}, with the same rows, row order, and
+#' model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -1143,10 +1222,13 @@ compute_oob <- function(
 #' A \code{rf_aces} object.
 #'
 #' @param repeats
-#' Number of times the permutation is repeated per variable (results are averaged).
+#' Positive integer giving the number of permutations for each input. Results
+#' are averaged across repetitions.
 #'
 #' @param normalize
-#' A \code{logical} value indicating whether to rescale the importance scores so that the most important variable has a value of 100 and all other variables are expressed relative to it.
+#' If \code{TRUE}, shift negative scores to start at zero and scale the largest
+#' score to 100. If \code{FALSE}, return the signed error increase multiplied by
+#' 100.
 #'
 #' @references
 #' \insertRef{breiman2001}{aces} \cr
@@ -1154,7 +1236,8 @@ compute_oob <- function(
 #' @export
 #'
 #' @return
-#' A \code{data.frame} with variable importance scores for each input variable.
+#' A data frame with columns \code{variable} and \code{importance}, sorted from
+#' highest to lowest importance. There is one row for each original input.
 
 rf_aces_varimp <- function(
   data,
@@ -1342,36 +1425,39 @@ rf_aces_varimp <- function(
   return(ranking)
 }
 
-#' @title Percentile-Based Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).
+#' @title Predict an RF-ACES Percentile
 #'
 #' @description
-#' Predicts the optimal output level under the RF-ACES model using a specified percentile of the conditional distribution, rather than the mean. As in DEA, inputs are held fixed, and the output is predicted via Random Forests by selecting a given percentile (e.g., the 5th percentile) of the conditional distribution. This approach enables modeling conservative or optimistic production frontiers by adjusting the percentile parameter.
+#' Predicts outputs from a chosen percentile of the learner-specific frontier
+#' predictions instead of their mean. Lower percentiles provide more
+#' conservative predictions, while higher percentiles move toward the upper
+#' part of the estimated conditional distribution.
 #'
 #' @param object
 #' A \code{rf_aces} object.
 #'
 #' @param newdata
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' A \code{data.frame} or \code{matrix} containing the new observations.
 #'
 #' @param x
-#' Column indexes of input variables in \code{data}.
+#' Column indexes of input variables in \code{newdata}.
 #'
 #' @param y
-#' Column indexes of output variables in \code{data}.
+#' Column indexes of output variables in \code{newdata}.
 #'
 #' @param p
-#' A numeric value between 0 and 1 specifying the conditional percentile to be used for prediction.
+#' Percentile to predict, as a number between 0 and 1.
 #'
 #' @param method
-#' Model for prediction:
+#' RF-ACES model to use:
 #' \itemize{
 #' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Cubic-smoothed RF-ACES.
+#' \item{\code{"rf_aces_quintic"}}: Quintic-smoothed RF-ACES.
 #' }
 #'
 #' @return
-#' A numeric vector of predicted output values for each observation, based on the specified percentile.
+#' A numeric vector or matrix of percentile predictions.
 
 rf_aces_p_predict <- function(
   object,

@@ -9,21 +9,31 @@ Authors@R:
     email = "vespana@umh.es",
     role = c("aut", "cre"),
   comment = c(ORCID = "0000-0002-1807-6180"))
-Description: Functions are provided to determine production frontiers and technical 
-    efficiency measures through non-parametric techniques based upon multivariate adaptive
-    regression splines. The package includes code for estimating production frontiers and
-    computing efficiency scores through radial input, output, directional and additive measures.
+Description: Estimates maximum attainable outputs with adaptive regression
+    splines and uses them to construct production technologies. The package
+    provides Adaptive Constrained Enveloping Splines (ACES), Random Forest ACES
+    (RF-ACES), and a faster Quick ACES variant. It also computes radial,
+    directional, Russell, and weighted additive efficiency measures and their
+    efficient targets.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Imports: 
-  Rdpack
+    dplyr,
+    extraDistr,
+    lpSolveAPI,
+    Matrix,
+    Rdpack,
+    Rglpk,
+    truncnorm
 RdMacros: 
   Rdpack
-URL: https://github.com/Victor-Espana/aafs
-BugReports: https://github.com/Victor-Espana/aafs/issues
+URL: https://github.com/Victor-Espana/aces
+BugReports: https://github.com/Victor-Espana/aces/issues
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 VignetteBuilder: knitr

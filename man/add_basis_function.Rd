@@ -2,7 +2,7 @@
 % Please edit documentation in R/forward_algorithm.R
 \name{add_basis_function}
 \alias{add_basis_function}
-\title{Add a New Pair of Basis Functions in Adaptive Constrained Enveloping Splines}
+\title{Add a Pair of ACES Basis Functions}
 \usage{
 add_basis_function(
   data,
@@ -21,54 +21,64 @@ add_basis_function(
   span,
   err_min,
   var_imp,
+  quick_keep,
   quick_aces
 )
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
+\item{xi_degree}{A matrix that records the degree of each input in every expanded variable.}
 
-\item{inter_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to justify adding a higher-degree basis function.}
+\item{inter_cost}{Minimum relative improvement over the best first-degree basis function
+required to add a higher-degree basis function.}
 
-\item{dea_scores}{A \code{matrix} containing DEA-VRS scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{dea_scores}{A matrix of output-oriented DEA-VRS scores, with one column per output.}
 
-\item{fdh_scores}{A \code{matrix} containing FDH scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{fdh_scores}{A matrix of output-oriented FDH scores, with one column per output.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{Character string specifying the lack-of-fit measure.}
 
-\item{forward_model}{A \code{list} containing the current state of the forward model, including the matrix of basis functions (\code{B}) and the set of selected basis functions (\code{BF_set}).}
+\item{forward_model}{Current forward model, including \code{B} and \code{BF_set}.}
 
-\item{Bp_list}{A \code{list} containing the basis functions for each input variable, with detailed information about their structure and placement in the model.}
+\item{Bp_list}{Current basis functions, grouped by input.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
+\item{shape}{A list with logical elements \code{mono} and \code{conc}.}
 
-\item{kn_list}{A \code{list} containing the current set of selected knots for each input variable.}
+\item{kn_list}{Selected knots, grouped by input.}
 
-\item{kn_grid}{A \code{list} containing the available grid of knots used to construct the basis functions for each input variable.}
+\item{kn_grid}{Available knot candidates, grouped by input.}
 
-\item{span}{A \code{numeric} vector specifying the minimum number of observations between two adjacent knots (L) and the minimum number of observations before the first and after the final knot (Le).}
+\item{span}{A numeric vector containing \code{minspan} and \code{endspan}.}
 
-\item{err_min}{A \code{numeric} value specifying the minimum error obtained by the forward algorithm in the current iteration.}
+\item{err_min}{Best error found in the current iteration.}
 
-\item{var_imp}{A \code{matrix} tracking the best residual reduction for each variable (columns) in each iteration (rows).}
+\item{var_imp}{Matrix whose rows contain the best relative error reduction found for each
+prepared input in each forward iteration. Quick ACES uses its recent history
+to reduce the next candidate search.}
 
-\item{quick_aces}{A \code{logical} indicating whether to use the fast version of ACES.}
+\item{quick_keep}{Logical vector indicating which prepared inputs passed the Quick ACES
+correlation screen.}
+
+\item{quick_aces}{If \code{TRUE}, use Quick ACES to reduce the candidate search.}
 }
 \value{
 An updated \code{list} containing:
 \itemize{
-  \item \code{B}: The updated matrix of basis functions.
-  \item \code{BF_set}: The updated set of basis functions included in the model.
-  \item \code{kn_list}: The updated list of selected knots for each variable.
-  \item \code{err_min}: The updated minimum error achieved in the current iteration.
-  \item \code{var_imp}; The updated matrix of variable importance
+  \item{\code{B}: Updated basis matrix.}
+  \item{\code{BF_set}: Updated set of selected basis functions.}
+  \item{\code{kn_list}: Updated knots.}
+  \item{\code{err_min}: Updated best error.}
+  \item{\code{var_imp}: Updated error reductions by iteration and input.}
 }
 }
 \description{
-This function adds a pair of basis functions to the Adaptive Constrained Enveloping Splines (ACES) model, selecting the pair that leads to the largest reduction in the lack-of-fit criterion. The function updates the model by incorporating these basis functions, adjusting the knots, and refining the error.
+Adds the eligible pair of basis functions that gives the largest reduction in
+lack of fit. Candidate knots and variables must satisfy the span, interaction,
+and shape restrictions. In Quick ACES mode, the candidate set is reduced
+before the best pair is selected.
 }

@@ -2,22 +2,26 @@
 % Please edit documentation in R/ACES.R
 \name{set_data}
 \alias{set_data}
-\title{Arrange Data for Fitting Model}
+\title{Prepare Data for ACES}
 \usage{
 set_data(data, x, y, max_degree)
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{max_degree}{Maximum degree of interaction between variables. It can be a \code{list} of input indexes for interactions or a \code{numeric} value determining the maximum degree of interaction.}
+\item{max_degree}{Maximum interaction degree, or a list of input-index vectors defining the
+interactions to add.}
 }
 \value{
-A \code{matrix} in a [x, y] format with variable interactions included.
+A matrix containing the inputs, input interactions, and outputs, in that order.
 }
 \description{
-This function prepares the data for model fitting by generating additional input variables through interactions between variables. It returns a matrix in [x, y] format, where x represents input variables and y represents output variables.
+Selects the input and output columns and creates the requested multiplicative
+input interactions. Interaction names use \code{:}, for example
+\code{capital:labour}. The returned matrix places original inputs first,
+followed by interaction terms and outputs.
 }

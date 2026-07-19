@@ -1,19 +1,20 @@
-#' @title Generate Side Knot Locations
+#' @title Find Side-Knot Locations
 #'
 #' @description
-#' This function creates the input space for locating side knots in the smoothing procedure.
+#' Finds the neighboring data values available for side knots around each central
+#' knot.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param nX
 #' Number of inputs in \code{data}.
 #'
 #' @param knots
-#' A \code{data.frame} containing the knots from the backward step.
+#' Data frame of knots retained after pruning.
 #'
 #' @return
-#' A \code{list} with the locations of the central and the side knots in each dimension.
+#' A list of central and neighboring knot locations for each input.
 
 side_knot_location <- function(
   data,
@@ -39,32 +40,29 @@ side_knot_location <- function(
   return(kn_side_loc)
 }
 
-#' @title Generate a Suitable Triplet of Knots
+#' @title Create a Smoothing Knot Triplet
 #'
 #' @description
-#' This function generates a suitable triplet of knots for the smoothing procedure depending on the shape-constraints.
+#' Moves the side knots around a central knot according to the smoothing and shape
+#' settings.
 #'
 #' @param knots
-#' A \code{vector} with the initial locations for central and side knots.
+#' Numeric vector containing the left, central, and right knot locations.
 #'
 #' @param w
-#' Hyperparameter for side knot distances in the cubic and quintic smoothing procedures.
+#' Side-knot distance parameter.
 #'
 #' @param smoothing
-#' Type of smoothing:
-#' \itemize{
-#' \item{\code{"cubic"}}: cubic smoothing procedure.
-#' \item{\code{"quintic"}}: quintic smoothing procedure.
-#' }
+#' Smoothing type: \code{"cubic"} or \code{"quintic"}.
 #'
-#' @param monotonicity
-#' A \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.
+#' @param mono
+#' If \code{TRUE}, enforce non-decreasing monotonicity.
 #'
-#' @param concavity
-#' A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
+#' @param conc
+#' If \code{TRUE}, enforce concavity.
 #'
 #' @return
-#' A \code{vector} with a suitable triplet of knots.
+#' A numeric vector with the adjusted left, central, and right knots.
 
 set_triplet_knots <- function(
   knots,
@@ -106,14 +104,17 @@ set_triplet_knots <- function(
   return(c(t0, t1, t2))
 }
 
-#' @title Fit a Smooth Adaptive Constrained Enveloping Splines using Cubic Functions
+#' @title Fit a Cubic-Smoothed ACES Model
 #'
 #' @description
 #'
-#' This function performs smoothing on the Adaptive Constrained Enveloping Splines predictor while enforcing continuous first derivatives.
+#' Replaces the linear hinges in a pruned ACES model with cubic basis functions
+#' that join smoothly at the side knots and have continuous first derivatives.
+#' Coefficients are re-estimated under the same envelopment and shape constraints,
+#' and the candidate side-knot ratio with the lowest lack of fit is retained.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -122,31 +123,34 @@ set_triplet_knots <- function(
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented DEA-VRS scores, with one column per output.
 #'
 #' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented FDH scores, with one column per output.
 #'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#' Character string specifying the lack-of-fit measure.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
+#' A list with logical elements \code{mono} and \code{conc}.
 #'
 #' @param kn_grid
-#' A \code{data.frame} containing the set of knots from the backward step for smoothing.
+#' Data frame of knots retained after pruning.
 #'
 #' @param kn_side_loc
-#' A \code{list} with the side knot locations for each input dimension.
+#' Available side-knot locations for each input.
 #'
 #' @param kn_penalty
-#' Generalized Cross Validation (GCV) penalty per knot.
+#' Penalty per knot used to compute GCV.
 #'
 #' @param xi_degree
-#' A \code{matrix} indicating the degree of each input variable.
+#' A matrix that records the degree of each input in every expanded variable.
 #'
 #' @param wc
-#' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure.A \code{numeric} value used for cubic smoothing \insertCite{friedman1991}{aces}. This parameter is defined as `v / p` and must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
+#' Cubic side-knot distance ratio \eqn{v / p}, where \eqn{v} and \eqn{p} are the
+#' distances from the central knot to its left and right side knots. Values must
+#' be between 1 and 2. If several values are supplied, the function selects the
+#' one with the lowest lack of fit.
 #'
 #' @references
 #'
@@ -154,7 +158,7 @@ set_triplet_knots <- function(
 #'
 #' @return
 #'
-#' A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through cubic functions.
+#' A list containing the cubic-smoothed model, its knots, error, and GCV score.
 
 cubic_aces <- function(
   data,
@@ -319,30 +323,30 @@ cubic_aces <- function(
   return(aces_cubic)
 }
 
-#' @title Generate a New Pair of Cubic Basis Functions
+#' @title Add Cubic Basis Functions
 #'
 #' @description
 #'
-#' This function generates two new cubic basis functions from a variable and a triplet of knots.
+#' Evaluates cubic basis functions for one input and adds them to a basis matrix.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param xi
-#' Index of the variable that creates the new basis function(s).
+#' Index of the input used to create the basis functions.
 #'
 #' @param knots
-#' Triplet of knots for creating the new basis function(s).
+#' Numeric vector containing the left, central, and right knots.
 #'
 #' @param B
-#' A \code{matrix} of basis functions.
+#' Current basis matrix.
 #'
 #' @param side
-#' Side of the new basis function inherited from the linear basis function.
+#' Side inherited from the corresponding linear basis function.
 #'
 #' @return
 #'
-#' A \code{matrix} of basis functions updated with the new cubic basis functions.
+#' The basis matrix with the new cubic columns.
 
 create_cubic_basis <- function(
   data,
@@ -409,14 +413,17 @@ create_cubic_basis <- function(
   return(B)
 }
 
-#' @title Fit a Smooth Adaptive Constrained Enveloping Splines using Quintic Functions
+#' @title Fit a Quintic-Smoothed ACES Model
 #'
 #' @description
 #'
-#' This function performs smoothing on the Adaptive Constrained Enveloping Splines predictor while enforcing continuous second derivatives.
+#' Replaces the linear hinges in a pruned ACES model with quintic basis functions
+#' that join smoothly at the side knots and have continuous second derivatives.
+#' Coefficients are re-estimated under the same envelopment and shape constraints,
+#' and the candidate side-knot ratio with the lowest lack of fit is retained.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -425,31 +432,33 @@ create_cubic_basis <- function(
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented DEA-VRS scores, with one column per output.
 #'
 #' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented FDH scores, with one column per output.
 #'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#' Character string specifying the lack-of-fit measure.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
+#' A list with logical elements \code{mono} and \code{conc}.
 #'
 #' @param kn_grid
-#' A \code{data.frame} containing the set of knots from the backward step for smoothing.
+#' Data frame of knots retained after pruning.
 #'
 #' @param kn_side_loc
-#' A \code{list} with the side knot locations for each input dimension.
+#' Available side-knot locations for each input.
 #'
 #' @param kn_penalty
-#' Generalized Cross Validation (GCV) penalty per knot.
+#' Penalty per knot used to compute GCV.
 #'
 #' @param xi_degree
-#' A \code{matrix} indicating the degree of each input variable.
+#' A matrix that records the degree of each input in every expanded variable.
 #'
 #' @param wq
-#' Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure. A \code{numeric} value used for quintic smoothing \insertCite{chen1999}{aces}. This parameter is defined as `p / v` and must be set between 8/7 and 1.5. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.
+#' Quintic side-knot distance ratio used to place the two side knots around each
+#' central knot. Values must be between 8/7 and 1.5. If several values are
+#' supplied, the function selects the one with the lowest lack of fit.
 #'
 #' @references
 #'
@@ -459,7 +468,7 @@ create_cubic_basis <- function(
 #'
 #' @return
 #'
-#' A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through quintic functions.
+#' A list containing the quintic-smoothed model, its knots, error, and GCV score.
 
 quintic_aces <- function(
   data,
@@ -624,30 +633,30 @@ quintic_aces <- function(
   return(aces_quintic)
 }
 
-#' @title Generate a New Pair of Quintic Basis Functions
+#' @title Add Quintic Basis Functions
 #'
 #' @description
 #'
-#' This function generates two new quintic basis functions from a variable and a triplet of knots.
+#' Evaluates quintic basis functions for one input and adds them to a basis matrix.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param xi
-#' Index of the variable that creates the new basis function(s).
+#' Index of the input used to create the basis functions.
 #'
 #' @param knots
-#' Triplet of knots for creating the new basis function(s).
+#' Numeric vector containing the left, central, and right knots.
 #'
 #' @param B
-#' A \code{matrix} of basis functions.
+#' Current basis matrix.
 #'
 #' @param side
-#' Side of the new basis function inherited from the linar basis function.
+#' Side inherited from the corresponding linear basis function.
 #'
 #' @return
 #'
-#' A \code{matrix} of basis functions updated with the new quintic basis functions.
+#' The basis matrix with the new quintic columns.
 
 create_quintic_basis <- function(
   data,

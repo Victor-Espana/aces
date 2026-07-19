@@ -2,7 +2,7 @@
 % Please edit documentation in R/backward_algorithm.R
 \name{aces_pruning}
 \alias{aces_pruning}
-\title{Backward Algorithm for Adaptive Constrained Enveloping Splines}
+\title{Prune an ACES Model}
 \usage{
 aces_pruning(
   data,
@@ -19,31 +19,35 @@ aces_pruning(
 )
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
+\item{xi_degree}{A matrix that records the degree of each input in every expanded variable.}
 
-\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{dea_scores}{A matrix of output-oriented DEA-VRS scores, with one column per output.}
 
-\item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{fdh_scores}{A matrix of output-oriented FDH scores, with one column per output.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{Character string specifying the lack-of-fit measure.}
 
-\item{forward_model}{A \code{list} containing the information relative to the forward step of the ACES model.}
+\item{forward_model}{Current results from the ACES forward step.}
 
-\item{Bp_list}{A \code{list} containing the current set of basis functions for each input variable.}
+\item{Bp_list}{Current basis functions, grouped by input.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
+\item{shape}{A list with logical elements \code{mono} and \code{conc}.}
 
-\item{kn_penalty}{An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.}
+\item{kn_penalty}{Penalty per knot used to compute GCV.}
 }
 \value{
-A \code{list} containing a portfolio of Adaptive Constrained Enveloping Splines sub-models.
+A list of pruned ACES submodels, including their basis functions, coefficients,
+knots, lack-of-fit values, and GCV scores.
 }
 \description{
-This function implements the Backward Algorithm in Adaptive Constrained Enveloping Splines. It creates a portfolio of sub-models by iteratively removing basis functions one by one.
+Creates a sequence of ACES submodels by removing basis functions one at a
+time. At each step, eligible removals are evaluated under the model's shape
+constraints. The resulting sequence spans the full forward model through
+progressively simpler alternatives and is later compared using GCV.
 }

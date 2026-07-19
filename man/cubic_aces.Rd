@@ -2,7 +2,7 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{cubic_aces}
 \alias{cubic_aces}
-\title{Fit a Smooth Adaptive Constrained Enveloping Splines using Cubic Functions}
+\title{Fit a Cubic-Smoothed ACES Model}
 \usage{
 cubic_aces(
   data,
@@ -20,35 +20,41 @@ cubic_aces(
 )
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{dea_scores}{A matrix of output-oriented DEA-VRS scores, with one column per output.}
 
-\item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{fdh_scores}{A matrix of output-oriented FDH scores, with one column per output.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{Character string specifying the lack-of-fit measure.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
+\item{shape}{A list with logical elements \code{mono} and \code{conc}.}
 
-\item{kn_grid}{A \code{data.frame} containing the set of knots from the backward step for smoothing.}
+\item{kn_grid}{Data frame of knots retained after pruning.}
 
-\item{kn_side_loc}{A \code{list} with the side knot locations for each input dimension.}
+\item{kn_side_loc}{Available side-knot locations for each input.}
 
-\item{kn_penalty}{Generalized Cross Validation (GCV) penalty per knot.}
+\item{kn_penalty}{Penalty per knot used to compute GCV.}
 
-\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
+\item{xi_degree}{A matrix that records the degree of each input in every expanded variable.}
 
-\item{wc}{Let `p` be the distance between the central knot and the right-side knot, and `v` be the distance between the central knot and the left-side knot during the smoothing procedure.A \code{numeric} value used for cubic smoothing \insertCite{friedman1991}{aces}. This parameter is defined as `v / p` and must be set between 1 and 2. If a \code{vector} is entered, the \code{wc} value that most reduced the lack-of-fit criterion is selected.}
+\item{wc}{Cubic side-knot distance ratio \eqn{v / p}, where \eqn{v} and \eqn{p} are the
+distances from the central knot to its left and right side knots. Values must
+be between 1 and 2. If several values are supplied, the function selects the
+one with the lowest lack of fit.}
 }
 \value{
-A \code{list} containing information relative to the Smooth Adaptive Constrained Enveloping Splines through cubic functions.
+A list containing the cubic-smoothed model, its knots, error, and GCV score.
 }
 \description{
-This function performs smoothing on the Adaptive Constrained Enveloping Splines predictor while enforcing continuous first derivatives.
+Replaces the linear hinges in a pruned ACES model with cubic basis functions
+that join smoothly at the side knots and have continuous first derivatives.
+Coefficients are re-estimated under the same envelopment and shape constraints,
+and the candidate side-knot ratio with the lowest lack of fit is retained.
 }
 \references{
 \insertRef{friedman1991}{aces}

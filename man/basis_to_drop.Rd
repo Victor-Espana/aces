@@ -2,20 +2,20 @@
 % Please edit documentation in R/backward_algorithm.R
 \name{basis_to_drop}
 \alias{basis_to_drop}
-\title{Basis Functions to be Dropped}
+\title{Find Removable Basis Functions}
 \usage{
 basis_to_drop(Bp_list, conc, nX)
 }
 \arguments{
-\item{Bp_list}{A \code{list} containing the set of basis functions by input.}
+\item{Bp_list}{Basis functions grouped by input.}
 
-\item{conc}{A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{conc}{If \code{TRUE}, preserve concavity when selecting candidates.}
 
 \item{nX}{Number of inputs.}
 }
 \value{
-A \code{data.frame} indicating the candidate basis function to be dropped for each input.
+A data frame of candidate basis functions to remove.
 }
 \description{
-This function determines the basis function to be dropped from a set of intervals.
+Finds the basis functions that can be removed from each input.
 }

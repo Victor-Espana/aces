@@ -2,28 +2,25 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{set_triplet_knots}
 \alias{set_triplet_knots}
-\title{Generate a Suitable Triplet of Knots}
+\title{Create a Smoothing Knot Triplet}
 \usage{
 set_triplet_knots(knots, w, smoothing, mono, conc)
 }
 \arguments{
-\item{knots}{A \code{vector} with the initial locations for central and side knots.}
+\item{knots}{Numeric vector containing the left, central, and right knot locations.}
 
-\item{w}{Hyperparameter for side knot distances in the cubic and quintic smoothing procedures.}
+\item{w}{Side-knot distance parameter.}
 
-\item{smoothing}{Type of smoothing:
-\itemize{
-\item{\code{"cubic"}}: cubic smoothing procedure.
-\item{\code{"quintic"}}: quintic smoothing procedure.
-}}
+\item{smoothing}{Smoothing type: \code{"cubic"} or \code{"quintic"}.}
 
-\item{monotonicity}{A \code{logical} indicating whether to enforce the constraint of non-decreasing monotonicity in the estimator.}
+\item{mono}{If \code{TRUE}, enforce non-decreasing monotonicity.}
 
-\item{concavity}{A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.}
+\item{conc}{If \code{TRUE}, enforce concavity.}
 }
 \value{
-A \code{vector} with a suitable triplet of knots.
+A numeric vector with the adjusted left, central, and right knots.
 }
 \description{
-This function generates a suitable triplet of knots for the smoothing procedure depending on the shape-constraints.
+Moves the side knots around a central knot according to the smoothing and shape
+settings.
 }

@@ -2,26 +2,30 @@
 % Please edit documentation in R/ACES.R
 \name{set_knots_grid}
 \alias{set_knots_grid}
-\title{Define the Grid of Knots}
+\title{Build the Knot Grid}
 \usage{
 set_knots_grid(data, n_input_1, n_input_2, kn_grid, quick_aces, dea_scores)
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
-\item{n_input_1}{Number of inputs (excluding interactions) and contextual variables.}
+\item{n_input_1}{Number of original inputs, including contextual variables.}
 
-\item{n_input_2}{Number of inputs (including interactions) and contextual variables.}
+\item{n_input_2}{Number of inputs after adding interactions.}
 
-\item{kn_grid}{A \code{list} providing a custom grid of knots for each variable. If not supplied, the function automatically generates a grid of knots for each variable based on the data.}
+\item{kn_grid}{A custom list of knot candidates, or \code{-1} for automatic selection.}
 
-\item{quick_aces}{A \code{logical} indicating whether to use the fast version of ACES.}
+\item{quick_aces}{If \code{TRUE}, retain knot neighborhoods identified by the Quick ACES
+DEA-guided reduction rule.}
 
-\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model.}
+\item{dea_scores}{A matrix of output-oriented DEA-VRS efficiency scores.}
 }
 \value{
-A \code{list} where each element contains the generated or provided vector of knots for the corresponding variable in the model.
+A list of knot candidates, one element per prepared input.
 }
 \description{
-This function defines the grid of knots to perform Adaptive Constrained Enveloping Splines (ACES).
+Creates the knot grid used by ACES. A user-supplied grid is expanded when
+interaction variables are present; otherwise candidates are obtained from
+the prepared inputs. Quick ACES uses DEA scores to retain knot neighborhoods
+around efficient DMUs.
 }

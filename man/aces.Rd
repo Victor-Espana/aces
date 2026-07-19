@@ -2,14 +2,14 @@
 % Please edit documentation in R/ACES.R
 \name{aces}
 \alias{aces}
-\title{Fit an Adaptive Constrained Enveloping Splines (ACES) model}
+\title{Fit an ACES Model}
 \usage{
 aces(
   data,
   x,
   y,
   scale_data = TRUE,
-  quick_aces = TRUE,
+  quick_aces = FALSE,
   mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
   shape = list(mono = TRUE, conc = TRUE),
@@ -22,71 +22,102 @@ aces(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
+\item{scale_data}{If \code{TRUE}, divide each input and output by its mean before fitting. This
+can improve solver convergence.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{quick_aces}{If \code{TRUE}, use Quick ACES. It removes an input only when its Spearman and
+Kendall correlations fall below their thresholds for every output, reduces
+the knot grid around efficient DMUs, and allocates later candidates according
+to recent error reductions. Examining fewer basis functions can substantially
+shorten fitting time for larger problems. The best reduction found for every
+prepared input in each accepted forward iteration is retained and can be
+summarized with \code{aces_varimp()}.}
 
-\item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
+\item{mul_BF}{A \code{list} with two elements:
 \itemize{
-\item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-\item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+  \item{\code{max_degree}: A positive integer giving the maximum interaction
+  degree, or a list of input-index vectors defining the interactions to use.}
+  \item{\code{inter_cost}: The minimum relative improvement over the best
+  first-degree basis function required to add a higher-degree basis function.
+  The default, \code{0.05}, means 5 percent.}
 }}
 
-\item{metric}{A \code{list} specifying the lack-of-fit criterion to evaluate the model performance. Options are:
+\item{metric}{A character string specifying the lack-of-fit measure:
 \itemize{
-\item{\code{"mae"}}: Mean Absolute Error.
-\item{\code{"mape"}}: Mean Absolute Percentage Error.
-\item{\code{"mse"}}: Mean Squared Error.
-\item{\code{"msle"}}: Mean Squared Logarithmic Error.
-\item{\code{"rmse"}}: Root Mean Squared Error.
-\item{\code{"nrmse1"}}: Normalized Root Mean Squared Error (using mean).
-\item{\code{"nrmse2"}}: Normalized Root Mean Squared Error (using range).
+  \item{\code{"mae"}: Mean absolute error.}
+  \item{\code{"mape"}: Mean absolute percentage error.}
+  \item{\code{"mse"}: Mean squared error.}
+  \item{\code{"msle"}: Mean squared logarithmic error.}
+  \item{\code{"rmse"}: Root mean squared error.}
+  \item{\code{"nrmse1"}: Root mean squared error divided by the mean.}
+  \item{\code{"nrmse2"}: Root mean squared error divided by the range.}
 }}
 
-\item{shape}{A \code{list} specifying shape constraints for the estimator. Items include:
+\item{shape}{A \code{list} controlling the restrictions imposed during spline estimation:
 \itemize{
-  \item{\code{mono}}: A \code{logical} indicating if non-decreasing monotonicity should be enforced.
-  \item{\code{conc}}: A \code{logical} indicating if concavity should be enforced.
-}}
+  \item{\code{mono}: Enforce non-decreasing monotonicity.}
+  \item{\code{conc}: Enforce concavity.}
+}
+When both are \code{TRUE}, ACES estimates a production function for each
+output. Otherwise, the spline model is used to estimate maximum attainable
+outputs before the final production technology is constructed.}
 
-\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
+\item{max_terms}{Positive integer giving the maximum number of terms created during the
+forward step. The algorithm may stop earlier when the improvement falls
+below \code{err_red}.}
 
-\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree BFs. Default is \code{0.01}.}
+\item{err_red}{Minimum relative error reduction required to add a new pair of first-degree
+basis functions. Larger values produce simpler models and stop the forward
+step sooner.}
 
-\item{kn_grid}{Specifies the grid of knots to be used in the ACES algorithm. Accepts two options:
-\itemize{
-   \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
-   \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
+\item{kn_grid}{Knot candidates. Use \code{-1} to select eligible knots from the observed
+input values following the standard ACES procedure. Alternatively, supply a
+list with one numeric vector of candidates for each original input.}
 
-}}
+\item{minspan}{Minimum number of observations between adjacent knots. Use \code{-2} for
+the rule in \insertCite{zhang1994;textual}{aces}, \code{-1} for the rule in
+\insertCite{friedman1991;textual}{aces}, or a positive integer.}
 
-\item{minspan}{A \code{numeric} specifying the minimum number of observations between two adjacent knots. Options are:
-\itemize{
-\item{\code{minspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
-\item{\code{minspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
-\item{\code{minspan = +m}}: A user-specified positive integer.
-}}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.
+Use \code{-2} for the rule in \insertCite{zhang1994;textual}{aces}, \code{-1}
+for the rule in \insertCite{friedman1991;textual}{aces}, or a positive integer.}
 
-\item{endspan}{A \code{numeric} specifying the minimum number of observations before the first and after the final knot. Options are:
-\itemize{
-\item{\code{endspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
-\item{\code{endspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
-\item{\code{endspan = +m}}: A user-specified positive integer.
-}}
-
-\item{kn_penalty}{A positive \code{numeric} value specifying the Generalized Cross Validation (GCV) penalty per knot. Default is \code{2}.}
+\item{kn_penalty}{Non-negative penalty per knot used to compute generalized cross-validation
+(GCV) during pruning. Larger values favor models with fewer knots.}
 }
 \value{
-An \code{aces} object.
+An object of class \code{aces}. It contains the original data and controls,
+the forward and pruned models, the cubic- and quintic-smoothed models, and the
+reference points that define the estimated technology for each available
+method.
 }
 \description{
-This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces} and \insertCite{espana2025;textual}{aces}.
+Estimates maximum attainable outputs with Adaptive Constrained Enveloping
+Splines (ACES) and uses them to build a production technology. ACES adapts
+Multivariate Adaptive Regression Splines (MARS) to frontier estimation.
+}
+\details{
+The forward step builds a flexible spline model for all outputs, and the
+backward step selects a more parsimonious set of basis functions. When
+\code{shape$mono} and \code{shape$conc} are both \code{TRUE}, the model for
+each output is a non-decreasing and concave production function. If either
+restriction is relaxed, the spline model is an intermediate predictor that
+moves observed outputs toward their estimated maximum production capacity.
+
+ACES always constructs a production technology. For multiple outputs, the
+predicted components are first refined using the agreement between joint and
+output-specific radial scores. The original inputs and refined output vectors
+then define the reference points used for efficiency measurement. Their
+convex, free-disposal envelopment supplies the final production-set structure
+under the selected returns-to-scale assumption. See
+\insertCite{espana2024;textual}{aces} and
+\insertCite{espana2025;textual}{aces} for methodological details.
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr

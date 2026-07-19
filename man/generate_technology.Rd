@@ -2,25 +2,39 @@
 % Please edit documentation in R/technology.R
 \name{generate_technology}
 \alias{generate_technology}
-\title{Generate a Technology Set}
+\title{Build an Estimated Technology}
 \usage{
 generate_technology(var_names, tech_xmat, tech_ymat1, tech_ymat2, table_scores)
 }
 \arguments{
-\item{var_names}{A \code{string} with variables names for technology set.}
+\item{var_names}{Character vector of input and output names.}
 
-\item{tech_xmat}{A \code{matrix} representing the input data.}
+\item{tech_xmat}{Matrix of inputs that define the technology.}
 
-\item{tech_ymat1}{A \code{matrix} representing the output data.}
+\item{tech_ymat1}{Matrix of observed outputs, treated as feasible production levels.}
 
-\item{tech_ymat2}{A \code{matrix} representing the output data generated from an ACES model.}
+\item{tech_ymat2}{Matrix of maximum attainable outputs estimated by ACES.}
 
-\item{table_scores}{A \code{matrix} containing radial output scores using all outputs and using just each individual output.}
+\item{table_scores}{Matrix of output-oriented radial scores computed jointly and separately for
+each output. A predicted component is retained when the absolute difference
+between its joint and output-specific scores is at most \code{0.05}; otherwise,
+the observed component is used.}
 }
 \value{
-A \code{matrix} representing the technology set.
+A list with \code{xmat}, the original input vectors, and \code{ymat}, the
+refined output vectors. Together they form the reference sample for the
+estimated production technology.
 }
 \description{
-This function generates a technology set based on input data and an ACES model output.
-The technology set represents the feasible combinations of inputs and outputs.
+Builds the reference sample used to define an ACES production technology.
+For each DMU and output, the estimated maximum output is retained when the
+joint and output-specific radial scores agree within the refinement threshold.
+Otherwise, the observed output is kept to avoid using a marginal prediction
+that may distort the jointly feasible output vector.
+
+With one output, the joint and output-specific scores are identical, so the
+reference sample uses the estimated maximum attainable outputs. With multiple outputs,
+it can contain both predicted and observed components. The original inputs and
+these refined output vectors define the DEA-type technology used for efficiency
+measurement.
 }

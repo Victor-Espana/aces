@@ -1,45 +1,42 @@
-#' @title Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES)
+#' @title Estimate ACES Coefficients
 #'
 #' @description
 #'
-#' This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model. These coefficients enforce the desired shape properties, such as monotonicity and concavity to fit the data within the ACES framework.
+#' Solves the reduced linear program for the coefficients of a linear ACES model.
 #'
-#' The N error variables are eliminated algebraically: since e = B coefs - y with
-#' e >= 0, minimizing sum(w * e) is equivalent to minimizing (w'B) coefs subject to
-#' B coefs >= y plus the shape constraints. The resulting LP has only p variables.
-#' It is solved through its DUAL (p rows, N + k columns), which is much faster
-#' because the simplex bases are p x p instead of (N + k) x (N + k). The optimal
-#' primal coefficients are recovered from the dual values of the p equality
-#' constraints. A self-check validates feasibility and strong duality; on any
-#' failure the reduced primal is solved with GLPK as a fallback.
+#' Error variables are removed analytically so that only the basis coefficients
+#' need to be optimized. The function first solves the smaller dual problem and
+#' recovers the primal coefficients from its solution. If the recovered solution
+#' does not pass the feasibility checks, the reduced primal problem is solved
+#' directly with GLPK.
 #'
 #' @param B
-#' A \code{matrix} of linear basis functions derived from input variables.
+#' Matrix of evaluated linear basis functions.
 #'
 #' @param y_obs
-#' A \code{matrix} of the observed output data.
+#' Matrix of observed outputs.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented DEA-VRS scores, with one column per output.
 #'
 #' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented FDH scores, with one column per output.
 #'
 #' @param it_list
-#' A \code{list} containing the set of intervals by input.
+#' Intervals and active basis functions, grouped by input.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
+#' Basis functions grouped by input.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
+#' A list with logical elements \code{mono} and \code{conc}.
 #'
 #' @importFrom Rglpk Rglpk_solve_LP
 #' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint get.objective
 #'
 #' @return
 #'
-#' A \code{matrix} containing the estimated coefficients for the ACES model.
+#' A matrix of estimated coefficients, with one column per output.
 
 estimate_coefficients <- function(
   B,
@@ -165,28 +162,28 @@ estimate_coefficients <- function(
   return(coefs)
 }
 
-#' @title Solve the Reduced Primal LP of ACES with GLPK
+#' @title Solve the Reduced ACES Primal Problem
 #'
 #' @description
-#' Fallback solver for \code{estimate_coefficients}: solves the
-#' reduced primal (p variables) directly with GLPK.
+#' Solves the reduced primal problem directly with GLPK. This is the fallback
+#' used by \code{estimate_coefficients}.
 #'
 #' @param Amat
-#' Constraint \code{matrix}: envelopment rows plus shape rows.
+#' Constraint matrix containing the envelopment and shape rows.
 #'
 #' @param bvec
-#' Right-hand side \code{vector}.
+#' Right-hand-side vector.
 #'
 #' @param cvec
-#' Objective \code{vector} (w'B).
+#' Objective vector.
 #'
 #' @param p
-#' Number of coefficients.
+#' Number of coefficients to return.
 #'
 #' @importFrom Rglpk Rglpk_solve_LP
 #'
 #' @return
-#' A \code{vector} of estimated coefficients.
+#' A numeric vector of estimated coefficients.
 
 estimate_coefficients_reduced <- function(
   Amat,

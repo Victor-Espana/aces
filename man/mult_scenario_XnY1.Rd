@@ -2,20 +2,23 @@
 % Please edit documentation in R/simulations.R
 \name{mult_scenario_XnY1}
 \alias{mult_scenario_XnY1}
-\title{1 output ~ nX inputs Multiplicative Data Generation Process}
+\title{Simulate a Multiplicative Production Scenario}
 \usage{
 mult_scenario_XnY1(N, scenario)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{scenario}{A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.}
+\item{scenario}{Scenario to simulate: \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"},
+\code{"E"}, or \code{"F"}.}
 }
 \value{
-A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
+A data frame with one to three inputs, observed output \code{y}, and frontier
+output \code{yT}.
 }
 \description{
-This function simulates a 1 output ~ nX inputs \code{data.frame} with a Multiplicative Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
+Simulates one of six multiplicative production scenarios from
+\insertCite{kuosmanen2010;textual}{aces}.
 }
 \references{
 \insertRef{kuosmanen2010}{aces}

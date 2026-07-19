@@ -2,22 +2,22 @@
 % Please edit documentation in R/predictions.R
 \name{set_Bmat}
 \alias{set_Bmat}
-\title{Build (B) Matrix of Basis Functions}
+\title{Build a Basis Matrix for Prediction}
 \usage{
 set_Bmat(newdata, model, knots, method)
 }
 \arguments{
-\item{newdata}{A \code{data.frame} containing the input and netput variables to predict on.}
+\item{newdata}{A data frame or matrix containing the prepared new inputs.}
 
-\item{model}{A \code{list} with data of a model.}
+\item{model}{Fitted model information.}
 
-\item{knots}{Set of knots of the \code{model}.}
+\item{knots}{Knots used by \code{model}.}
 
-\item{method}{Type of model for prediction.}
+\item{method}{Model type used to choose the basis functions.}
 }
 \value{
-The (B) Matrix of Basis Functions
+A matrix of evaluated basis functions.
 }
 \description{
-This function builds the (B) matrix of basis functions for prediction given a model.
+Evaluates a fitted model's basis functions on new data.
 }

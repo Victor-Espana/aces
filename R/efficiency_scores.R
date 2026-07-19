@@ -1,43 +1,40 @@
-#' @title Output-Oriented Radial Model
+#' @title Compute Output-Oriented Radial Scores
 #'
 #' @description
-#' Computes efficiency scores through the output-oriented radial model
-#' (also known as the BCC output model) in the envelopment format.
+#' Solves the output-oriented radial envelopment model for each evaluated DMU.
+#' All outputs are expanded by a common factor while inputs remain fixed; a DMU
+#' on the frontier has an expansion factor of one.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
 #' @param convexity
-#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
-#' If \code{FALSE}, the intensity variables are set to binary (FDH).
+#' If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+#' intensity variables for an FDH technology.
 #'
 #' @param returns
-#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param type
-#' A \code{character} string specifying the return value:
-#' \code{"objective"} for the optimal objective value, or
-#' \code{"variables"} for the optimal value of the efficiency variable \eqn{\phi}.
+#' Value to return: \code{"objective"} for the objective value or
+#' \code{"variables"} for the efficiency variable \eqn{\phi}.
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
-#'   set.bounds set.rhs set.mat get.objective get.variables
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows and 1 column containing the efficiency
-#' scores.
+#' A one-column matrix with the requested objective value or radial expansion
+#' factor for each evaluated DMU.
 
 rad_out <- function(
   tech_xmat,
@@ -134,32 +131,29 @@ rad_out <- function(
   return(scores)
 }
 
-#' @title Output-Oriented Radial Model under a Free Disposal Hull Technology
+#' @title Compute Output-Oriented FDH Scores
 #'
 #' @description
-#' Computes output-oriented radial efficiency scores under a Free Disposal
-#' Hull (FDH) technology with variable returns to scale by enumeration:
+#' Computes output-oriented radial scores under a variable-returns-to-scale Free
+#' Disposal Hull (FDH) technology:
 #' \deqn{\phi_d = \max_{j : x_j \le x_d} \min_r (y_{jr} / y_{dr})}
+#' Each DMU is compared with observed reference units that use no more of any
+#' input; convex combinations of reference units are not allowed.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows and 1 column containing the efficiency
-#' scores.
+#' A one-column matrix with one efficiency score per evaluated DMU.
 
 rad_out_fdh <- function(
   tech_xmat,
@@ -205,46 +199,44 @@ rad_out_fdh <- function(
   return(scores)
 }
 
-#' @title Input-Oriented Radial Model
+#' @title Compute Input-Oriented Radial Scores
 #'
 #' @description
-#' Computes efficiency scores through the input-oriented radial model
-#' (also known as the BCC input model) in the envelopment format.
+#' Solves the input-oriented radial envelopment model for each evaluated DMU.
+#' All inputs are contracted by a common factor while outputs remain fixed; a DMU
+#' on the frontier has a contraction factor of one.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
 #' @param convexity
-#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
-#' If \code{FALSE}, the intensity variables are set to binary (FDH).
+#' If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+#' intensity variables for an FDH technology.
 #'
 #' @param returns
-#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param type
 #' A \code{character} string specifying the return value:
 #' \code{"objective"} for the optimal objective value, or
 #' \code{"variables"} for the optimal value of the efficiency variable \eqn{\theta}.
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
-#'   set.bounds set.rhs set.mat get.objective get.variables
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows and 1 column containing the efficiency
-#' scores.
+#' A one-column matrix with the requested objective value or radial contraction
+#' factor for each evaluated DMU.
 
 rad_inp <- function(
   tech_xmat,
@@ -330,27 +322,24 @@ rad_inp <- function(
 }
 
 
-#' @title Directional Distance Function
+#' @title Compute Directional Distance Scores
 #'
 #' @description
-#' Computes efficiency scores through the Directional Distance Function (DDF)
-#' in the envelopment format.
+#' Solves the directional distance envelopment model for each evaluated DMU. The
+#' score is the greatest feasible movement that contracts inputs and expands
+#' outputs in the proportions specified by \code{direction}.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
 #' @param direction
 #' A \code{matrix} or \code{data.frame} with \code{N} rows and
@@ -359,23 +348,24 @@ rad_inp <- function(
 #' columns \code{(nX+1):(nX+nY)} to output directions (\eqn{g_y}).
 #'
 #' @param convexity
-#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
-#' If \code{FALSE}, the intensity variables are set to binary (FDH).
+#' If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+#' intensity variables for an FDH technology.
 #'
 #' @param returns
-#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param type
 #' A \code{character} string specifying the return value:
 #' \code{"objective"} for the optimal objective value, or
 #' \code{"variables"} for the optimal value of \eqn{\beta}.
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
-#'   set.bounds set.rhs set.mat get.objective get.variables
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows and 1 column containing the efficiency
-#' scores.
+#' A one-column matrix with the requested objective value or directional distance
+#' for each evaluated DMU.
 
 ddf <- function(
   tech_xmat,
@@ -471,45 +461,45 @@ ddf <- function(
   return(scores)
 }
 
-#' @title Output-Oriented Russell Model
+#' @title Compute Output-Oriented Russell Scores
 #'
 #' @description
-#' Computes efficiency scores through the output-oriented Russell model
-#' in the envelopment format.
+#' Solves the output-oriented Russell envelopment model for each evaluated DMU.
+#' Unlike a radial model, it allows a different expansion factor for each output
+#' and can therefore identify non-proportional output inefficiency.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
 #' @param convexity
-#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
-#' If \code{FALSE}, the intensity variables are set to binary (FDH).
+#' If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+#' intensity variables for an FDH technology.
 #'
 #' @param returns
-#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param type
 #' A \code{character} string specifying the return value:
 #' \code{"objective"} for the optimal objective value, or
 #' \code{"variables"} for the optimal values of \eqn{\phi_r} (one per output).
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
-#'   set.bounds set.rhs set.mat get.objective get.variables
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows containing the efficiency scores.
+#' A matrix with one row per evaluated DMU. It contains one objective value when
+#' \code{type = "objective"}, or one expansion factor per output when
+#' \code{type = "variables"}.
 
 rsl_out <- function(
   tech_xmat,
@@ -605,45 +595,45 @@ rsl_out <- function(
   return(scores)
 }
 
-#' @title Input-Oriented Russell Model
+#' @title Compute Input-Oriented Russell Scores
 #'
 #' @description
-#' Computes efficiency scores through the input-oriented Russell model
-#' in the envelopment format.
+#' Solves the input-oriented Russell envelopment model for each evaluated DMU.
+#' Unlike a radial model, it allows a different contraction factor for each input
+#' and can therefore identify non-proportional input inefficiency.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
 #' @param convexity
-#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
-#' If \code{FALSE}, the intensity variables are set to binary (FDH).
+#' If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+#' intensity variables for an FDH technology.
 #'
 #' @param returns
-#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param type
 #' A \code{character} string specifying the return value:
 #' \code{"objective"} for the optimal objective value, or
 #' \code{"variables"} for the optimal values of \eqn{\theta_i} (one per input).
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
-#'   set.bounds set.rhs set.mat get.objective get.variables
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows containing the efficiency scores.
+#' A matrix with one row per evaluated DMU. It contains one objective value when
+#' \code{type = "objective"}, or one contraction factor per input when
+#' \code{type = "variables"}.
 
 rsl_inp <- function(
   tech_xmat,
@@ -739,29 +729,26 @@ rsl_inp <- function(
   return(scores)
 }
 
-#' @title Weighted Additive Model
+#' @title Compute Weighted Additive Scores
 #'
 #' @description
-#' Computes efficiency scores through a Weighted Additive Model
-#' in the envelopment format.
+#' Solves a weighted additive envelopment model for each evaluated DMU. The model
+#' measures input excesses and output shortfalls directly through slacks, with a
+#' weighting rule that makes variables with different scales comparable.
 #'
 #' @param tech_xmat
-#' A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-#' containing the input variables that define the technology.
+#' Matrix of inputs for the reference technology, with one row per reference DMU.
 #'
 #' @param tech_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output variables that define the technology.
+#' Matrix of outputs for the reference technology, with one row per reference DMU.
 #'
 #' @param eval_xmat
-#' A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-#' containing the input data.
+#' Matrix of inputs for the evaluated DMUs.
 #'
 #' @param eval_ymat
-#' A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-#' output data.
+#' Matrix of outputs for the evaluated DMUs.
 #'
-#' @param weights Weights for the additive model:
+#' @param weights Weighting rule for the additive model:
 #' \itemize{
 #' \item{\code{"wam_mip"}} Measure of Inefficiency Proportions.
 #' \item{\code{"wam_nor"}} Normalized Weighted Additive Model.
@@ -770,22 +757,25 @@ rsl_inp <- function(
 #' }
 #'
 #' @param convexity
-#' A \code{logical} indicating whether a convex technology (DEA) is assumed.
-#' If \code{FALSE}, the intensity variables are set to binary (FDH).
+#' If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+#' intensity variables for an FDH technology.
 #'
 #' @param returns
-#' Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param type
 #' A \code{character} string specifying the return value:
 #' \code{"objective"} for the optimal objective value, or
 #' \code{"variables"} for the optimal slack values.
 #'
-#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type
-#'   set.bounds set.rhs set.mat get.objective get.variables
+#' @importFrom lpSolveAPI make.lp lp.control set.objfn add.constraint set.type set.bounds set.rhs set.mat get.objective get.variables
 #'
 #' @return
-#' A \code{matrix} with \code{N} rows containing the efficiency scores.
+#' A matrix with one row per evaluated DMU. It contains one objective value when
+#' \code{type = "objective"}, or the input and output slacks when
+#' \code{type = "variables"}.
 
 wam <- function(
   tech_xmat,
@@ -904,16 +894,18 @@ wam <- function(
   return(scores)
 }
 
-#' @title Compute Efficiency Scores using an Adaptive Constrained Enveloping Splines model.
+#' @title Compute Efficiency Scores
 #'
 #' @description
-#' This function computes the efficiency scores for each Decision-Making-Unit
-#' (DMU) using an Adaptive Constrained Enveloping Splines (ACES) or Random
-#' Forest ACES (RF-ACES) model. The function automatically detects the class
-#' of the fitted object and applies the appropriate methodology.
+#' Evaluates each decision-making unit (DMU) against the production technology
+#' constructed by ACES or RF-ACES. The stored input-output reference points are
+#' enveloped under the selected returns-to-scale assumption. The function
+#' supports proportional, directional, non-radial, and slack-based measures, so
+#' the score can reflect different notions of technical inefficiency. If
+#' \code{method = NULL}, the standard model for the supplied object is used.
 #'
 #' @param eval_data
-#' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
+#' A \code{data.frame} or \code{matrix} containing the DMUs to evaluate.
 #'
 #' @param x
 #' Column indexes of input variables in \code{eval_data}.
@@ -922,47 +914,55 @@ wam <- function(
 #' Column indexes of output variables in \code{eval_data}.
 #'
 #' @param relevant
-#' A \code{logical} indicating if only relevant variables should be included in the technology definition.
+#' If \code{TRUE}, compute the efficiency result with only the original inputs
+#' represented in at least one selected basis function. Inputs used through an
+#' interaction are also retained.
 #'
 #' @param object
 #' An \code{aces} or \code{rf_aces} object.
 #'
 #' @param method
-#' Model prediction method:
+#' Fitted model used to define the technology. When \code{NULL}, use \code{"aces"}
+#' for an \code{aces} object and \code{"rf_aces"} for an \code{rf_aces} object:
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
 #' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Cubic-smoothed RF-ACES.
+#' \item{\code{"rf_aces_quintic"}}: Quintic-smoothed RF-ACES.
 #' }
 #'
 #' @param measure
-#' Mathematical programming model to calculate scores:
+#' Efficiency measure to compute:
 #' \itemize{
-#' \item{\code{rad_out}} Output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{rad_inp}} Input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{ddf}}     Directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
-#' \item{\code{rsl_out}} Output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{rsl_inp}} Input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{wam_mip}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
-#' \item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
-#' \item{\code{rf_aces_rad_out}} Output-oriented radial measure derived from RF-ACES prediction. Only for \code{rf_aces} objects. \insertCite{espana2024rf;textual}{aces}.
+#' \item{\code{"rad_out"}: Proportional expansion of all outputs while inputs
+#' remain fixed.}
+#' \item{\code{"rad_inp"}: Proportional contraction of all inputs while outputs
+#' remain fixed.}
+#' \item{\code{"ddf"}: Simultaneous input contraction and output expansion along
+#' the supplied direction.}
+#' \item{\code{"rsl_out"}: Separate proportional adjustments for each output.}
+#' \item{\code{"rsl_inp"}: Separate proportional adjustments for each input.}
+#' \item{\code{"wam_mip"}: Slack-based Measure of Inefficiency Proportions.}
+#' \item{\code{"wam_nor"}: Slack-based normalized weighted additive measure.}
+#' \item{\code{"wam_ram"}: Slack-based range-adjusted measure.}
+#' \item{\code{"wam_bam"}: Slack-based bounded adjusted measure.}
+#' \item{\code{"rf_aces_rad_out"}: Output-oriented radial scores based directly
+#' on RF-ACES predictions. Available only for \code{rf_aces} objects.}
 #' }
 #'
 #' @param returns
-#' Type of returns to scale:
-#' \itemize{
-#' \item{\code{"constant"}} Constant Returns to Scale.
-#' \item{\code{"variable"}} Variable Returns to Scale (default).
-#' }
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param direction
-#' Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}. A \code{matrix} or \code{data.frame} with \code{n} rows (number of DMUs to be evaluated) and \code{nX + nY} columns, containing the direction of the input variables followed by the direction of the output variables in the same order as they appear in the data.
+#' Direction vectors used when \code{measure = "ddf"}. Supply a matrix or data
+#' frame with one row per evaluated DMU. Input directions must come first,
+#' followed by output directions. The direction determines the relative input
+#' contractions and output expansions represented by the score.
 #'
 #' @references
 #'
@@ -979,7 +979,19 @@ wam <- function(
 #' @importFrom stats median quantile sd
 #'
 #' @return
-#' A \code{data.frame} with the efficiency scores computed through an Adaptive Constrained Enveloping Splines model.
+#' A data frame with one row and one efficiency score for each evaluated DMU.
+#' Row names are copied from \code{eval_data}; the column name identifies the
+#' returns-to-scale assumption and efficiency measure.
+#'
+#' @details
+#' The \code{relevant} argument applies a structural rule, not an importance
+#' threshold. For an ACES object, the retained inputs come from the selected
+#' basis functions of \code{method}. For an RF-ACES object, the function uses
+#' the union of the inputs selected by any learner. The reduced input set is
+#' used only in the envelopment problem; the model is not refitted. In
+#' particular, \code{aces_varimp()} scores do not determine this set. The
+#' argument has no effect on \code{measure = "rf_aces_rad_out"}, which is based
+#' directly on prediction-to-observation ratios.
 #'
 #' @export
 
@@ -1048,8 +1060,12 @@ get_scores <- function(
     # names of participant variables
     participating_vars_names <- colnames(xi_degree)[participating_vars]
 
-    # extract individual variables assuming interaction variable names use "_"
-    split_vars <- unique(unlist(strsplit(participating_vars_names, "_")))
+    # extract the original variables from interaction names such as "x1:x2"
+    split_vars <- unique(unlist(strsplit(
+      participating_vars_names,
+      ":",
+      fixed = TRUE
+    )))
 
     # get the column indices for the unique variables
     rel_x <- sort(match(split_vars, colnames(xi_degree)))
@@ -1208,4 +1224,3 @@ get_scores <- function(
 
   return(scores)
 }
-

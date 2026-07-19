@@ -2,7 +2,7 @@
 % Please edit documentation in R/RF_ACES.R
 \name{rf_aces_algorithm}
 \alias{rf_aces_algorithm}
-\title{Algorithm of Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).}
+\title{Run One RF-ACES Learner}
 \usage{
 rf_aces_algorithm(
   data,
@@ -22,37 +22,47 @@ rf_aces_algorithm(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{x_vars}{Column indexes of input variables in \code{data}.}
 
 \item{y_vars}{Column indexes of output variables in \code{data}.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{quick_aces}{If \code{TRUE}, use the Quick ACES input filtering, knot reduction, and
+adaptive candidate allocation rules.}
 
-\item{max_degree}{Maximum degree of interaction between variables.}
+\item{max_degree}{Maximum interaction degree, or a list of input-index vectors defining the
+interactions to use.}
 
-\item{inter_cost}{Minimum percentage of improvement over the best 1 degree BF to incorporate a higher degree BF.}
+\item{inter_cost}{Minimum relative improvement over the best first-degree basis function
+required to add a higher-degree basis function.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion employed to evaluate the model performance.}
+\item{metric}{Character string specifying the lack-of-fit measure.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.}
+\item{shape}{A list with logical elements \code{mono} and \code{conc}. When both are
+\code{TRUE}, estimate a non-decreasing and concave production function for
+each output; otherwise, use the spline models as intermediate predictors of
+maximum attainable output before constructing the learner-specific technology.}
 
-\item{max_feats}{An \code{integer} indicating the number of variables randomly chosen at each split.}
+\item{max_feats}{Number of inputs randomly considered by the learner.}
 
-\item{max_terms}{Maximum number of terms created before pruning.}
+\item{max_terms}{Maximum number of terms created during the forward step.}
 
-\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
+\item{err_red}{Minimum relative error reduction required to add a new pair of first-degree
+basis functions.}
 
 \item{minspan}{Minimum number of observations between two adjacent knots.}
 
-\item{endspan}{Minimum number of observations before the first and after the final knot.}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.}
 
-\item{kn_grid}{Grid design for knots placement in RF-ACES.}
+\item{kn_grid}{Knot candidates. Use \code{-1} for automatic selection or supply a list.}
 }
 \value{
-A \code{rf-aces} object.
+An \code{aces} object representing one RF-ACES learner.
 }
 \description{
-This function implements the Random Forest Adaptive Constrained Enveloping Splines (ACES) algorithm.
+Fits one randomized ACES learner for use in an RF-ACES forest. The function
+expands interactions, samples the allowed inputs, estimates maximum attainable
+outputs, refines the output vectors, and constructs the learner-specific
+technology.
 }

@@ -1,14 +1,14 @@
-#' @title Compute Efficient Targets using Adaptive Constrained Enveloping Splines (ACES)
+#' @title Compute Efficient Targets
 #'
 #' @description
-#' Projects a set of Decision Making Units (DMUs) onto the estimated production
-#' frontier. This function calculates the efficient input/output targets required
-#' for each DMU to achieve full efficiency, based on the specified ACES or RF-ACES
-#' model and distance measure. The function automatically detects the class of the
-#' fitted object and applies the appropriate methodology.
+#' Projects each decision-making unit (DMU) onto the production technology
+#' constructed by ACES or RF-ACES. The stored input-output reference points are
+#' enveloped under the selected returns-to-scale assumption, and the efficiency
+#' measure determines which inputs, outputs, or both are adjusted. If
+#' \code{method = NULL}, the standard model for the supplied object is used.
 #'
 #' @param eval_data
-#' A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.
+#' A \code{data.frame} or \code{matrix} containing the DMUs to evaluate.
 #'
 #' @param x
 #' Column indexes of input variables in \code{eval_data}.
@@ -17,47 +17,55 @@
 #' Column indexes of output variables in \code{eval_data}.
 #'
 #' @param relevant
-#' A \code{logical} indicating if only relevant variables should be included in the technology definition.
+#' If \code{TRUE}, compute the efficiency result with only the original inputs
+#' represented in at least one selected basis function. Inputs used through an
+#' interaction are also retained.
 #'
 #' @param object
 #' An \code{aces} or \code{rf_aces} object.
 #'
 #' @param method
-#' Model prediction method:
+#' Fitted model used to define the technology. When \code{NULL}, use \code{"aces"}
+#' for an \code{aces} object and \code{"rf_aces"} for an \code{rf_aces} object:
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
 #' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Cubic-smoothed RF-ACES.
+#' \item{\code{"rf_aces_quintic"}}: Quintic-smoothed RF-ACES.
 #' }
 #'
 #' @param measure
-#' Mathematical programming model to calculate scores:
+#' Efficiency measure used for the projection:
 #' \itemize{
-#' \item{\code{rad_out}} Output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{rad_inp}} Input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-#' \item{\code{ddf}}     Directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
-#' \item{\code{rsl_out}} Output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{rsl_inp}} Input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-#' \item{\code{wam_mip}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
-#' \item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
-#' \item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
-#' \item{\code{rf_aces_rad_out}} Output-oriented radial measure derived from RF-ACES prediction. Only for \code{rf_aces} objects. \insertCite{espana2024rf;textual}{aces}.
+#' \item{\code{"rad_out"}: Proportional expansion of all outputs while inputs
+#' remain fixed.}
+#' \item{\code{"rad_inp"}: Proportional contraction of all inputs while outputs
+#' remain fixed.}
+#' \item{\code{"ddf"}: Simultaneous input contraction and output expansion along
+#' the supplied direction.}
+#' \item{\code{"rsl_out"}: Separate proportional adjustments for each output.}
+#' \item{\code{"rsl_inp"}: Separate proportional adjustments for each input.}
+#' \item{\code{"wam_mip"}: Slack-based Measure of Inefficiency Proportions.}
+#' \item{\code{"wam_nor"}: Slack-based normalized weighted additive measure.}
+#' \item{\code{"wam_ram"}: Slack-based range-adjusted measure.}
+#' \item{\code{"wam_bam"}: Slack-based bounded adjusted measure.}
+#' \item{\code{"rf_aces_rad_out"}: Targets based directly on RF-ACES
+#' predictions. Available only for \code{rf_aces} objects.}
 #' }
 #'
 #' @param returns
-#' Type of returns to scale:
-#' \itemize{
-#' \item{\code{"constant"}} Constant returns to scale.
-#' \item{\code{"variable"}} Variable returns to scale (default).
-#' }
+#' Returns-to-scale assumption used to construct the reference technology.
+#' Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+#' convex technology with a convexity constraint.
 #'
 #' @param direction
-#' Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}. A \code{matrix} or \code{data.frame} with \code{n} rows (number of DMUs to be evaluated) and \code{nX + nY} columns, containing the direction of the input variables followed by the direction of the output variables in the same order as they appear in the data.
+#' Direction vectors used when \code{measure = "ddf"}. Supply a matrix or data
+#' frame with one row per evaluated DMU. Input directions must come first,
+#' followed by output directions. The direction determines the relative input
+#' contractions and output expansions represented by the projection.
 #'
 #' @references
 #'
@@ -74,7 +82,19 @@
 #' @importFrom stats median quantile sd
 #'
 #' @return
-#' A \code{data.frame} with input and output targets computed through an Adaptive Constrained Enveloping Splines model.
+#' A data frame with one row per evaluated DMU. Target input columns are followed
+#' by target output columns and use the suffix \code{_hat}. Values are returned on
+#' the original data scale.
+#'
+#' @details
+#' The \code{relevant} argument applies a structural rule, not an importance
+#' threshold. For an ACES object, the retained inputs come from the selected
+#' basis functions of \code{method}. For an RF-ACES object, the function uses
+#' the union of the inputs selected by any learner. The reduced input set is
+#' used only in the envelopment problem; the model is not refitted. In
+#' particular, \code{aces_varimp()} scores do not determine this set. With
+#' \code{measure = "rf_aces_rad_out"}, the argument changes only the input
+#' columns returned with the targets; it does not change the predicted outputs.
 #'
 #' @export
 #'
@@ -143,8 +163,12 @@ get_targets <- function (
     # names of participant variables
     participating_vars_names <- colnames(xi_degree)[participating_vars]
 
-    # extract individual variables assuming interaction variable names use "_"
-    split_vars <- unique(unlist(strsplit(participating_vars_names, "_")))
+    # extract the original variables from interaction names such as "x1:x2"
+    split_vars <- unique(unlist(strsplit(
+      participating_vars_names,
+      ":",
+      fixed = TRUE
+    )))
 
     # get the column indices for the unique variables
     rel_x <- sort(match(split_vars, colnames(xi_degree)))
@@ -375,34 +399,35 @@ get_targets <- function (
 
 }
 
-#' @title Model Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES)
+#' @title Predict with an RF-ACES Model
 #'
 #' @description
 #'
-#' This function predicts the expected output by an \code{rf_aces} object. It
-#' computes the mean prediction across all trees in the forest and projects the
-#' result onto the estimated technology via DEA.
+#' Predicts attainable outputs by averaging the learners in an \code{rf_aces}
+#' object. The averaged predictions are then projected onto the corresponding
+#' aggregate technology to preserve the production assumptions used by RF-ACES.
 #'
 #' @param object
 #' A \code{rf_aces} object.
 #'
 #' @param eval_data
-#' A \code{data.frame} containing the input and netput variables to predict on.
+#' A \code{data.frame} or \code{matrix} containing the new observations.
 #'
 #' @param x
-#' Input indexes in \code{eval_data}.
+#' Column indexes of input variables in \code{eval_data}.
 #'
 #' @param method
-#' Model for prediction:
+#' RF-ACES model to use:
 #' \itemize{
 #' \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
-#' \item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
+#' \item{\code{"rf_aces_cubic"}}: Cubic-smoothed RF-ACES.
+#' \item{\code{"rf_aces_quintic"}}: Quintic-smoothed RF-ACES.
 #' }
 #'
 #' @return
 #'
-#' A \code{data.frame} with the predicted values through the Random Forest Adaptive Constrained Enveloping Splines model.
+#' A data frame with one row per observation and one column per output. Predictions
+#' are returned on the original output scale.
 
 rf_aces_predict <- function (
     object,
@@ -492,7 +517,7 @@ rf_aces_predict <- function (
   scores <- rad_out (
     tech_xmat = tecno[["xmat"]],
     tech_ymat = tecno[["ymat"]],
-    eval_xmat = as.matrix(eval_data[, x]),
+    eval_xmat = as.matrix(data_work[, x, drop = FALSE]),
     eval_ymat = as.matrix(y_hat_aux),
     convexity = TRUE,
     returns = "variable"
@@ -518,18 +543,19 @@ rf_aces_predict <- function (
 
 }
 
-#' @title Model Prediction for RF-ACES (S3 method)
+#' @title Predict Method for RF-ACES Models
 #'
 #' @description
-#' S3 predict method for \code{rf_aces} objects. Wraps \code{rf_aces_predict}.
+#' S3 prediction method for \code{rf_aces} objects. It delegates to
+#' \code{rf_aces_predict()} and returns the ensemble output predictions.
 #'
 #' @param object A \code{rf_aces} object.
-#' @param newdata A \code{data.frame} with input variables.
-#' @param x Input indexes in \code{newdata}.
-#' @param method Model for prediction.
-#' @param ... Additional arguments (ignored).
+#' @param newdata A data frame or matrix containing the new observations.
+#' @param x Column indexes of input variables in \code{newdata}.
+#' @param method RF-ACES model to use.
+#' @param ... Additional arguments. They are currently ignored.
 #'
-#' @return A \code{data.frame} with predicted values.
+#' @return A data frame of predicted outputs.
 #'
 #' @export
 
@@ -542,25 +568,422 @@ predict.rf_aces <- function (object, newdata, x, method = "rf_aces", ...) {
   )
 }
 
-#' @title Build (B) Matrix of Basis Functions
+#' @title Compute RF-ACES Ensemble Intervals
 #'
 #' @description
-#' This function builds the (B) matrix of basis functions for prediction given a model.
+#' Computes empirical intervals from the variation among the learners of an
+#' \code{rf_aces} forest. Output intervals use the prediction from each learner
+#' projected onto that learner's technology. Efficiency-score intervals
+#' recompute the requested efficiency measure against each learner-specific
+#' technology.
+#'
+#' @param object
+#' A fitted \code{rf_aces} object.
 #'
 #' @param newdata
-#' A \code{data.frame} containing the input and netput variables to predict on.
+#' A \code{data.frame} or \code{matrix} containing the observations to predict
+#' or evaluate.
 #'
-#' @param model
-#' A \code{list} with data of a model.
+#' @param x
+#' Column indexes of input variables in \code{newdata}.
 #'
-#' @param knots
-#' Set of knots of the \code{model}.
+#' @param y
+#' Column indexes of output variables in \code{newdata}. Required when
+#' \code{type} is \code{"score"} or \code{"both"}.
+#'
+#' @param level
+#' Interval level, as a number strictly between zero and one. For example,
+#' \code{0.95} returns the 2.5 and 97.5 percent empirical quantiles.
+#'
+#' @param type
+#' Result to compute: \code{"output"}, \code{"score"}, or \code{"both"}.
 #'
 #' @param method
-#' Type of model for prediction.
+#' RF-ACES model to use: \code{"rf_aces"}, \code{"rf_aces_cubic"}, or
+#' \code{"rf_aces_quintic"}.
+#'
+#' @param measure
+#' Efficiency measure passed to \code{get_scores()}. The default,
+#' \code{"rf_aces_rad_out"}, compares each learner's predicted outputs with the
+#' observed outputs. The other measures supported by \code{get_scores()} use
+#' each learner-specific technology.
+#'
+#' @param returns
+#' Returns-to-scale assumption passed to \code{get_scores()}.
+#'
+#' @param relevant
+#' If \code{TRUE}, apply the input-selection rule described in
+#' \code{get_scores()} separately to every learner.
+#'
+#' @param direction
+#' Direction matrix used when \code{measure = "ddf"}.
+#'
+#' @param calibration
+#' Output-interval calibration. Use \code{"none"} for learner quantiles or
+#' \code{"oob"} for an approximate conformal prediction interval calibrated
+#' with absolute out-of-bag residuals from the training outputs. OOB calibration
+#' applies only to the \code{output} component; score intervals remain ensemble
+#' intervals because the true efficiency score is not observed.
+#'
+#' @param min_oob
+#' Minimum number of out-of-bag learner predictions required for a training DMU
+#' to contribute a calibration residual. Used only when
+#' \code{calibration = "oob"}.
+#'
+#' @details
+#' These are ensemble-dispersion intervals: their limits are empirical
+#' quantiles across the fitted learners. They describe sensitivity to the
+#' bootstrap samples and randomized input selection used by RF-ACES. They are
+#' not calibrated confidence or prediction intervals and do not guarantee a
+#' stated frequentist coverage probability.
+#'
+#' The point estimate is computed with the complete forest using
+#' \code{predict()} or \code{get_scores()}. Because RF-ACES aggregation and the
+#' technology projection are nonlinear, a point estimate need not equal the
+#' midpoint of its learner interval and can occasionally fall outside it.
+#'
+#' With \code{calibration = "oob"}, output limits are replaced by marginal
+#' prediction intervals based on absolute OOB residuals. Their target is a new
+#' observed output conditional on its inputs, not the unobserved true production
+#' frontier. The calibration is approximate because the same forest supplies
+#' both the OOB residuals and the final predictor. With multiple outputs,
+#' coverage is marginal for each output rather than simultaneous for the full
+#' output vector.
 #'
 #' @return
-#' The (B) Matrix of Basis Functions
+#' An object of class \code{rf_aces_intervals}. The \code{output} component is a
+#' data frame containing each forest prediction followed by its lower and upper
+#' limits. The \code{score} component has the analogous efficiency-score
+#' columns. A component not requested in \code{type} is \code{NULL}. The result
+#' also records \code{level}, \code{method}, \code{measure}, and the number of
+#' learners used. The \code{interval_type} and \code{calibration} components
+#' record the interpretation and diagnostics of the returned limits.
+#'
+#' @export
+
+rf_aces_intervals <- function(
+  object,
+  newdata,
+  x,
+  y = NULL,
+  level = 0.95,
+  type = c("both", "output", "score"),
+  method = "rf_aces",
+  measure = "rf_aces_rad_out",
+  returns = "variable",
+  relevant = FALSE,
+  direction = NULL,
+  calibration = c("none", "oob"),
+  min_oob = 5L
+) {
+  if (!inherits(object, "rf_aces")) {
+    stop("'object' must be an rf_aces object.")
+  }
+
+  type <- match.arg(type)
+  calibration <- match.arg(calibration)
+
+  if (!is.numeric(level) || length(level) != 1L ||
+      !is.finite(level) || level <= 0 || level >= 1) {
+    stop("'level' must be one finite number strictly between 0 and 1.")
+  }
+
+  allowed_methods <- c("rf_aces", "rf_aces_cubic", "rf_aces_quintic")
+  if (!method %in% allowed_methods) {
+    stop(
+      paste0(
+        "Invalid method '", method, "'. Please choose one of: ",
+        paste(allowed_methods, collapse = ", "), "."
+      )
+    )
+  }
+
+  compute_output <- type %in% c("both", "output")
+  compute_score <- type %in% c("both", "score")
+
+  if (compute_score && is.null(y)) {
+    stop("'y' is required when computing score intervals.")
+  }
+
+  if (calibration == "oob" && !compute_output) {
+    stop("OOB calibration requires type = 'output' or type = 'both'.")
+  }
+
+  if (!is.numeric(min_oob) || length(min_oob) != 1L ||
+      !is.finite(min_oob) || min_oob < 1 || min_oob %% 1 != 0) {
+    stop("'min_oob' must be one positive integer.")
+  }
+  min_oob <- as.integer(min_oob)
+
+  n_learners <- length(object[["forest"]])
+  if (n_learners < 2L) {
+    stop("At least two fitted learners are required to compute an interval.")
+  }
+
+  probs <- c((1 - level) / 2, 1 - (1 - level) / 2)
+
+  calibration_info <- list(
+    method = calibration,
+    target = if (calibration == "oob") "observed_output" else "learner_dispersion",
+    min_oob = if (calibration == "oob") min_oob else NULL,
+    n = NULL,
+    adjustment = NULL
+  )
+
+  finite_quantile <- function(z, prob) {
+    z <- z[is.finite(z)]
+    if (length(z) == 0L) return(NA_real_)
+    unname(stats::quantile(z, probs = prob, names = FALSE, na.rm = TRUE))
+  }
+
+  learner_object <- function(index) {
+    learner <- object[["forest"]][[index]]
+    ans <- object
+    ans[["forest"]] <- list(learner)
+    ans[["technology"]] <- learner[["technology"]]
+    ans[["control"]][["learners"]] <- 1L
+    ans
+  }
+
+  output_result <- NULL
+  if (compute_output) {
+    output_point <- rf_aces_predict(
+      object = object,
+      eval_data = newdata,
+      x = x,
+      method = method
+    )
+
+    output_members <- array(
+      NA_real_,
+      dim = c(nrow(newdata), ncol(output_point), n_learners)
+    )
+
+    for (tree in seq_len(n_learners)) {
+      output_members[, , tree] <- as.matrix(
+        rf_aces_predict(
+          object = learner_object(tree),
+          eval_data = newdata,
+          x = x,
+          method = method
+        )
+      )
+    }
+
+    output_lower <- apply(
+      output_members,
+      c(1, 2),
+      finite_quantile,
+      prob = probs[1]
+    )
+    output_upper <- apply(
+      output_members,
+      c(1, 2),
+      finite_quantile,
+      prob = probs[2]
+    )
+
+    if (calibration == "oob") {
+      has_bag_indices <- vapply(
+        object[["forest"]],
+        function(learner) !is.null(learner[["sample_bag"]]),
+        logical(1)
+      )
+      if (!all(has_bag_indices)) {
+        stop(
+          "OOB calibration requires 'sample_bag' indexes in every learner. ",
+          "Refit the rf_aces object with the current package version."
+        )
+      }
+
+      training_data <- object[["data"]][["df"]]
+      training_x <- object[["data"]][["x"]]
+      training_y <- object[["data"]][["y"]]
+      n_training <- nrow(training_data)
+
+      oob_members <- array(
+        NA_real_,
+        dim = c(n_training, ncol(output_point), n_learners)
+      )
+
+      for (tree in seq_len(n_learners)) {
+        bag_indices <- unique(object[["forest"]][[tree]][["sample_bag"]])
+        oob_indices <- setdiff(seq_len(n_training), bag_indices)
+        if (length(oob_indices) == 0L) next
+
+        learner_predictions <- as.matrix(
+          rf_aces_predict(
+            object = learner_object(tree),
+            eval_data = training_data,
+            x = training_x,
+            method = method
+          )
+        )
+        oob_members[oob_indices, , tree] <- learner_predictions[oob_indices, , drop = FALSE]
+      }
+
+      oob_counts <- apply(is.finite(oob_members), c(1, 2), sum)
+      oob_point <- apply(oob_members, c(1, 2), mean, na.rm = TRUE)
+      observed_outputs <- as.matrix(
+        training_data[, training_y, drop = FALSE]
+      )
+
+      adjustment <- numeric(ncol(output_point))
+      calibration_n <- integer(ncol(output_point))
+
+      for (out in seq_len(ncol(output_point))) {
+        usable <- oob_counts[, out] >= min_oob &
+          is.finite(oob_point[, out]) &
+          is.finite(observed_outputs[, out])
+        residuals <- abs(observed_outputs[usable, out] - oob_point[usable, out])
+
+        if (length(residuals) == 0L) {
+          stop(
+            "No training observations have at least ", min_oob,
+            " OOB predictions for output '", names(output_point)[out], "'."
+          )
+        }
+
+        conformal_prob <- min(
+          1,
+          ceiling((length(residuals) + 1) * level) / length(residuals)
+        )
+        adjustment[out] <- unname(
+          stats::quantile(
+            residuals,
+            probs = conformal_prob,
+            type = 1,
+            names = FALSE
+          )
+        )
+        calibration_n[out] <- length(residuals)
+      }
+
+      output_lower <- matrix(
+        pmax(
+          0,
+          sweep(as.matrix(output_point), 2, adjustment, "-")
+        ),
+        nrow = nrow(output_point),
+        ncol = ncol(output_point)
+      )
+      output_upper <- sweep(
+        as.matrix(output_point),
+        2,
+        adjustment,
+        "+"
+      )
+
+      names(adjustment) <- names(output_point)
+      names(calibration_n) <- names(output_point)
+      calibration_info$n <- calibration_n
+      calibration_info$adjustment <- adjustment
+    }
+
+    output_result <- data.frame(row.names = row.names(newdata))
+    for (out in seq_len(ncol(output_point))) {
+      point_name <- names(output_point)[out]
+      output_result[[point_name]] <- output_point[[out]]
+      output_result[[paste0(point_name, "_lower")]] <- output_lower[, out]
+      output_result[[paste0(point_name, "_upper")]] <- output_upper[, out]
+    }
+  }
+
+  score_result <- NULL
+  if (compute_score) {
+    score_point <- get_scores(
+      eval_data = newdata,
+      x = x,
+      y = y,
+      relevant = relevant,
+      object = object,
+      method = method,
+      measure = measure,
+      returns = returns,
+      direction = direction
+    )
+
+    score_members <- matrix(
+      NA_real_,
+      nrow = nrow(newdata),
+      ncol = n_learners
+    )
+
+    for (tree in seq_len(n_learners)) {
+      score_members[, tree] <- get_scores(
+        eval_data = newdata,
+        x = x,
+        y = y,
+        relevant = relevant,
+        object = learner_object(tree),
+        method = method,
+        measure = measure,
+        returns = returns,
+        direction = direction
+      )[[1]]
+    }
+
+    score_lower <- apply(
+      score_members,
+      1,
+      finite_quantile,
+      prob = probs[1]
+    )
+    score_upper <- apply(
+      score_members,
+      1,
+      finite_quantile,
+      prob = probs[2]
+    )
+
+    score_name <- names(score_point)[1]
+    score_result <- data.frame(row.names = row.names(newdata))
+    score_result[[score_name]] <- score_point[[1]]
+    score_result[[paste0(score_name, "_lower")]] <- score_lower
+    score_result[[paste0(score_name, "_upper")]] <- score_upper
+  }
+
+  structure(
+    list(
+      output = output_result,
+      score = score_result,
+      level = level,
+      method = method,
+      measure = if (compute_score) measure else NULL,
+      learners = n_learners,
+      interval_type = list(
+        output = if (compute_output) {
+          if (calibration == "oob") "oob_prediction" else "ensemble"
+        } else {
+          NULL
+        },
+        score = if (compute_score) "ensemble" else NULL
+      ),
+      calibration = calibration_info
+    ),
+    class = "rf_aces_intervals"
+  )
+}
+
+#' @title Build a Basis Matrix for Prediction
+#'
+#' @description
+#' Evaluates a fitted model's basis functions on new data.
+#'
+#' @param newdata
+#' A data frame or matrix containing the prepared new inputs.
+#'
+#' @param model
+#' Fitted model information.
+#'
+#' @param knots
+#' Knots used by \code{model}.
+#'
+#' @param method
+#' Model type used to choose the basis functions.
+#'
+#' @return
+#' A matrix of evaluated basis functions.
 
 set_Bmat <- function (
     newdata,

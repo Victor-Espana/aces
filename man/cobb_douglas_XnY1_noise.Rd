@@ -2,24 +2,27 @@
 % Please edit documentation in R/simulations.R
 \name{cobb_douglas_XnY1_noise}
 \alias{cobb_douglas_XnY1_noise}
-\title{1 output ~ nX input Cobb-Douglas Data Generation Process with Noise}
+\title{Simulate Noisy Cobb-Douglas Data}
 \usage{
 cobb_douglas_XnY1_noise(N, nX, p, heteroskedasticity = FALSE)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{nX}{An integer representing the number of inputs.}
+\item{nX}{Number of inputs. Allowed values are \code{1} and \code{3}.}
 
-\item{p}{Noise-to-signal ratio.}
+\item{p}{Non-negative noise-to-signal ratio.}
 
-\item{heteroskedasticity}{A \code{"logical"} value indicating if heteroskedasticity should be introduced in the inefficiency term. Only available for 3 inputs (\code{nX = 3}).}
+\item{heteroskedasticity}{If \code{TRUE}, use heteroskedastic inefficiency and noise. This is available
+only when \code{nX = 3}.}
 }
 \value{
-A \code{data.frame} with the simulated data: 1 inputs (x1), 1 output (y) and the theoretical frontier (yT).
+A data frame with inputs \code{x1}, ..., observed output \code{y}, and frontier
+output \code{yT}.
 }
 \description{
-This function simulates a 1 output ~ nX input \code{data.frame} with a Cobb-Douglas Data Generation Process including statistical noise as in \insertCite{simar2011;textual}{aces}.
+Simulates inputs, one inefficient output with statistical noise, and its
+Cobb-Douglas frontier value.
 }
 \references{
 \insertRef{simar2011}{aces}

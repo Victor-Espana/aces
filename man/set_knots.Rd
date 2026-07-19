@@ -2,30 +2,30 @@
 % Please edit documentation in R/forward_algorithm.R
 \name{set_knots}
 \alias{set_knots}
-\title{Generate the Set of Eligible Knots}
+\title{Find Eligible Knots}
 \usage{
 set_knots(data, nX, var_idx, minspan, endspan, kn_list, bf, kn_grid)
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
 \item{nX}{Number of inputs.}
 
-\item{var_idx}{Index of the input variable that creates the new pair of basis functions.}
+\item{var_idx}{Index of the input used to create the new basis functions.}
 
 \item{minspan}{Minimum number of observations between two adjacent knots.}
 
-\item{endspan}{Minimum number of observations before the first and after the final knot.}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.}
 
-\item{kn_list}{A \code{list} containing the set of selected knots.}
+\item{kn_list}{Selected knots, grouped by input.}
 
-\item{bf}{A \code{list} with the basis function for the expansion of the model.}
+\item{bf}{Parent basis function to expand.}
 
-\item{kn_grid}{Grid of virtual knots to perform ACES.}
+\item{kn_grid}{Available knot candidates, grouped by input.}
 }
 \value{
-Numeric vector with the knots values for the variable.
+A numeric vector of eligible knots.
 }
 \description{
-This function generates a vector of knots that can be used to create a new pair of basis functions during the forward algorithm.
+Finds knot candidates that satisfy the spacing rules during the forward step.
 }

@@ -2,33 +2,38 @@
 % Please edit documentation in R/simulations.R
 \name{cet_cd_X2Y2}
 \alias{cet_cd_X2Y2}
-\title{2 outputs ~ 2 inputs Constant Elasticity of Transformation - Cobb-Douglas Data Generation Process}
+\title{Simulate CET--Cobb-Douglas Data}
 \usage{
 cet_cd_X2Y2(N, border, noise)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{border}{Proportion of DMUs in the frontier.}
+\item{border}{Proportion of observations placed on the frontier.}
 
-\item{noise}{A \code{logical} indicating whether to add random noise.}
+\item{noise}{If \code{TRUE}, add random noise to observed outputs.}
 }
 \value{
-A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2), the theoretical frontier (yT1, yT2).
+A data frame with inputs \code{x1} and \code{x2}, observed outputs \code{y1}
+and \code{y2}, frontier outputs \code{yT1} and \code{yT2}, and the group
+values \code{fx} and \code{hy}.
 }
 \description{
-This function simulates a 2 outputs ~ 2 inputs \code{data.frame} using a Data Generation Process (DGP) based on
-Constant Elasticity of Transformation (CET) on the output side and Cobb-Douglas (CD) on the input side as in \insertCite{fare1994;textual}{aces}.
+Simulates two-input, two-output data with a constant-elasticity-of-
+transformation output function and a Cobb-Douglas input function.
 
-The dataset consists of \code{N} observations divided into four groups with equal proportions:
+Observations are assigned in equal proportions to four producer groups:
 \itemize{
   \item \strong{Small-size producers}: \eqn{h(u) = 25}, \eqn{f(x) = 25}, \eqn{\delta = 0.898}
-  \item \strong{Medium-size producers (Lower bound)}: \eqn{h(u) = 50}, \eqn{f(x) = 50}, \eqn{\delta = 1.000}
-  \item \strong{Medium-size producers (Upper bound)}: \eqn{h(u) = 75}, \eqn{f(x) = 75}, \eqn{\delta = 1.000}
+  \item \strong{Medium-size producers (lower bound)}: \eqn{h(u) = 50},
+  \eqn{f(x) = 50}, \eqn{\delta = 1.000}
+  \item \strong{Medium-size producers (upper bound)}: \eqn{h(u) = 75},
+  \eqn{f(x) = 75}, \eqn{\delta = 1.000}
   \item \strong{Large-size producers}: \eqn{h(u) = 100}, \eqn{f(x) = 100}, \eqn{\delta = 0.927}
 }
 
-This structure ensures the artificial technology exhibits regions of increasing, constant, and decreasing returns to scale.
+The resulting technology contains regions of increasing, constant, and
+decreasing returns to scale.
 }
 \references{
 \insertRef{fare1994}{aces}

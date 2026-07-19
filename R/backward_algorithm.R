@@ -1,11 +1,14 @@
-#' @title Backward Algorithm for Adaptive Constrained Enveloping Splines
+#' @title Prune an ACES Model
 #'
 #' @description
 #'
-#' This function implements the Backward Algorithm in Adaptive Constrained Enveloping Splines. It creates a portfolio of sub-models by iteratively removing basis functions one by one.
+#' Creates a sequence of ACES submodels by removing basis functions one at a
+#' time. At each step, eligible removals are evaluated under the model's shape
+#' constraints. The resulting sequence spans the full forward model through
+#' progressively simpler alternatives and is later compared using GCV.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -14,32 +17,33 @@
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param xi_degree
-#' A \code{matrix} indicating the degree of each input variable.
+#' A matrix that records the degree of each input in every expanded variable.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented DEA-VRS scores, with one column per output.
 #'
 #' @param fdh_scores
-#' A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented FDH scores, with one column per output.
 #'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#' Character string specifying the lack-of-fit measure.
 #'
 #' @param forward_model
-#' A \code{list} containing the information relative to the forward step of the ACES model.
+#' Current results from the ACES forward step.
 #'
 #' @param Bp_list
-#' A \code{list} containing the current set of basis functions for each input variable.
+#' Current basis functions, grouped by input.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A list with logical elements \code{mono} and \code{conc}.
 #'
 #' @param kn_penalty
-#' An \code{integer} specifying the Generalized Cross Validation (GCV) penalty per knot.
+#' Penalty per knot used to compute GCV.
 #'
 #' @return
 #'
-#' A \code{list} containing a portfolio of Adaptive Constrained Enveloping Splines sub-models.
+#' A list of pruned ACES submodels, including their basis functions, coefficients,
+#' knots, lack-of-fit values, and GCV scores.
 
 aces_pruning <- function(
   data,
@@ -334,33 +338,33 @@ aces_pruning <- function(
   return(models)
 }
 
-#' @title Compute Generalized Cross-Validation (GCV)
+#' @title Compute Generalized Cross-Validation
 #'
 #' @description
 #'
-#' This function computes the generalized cross-validation for the backward algorithm in Adaptive Constrained Enveloping Splines (ACES).
+#' Computes the GCV score used to compare pruned ACES submodels.
 #'
 #' @param y_obs
-#' Vector of observed data.
+#' A numeric matrix of observed outputs.
 #'
 #' @param LOF
-#' A \code{numeric} value representing the lack-of-fit of the model. This term quantifies how well the model fits the data.
+#' Lack-of-fit value for the model.
 #'
 #' @param n_bf
-#' A \code{integer} specifying the number of basis functions used in the model.
+#' Number of basis functions in the model.
 #'
 #' @param kn_penalty
-#' A \code{numeric} value representing the penalty applied for each knot in the model.
+#' Penalty applied to each knot.
 #'
 #' @param kn_list
-#' A \code{list} containing the set of knots used in the model.
+#' Knots used by the model.
 #'
 #' @param xi_degree
-#' A \code{matrix} indicating the degree of each input variable.
+#' A matrix that records the degree of each input in every expanded variable.
 #'
 #' @return
 #'
-#' A \code{numeric} value representing the computed Generalized Cross-Validation (GCV) score.
+#' A single numeric GCV score.
 
 compute_gcv <- function(
   y_obs,
@@ -408,22 +412,22 @@ compute_gcv <- function(
   return(GCV)
 }
 
-#' @title Basis Functions to be Dropped
+#' @title Find Removable Basis Functions
 #'
 #' @description
-#' This function determines the basis function to be dropped from a set of intervals.
+#' Finds the basis functions that can be removed from each input.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
+#' Basis functions grouped by input.
 #'
 #' @param conc
-#' A \code{logical} indicating whether to enforce the constraint of concavity in the estimator.
+#' If \code{TRUE}, preserve concavity when selecting candidates.
 #'
 #' @param nX
 #' Number of inputs.
 #'
 #' @return
-#' A \code{data.frame} indicating the candidate basis function to be dropped for each input.
+#' A data frame of candidate basis functions to remove.
 
 basis_to_drop <- function(
   Bp_list,
@@ -475,19 +479,19 @@ basis_to_drop <- function(
   return(bf_to_drop)
 }
 
-#' @title Mapping between Basis Function ID and Matrix Column Index by Variable
+#' @title Map Basis Function IDs to Matrix Columns
 #'
 #' @description
-#' This function creates a mapping between the ID of a basis function and its corresponding column index in the basis function matrix (B matrix) by variable.
+#' Maps each basis function ID to its input and column in the basis matrix.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
+#' Basis functions grouped by input.
 #'
 #' @param nX
 #' Number of inputs.
 #'
 #' @return
-#' A \code{matrix} that establishes the connection between the basis function ID and its column index in the basis function matrix by variable.
+#' A data frame with input indexes, basis function IDs, and matrix columns.
 
 mapping_basis <- function(
   Bp_list,
@@ -533,16 +537,16 @@ mapping_basis <- function(
   return(id_Bp_xi)
 }
 
-#' @title Update knot_list
+#' @title Rebuild the Knot List
 #'
 #' @description
-#' This function updates the knot_list during the backward algorithm.
+#' Rebuilds the knot list from the basis functions retained during pruning.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
+#' Basis functions grouped by input.
 #'
 #' @return
-#' A \code{list} with the knots updated.
+#' A list of retained knots.
 
 update_knot_list <- function(
   Bp_list
@@ -604,19 +608,19 @@ update_knot_list <- function(
   return(knots)
 }
 
-#' @title Update Bp_list
+#' @title Rebuild the Basis Function List
 #'
 #' @description
-#' This function updates the Bp_list during the backward algorithm.
+#' Groups the retained basis functions by input and side.
 #'
 #' @param basis
-#' A \code{list} containing the set of basis functions.
+#' Retained basis functions.
 #'
 #' @param nX
 #' Number of inputs.
 #'
 #' @return
-#' A \code{list} with the basis functions updated.
+#' A list of basis functions grouped by input and side.
 
 update_Bp_list <- function(
   basis, nX

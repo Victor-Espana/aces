@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate_coefficients_linear.R
 \name{estimate_coefficients}
 \alias{estimate_coefficients}
-\title{Estimate Coefficients for Adaptive Constrained Enveloping Splines (ACES)}
+\title{Estimate ACES Coefficients}
 \usage{
 estimate_coefficients(
   B,
@@ -15,23 +15,29 @@ estimate_coefficients(
 )
 }
 \arguments{
-\item{B}{A \code{matrix} of linear basis functions derived from input variables.}
+\item{B}{Matrix of evaluated linear basis functions.}
 
-\item{y_obs}{A \code{matrix} of the observed output data.}
+\item{y_obs}{Matrix of observed outputs.}
 
-\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{dea_scores}{A matrix of output-oriented DEA-VRS scores, with one column per output.}
 
-\item{fdh_scores}{A \code{matrix} containing FDH efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{fdh_scores}{A matrix of output-oriented FDH scores, with one column per output.}
 
-\item{it_list}{A \code{list} containing the set of intervals by input.}
+\item{it_list}{Intervals and active basis functions, grouped by input.}
 
-\item{Bp_list}{A \code{list} containing the set of basis functions by input.}
+\item{Bp_list}{Basis functions grouped by input.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
+\item{shape}{A list with logical elements \code{mono} and \code{conc}.}
 }
 \value{
-A \code{vector} containing the estimated coefficients for the ACES model.
+A matrix of estimated coefficients, with one column per output.
 }
 \description{
-This function estimates a vector of coefficients for the Adaptive Constrained Enveloping Splines (ACES) model. These coefficients enforce the desired shape properties, such as monotonicity and concavity to fit the data within the ACES framework.
+Solves the reduced linear program for the coefficients of a linear ACES model.
+
+Error variables are removed analytically so that only the basis coefficients
+need to be optimized. The function first solves the smaller dual problem and
+recovers the primal coefficients from its solution. If the recovered solution
+does not pass the feasibility checks, the reduced primal problem is solved
+directly with GLPK.
 }

@@ -2,14 +2,14 @@
 % Please edit documentation in R/technology.R
 \name{get_technology}
 \alias{get_technology}
-\title{Get Technology Set}
+\title{Extract an Estimated Technology}
 \usage{
 get_technology(object, method = "aces")
 }
 \arguments{
 \item{object}{An \code{aces} object.}
 
-\item{method}{Model for prediction:
+\item{method}{Fitted model whose technology is returned:
 \itemize{
 \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
@@ -18,8 +18,12 @@ get_technology(object, method = "aces")
 }}
 }
 \value{
-A matrix containing the inputs (xmat) and the estimated output (ymat).
+A matrix containing the technology inputs followed by its outputs, on
+the original data scale.
 }
 \description{
-Retrieves the matrix constituting the estimated technology for a specific method from an ACES object.
+Extracts the input and output points that define one estimated technology.
+These are the reference points used by \code{get_scores()} and
+\code{get_targets()}, rather than every feasible point in the production set
+or fitted values for a new data set.
 }

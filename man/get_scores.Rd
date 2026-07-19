@@ -2,7 +2,7 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{get_scores}
 \alias{get_scores}
-\title{Compute Efficiency Scores using an Adaptive Constrained Enveloping Splines model.}
+\title{Compute Efficiency Scores}
 \usage{
 get_scores(
   eval_data,
@@ -10,60 +10,90 @@ get_scores(
   y,
   relevant = FALSE,
   object,
-  method = "aces",
+  method = NULL,
   measure = "rad_out",
   returns = "variable",
   direction = NULL
 )
 }
 \arguments{
-\item{eval_data}{A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.}
+\item{eval_data}{A \code{data.frame} or \code{matrix} containing the DMUs to evaluate.}
 
 \item{x}{Column indexes of input variables in \code{eval_data}.}
 
 \item{y}{Column indexes of output variables in \code{eval_data}.}
 
-\item{relevant}{A \code{logical} indicating if only relevant variables should be included in the technology definition.}
+\item{relevant}{If \code{TRUE}, compute the efficiency result with only the original inputs
+represented in at least one selected basis function. Inputs used through an
+interaction are also retained.}
 
-\item{object}{An \code{aces} object.}
+\item{object}{An \code{aces} or \code{rf_aces} object.}
 
-\item{method}{Model prediction method used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
+\item{method}{Fitted model used to define the technology. When \code{NULL}, use \code{"aces"}
+for an \code{aces} object and \code{"rf_aces"} for an \code{rf_aces} object:
 \itemize{
 \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
 \item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
 \item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
+\item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
+\item{\code{"rf_aces_cubic"}}: Cubic-smoothed RF-ACES.
+\item{\code{"rf_aces_quintic"}}: Quintic-smoothed RF-ACES.
 }}
 
-\item{measure}{Mathematical programming model to calculate scores:
+\item{measure}{Efficiency measure to compute:
 \itemize{
-\item{\code{rad_out}} Output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-\item{\code{rad_inp}} Input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-\item{\code{ddf}}     Directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
-\item{\code{rsl_out}} Output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-\item{\code{rsl_inp}} Input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-\item{\code{wam_mip}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
-\item{\code{wam_nor}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
-\item{\code{wam_ram}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
-\item{\code{wam_bam}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
+\item{\code{"rad_out"}: Proportional expansion of all outputs while inputs
+remain fixed.}
+\item{\code{"rad_inp"}: Proportional contraction of all inputs while outputs
+remain fixed.}
+\item{\code{"ddf"}: Simultaneous input contraction and output expansion along
+the supplied direction.}
+\item{\code{"rsl_out"}: Separate proportional adjustments for each output.}
+\item{\code{"rsl_inp"}: Separate proportional adjustments for each input.}
+\item{\code{"wam_mip"}: Slack-based Measure of Inefficiency Proportions.}
+\item{\code{"wam_nor"}: Slack-based normalized weighted additive measure.}
+\item{\code{"wam_ram"}: Slack-based range-adjusted measure.}
+\item{\code{"wam_bam"}: Slack-based bounded adjusted measure.}
+\item{\code{"rf_aces_rad_out"}: Output-oriented radial scores based directly
+on RF-ACES predictions. Available only for \code{rf_aces} objects.}
 }}
 
-\item{returns}{Type of returns to scale:
-\itemize{
-\item{\code{"constant"}} Constant Returns to Scale.
-\item{\code{"variable"}} Variable Returns to Scale (default).
-}}
+\item{returns}{Returns-to-scale assumption used to construct the reference technology.
+Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+convex technology with a convexity constraint.}
 
-\item{direction}{Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}. A \code{matrix} or \code{data.frame} with \code{n} rows (number of DMUs to be evaluated) and \code{nX + nY} columns, containing the direction of the input variables followed by the direction of the output variables in the same order as they appear in the data.}
+\item{direction}{Direction vectors used when \code{measure = "ddf"}. Supply a matrix or data
+frame with one row per evaluated DMU. Input directions must come first,
+followed by output directions. The direction determines the relative input
+contractions and output expansions represented by the score.}
 }
 \value{
-A \code{data.frame} with the efficiency scores computed through an Adaptive Constrained Enveloping Splines model.
+A data frame with one row and one efficiency score for each evaluated DMU.
+Row names are copied from \code{eval_data}; the column name identifies the
+returns-to-scale assumption and efficiency measure.
 }
 \description{
-This function computes the efficiency scores for each Decision-Making-Unit (DMU) using an Adaptive Constrained Enveloping Splines (ACES) model.
+Evaluates each decision-making unit (DMU) against the production technology
+constructed by ACES or RF-ACES. The stored input-output reference points are
+enveloped under the selected returns-to-scale assumption. The function
+supports proportional, directional, non-radial, and slack-based measures, so
+the score can reflect different notions of technical inefficiency. If
+\code{method = NULL}, the standard model for the supplied object is used.
+}
+\details{
+The \code{relevant} argument applies a structural rule, not an importance
+threshold. For an ACES object, the retained inputs come from the selected
+basis functions of \code{method}. For an RF-ACES object, the function uses
+the union of the inputs selected by any learner. The reduced input set is
+used only in the envelopment problem; the model is not refitted. In
+particular, \code{aces_varimp()} scores do not determine this set. The
+argument has no effect on \code{measure = "rf_aces_rad_out"}, which is based
+directly on prediction-to-observation ratios.
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr
+\insertRef{espana2024rf}{aces} \cr \cr
 \insertRef{banker1984}{aces} \cr \cr
 \insertRef{chambers1998}{aces} \cr \cr
 \insertRef{fare1978}{aces} \cr \cr

@@ -2,27 +2,25 @@
 % Please edit documentation in R/predictions.R
 \name{predict.rf_aces}
 \alias{predict.rf_aces}
-\title{Model Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES)}
+\title{Predict Method for RF-ACES Models}
 \usage{
-\method{predict}{rf_aces}(object, newdata, x, method = "rf_aces")
+\method{predict}{rf_aces}(object, newdata, x, method = "rf_aces", ...)
 }
 \arguments{
 \item{object}{A \code{rf_aces} object.}
 
-\item{newdata}{A \code{data.frame} containing the input and netput variables to predict on.}
+\item{newdata}{A data frame or matrix containing the new observations.}
 
-\item{x}{Input indexes in \code{newdata}.}
+\item{x}{Column indexes of input variables in \code{newdata}.}
 
-\item{method}{Model for prediction:
-\itemize{
-\item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
-\item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
-\item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
-}}
+\item{method}{RF-ACES model to use.}
+
+\item{...}{Additional arguments. They are currently ignored.}
 }
 \value{
-A \code{data.frame} with the predicted values through the Random Forest Adaptive Constrained Enveloping Splines model.
+A data frame of predicted outputs.
 }
 \description{
-This function predicts the expected output by an \code{rf_aces} object.
+S3 prediction method for \code{rf_aces} objects. It delegates to
+\code{rf_aces_predict()} and returns the ensemble output predictions.
 }

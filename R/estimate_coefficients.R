@@ -1,20 +1,20 @@
-#' @title Build Constraint Matrix for Non-decreasing Monotonicity
+#' @title Build the Monotonicity Constraint Matrix
 #'
 #' @description
-#' This function constructs the constraint matrix to enforce non-decreasing
-#' monotonicity in the reduced LP formulation. The matrix has 1 + total number
-#' of basis functions columns (intercept + basis function coefficients).
+#' Builds the constraints that enforce non-decreasing monotonicity in the reduced
+#' linear program.
 #'
 #' @param it_list
-#' A \code{list} containing the set of intervals by input.
+#' Intervals and active basis functions, grouped by input.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
+#' Basis functions grouped by input.
 #'
 #' @importFrom Matrix bdiag
 #'
 #' @return
-#' A \code{matrix} enforcing non-decreasing monotonicity.
+#' A constraint matrix with one column for the intercept and one for each basis
+#' coefficient.
 
 monotonicity_matrix <- function (
     it_list,
@@ -78,19 +78,18 @@ monotonicity_matrix <- function (
 
 }
 
-#' @title Build Constraint Matrix for Concavity
+#' @title Build the Concavity Constraint Matrix
 #'
 #' @description
-#' This function constructs the constraint matrix to enforce concavity in the
-#' reduced LP formulation.
+#' Builds the constraints that enforce concavity in the reduced linear program.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions by input.
+#' Basis functions grouped by input.
 #'
 #' @importFrom Matrix bdiag
 #'
 #' @return
-#' A \code{matrix} enforcing concavity.
+#' A constraint matrix for the basis coefficients.
 
 concavity_matrix <- function (
     Bp_list

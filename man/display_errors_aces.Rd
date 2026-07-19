@@ -2,7 +2,7 @@
 % Please edit documentation in R/display_errors.R
 \name{display_errors_aces}
 \alias{display_errors_aces}
-\title{Error Messaging in Adaptive Constrained Enveloping Splines (ACES) functions}
+\title{Validate ACES Arguments}
 \usage{
 display_errors_aces(
   data,
@@ -22,60 +22,47 @@ display_errors_aces(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
-\item{x}{A non-empty \code{numeric} or \code{integer} vector of column indexes for the
-input variables in \code{data}. Indexes must be valid column positions and must
-not overlap with \code{y}.}
+\item{x}{Column indexes of input variables in \code{data}.}
 
-\item{y}{A non-empty \code{numeric} or \code{integer} vector of column indexes for the
-output variables in \code{data}. Indexes must be valid column positions and must
-not overlap with \code{x}.}
+\item{y}{Column indexes of output variables in \code{data}.}
 
-\item{scale_data}{A single \code{logical} value (\code{TRUE} or \code{FALSE}) indicating whether
-inputs and outputs should be scaled by their column means before estimation.}
+\item{scale_data}{If \code{TRUE}, divide each input and output by its mean before fitting.}
 
-\item{quick_aces}{A single \code{logical} value (\code{TRUE} or \code{FALSE}) indicating whether
-the fast version of ACES should be used.}
+\item{quick_aces}{If \code{TRUE}, use Quick ACES to reduce the number of candidate basis
+functions.}
 
-\item{max_degree}{Either a positive \code{integer} specifying the maximum degree of interaction
-between input variables (must not exceed the number of inputs), or a \code{list}
-where each element is an \code{integer} vector of column indexes defining an
-explicit interaction term.}
+\item{max_degree}{Maximum interaction degree, or a list of input-index vectors defining the
+interactions to use.}
 
-\item{inter_cost}{A \code{numeric} value in \eqn{[0, 1]} specifying the minimum percentage
-improvement over the best 1-degree basis function required to incorporate a
-higher-degree basis function.}
+\item{inter_cost}{Minimum relative improvement over the best first-degree basis function
+required to add a higher-degree basis function.}
 
-\item{metric}{A single \code{character} string specifying the lack-of-fit criterion used to
-evaluate model performance. Valid options are: \code{"mae"}, \code{"mape"},
+\item{metric}{Character string specifying the lack-of-fit measure. Options are
+\code{"mae"}, \code{"mape"},
 \code{"mse"}, \code{"msle"}, \code{"rmse"}, \code{"nrmse1"}, \code{"nrmse2"}.}
 
-\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during
-the forward step.}
+\item{max_terms}{Maximum number of terms created during the forward step.}
 
-\item{err_red}{A \code{numeric} value in \eqn{[0, 1]} specifying the minimum relative error
-reduction required to add a new pair of 1-degree basis functions.}
+\item{err_red}{Minimum relative error reduction required to add a new pair of first-degree
+basis functions.}
 
-\item{kn_grid}{Either \code{-1} (default Friedman knot selection) or a \code{list} of length
-equal to the number of inputs, where each element is a \code{numeric} vector of
-knot candidates for the corresponding input variable.}
+\item{kn_grid}{Knot candidates. Use \code{-1} for automatic selection or supply a list with
+one numeric vector for each input.}
 
-\item{minspan}{An \code{integer} specifying the minimum number of observations between two
-adjacent knots. Must be \code{-2}, \code{-1}, or a positive integer.}
+\item{minspan}{Minimum number of observations between adjacent knots. Use \code{-2},
+\code{-1}, or a positive integer.}
 
-\item{endspan}{An \code{integer} specifying the minimum number of observations before the first
-and after the last knot. Must be \code{-2}, \code{-1}, or a positive integer.}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.
+Use \code{-2}, \code{-1}, or a positive integer.}
 
-\item{kn_penalty}{A non-negative \code{numeric} value specifying the Generalized Cross Validation
-(GCV) penalty per knot. Default is \code{2}.}
+\item{kn_penalty}{Non-negative penalty per knot used to compute GCV.}
 }
 \value{
-\code{NULL} invisibly. The function is called exclusively for its side effect of
-stopping execution with an informative error message when an argument is
-misspecified.
+\code{NULL} invisibly. The function is used for its validation side effects.
 }
 \description{
-Validates all input arguments for the \code{\link{aces}} function and halts
-execution with a descriptive error message if any argument is misspecified.
+Checks the arguments used by \code{\link{aces}} and stops with an informative
+message when an argument is invalid.
 }

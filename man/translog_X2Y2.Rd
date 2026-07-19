@@ -2,22 +2,24 @@
 % Please edit documentation in R/simulations.R
 \name{translog_X2Y2}
 \alias{translog_X2Y2}
-\title{2 outputs ~ 2 inputs Translog Data Generation Process}
+\title{Simulate Two-Input, Two-Output Translog Data}
 \usage{
 translog_X2Y2(N, border, noise)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{border}{Proportion of DMUs in the frontier.}
+\item{border}{Proportion of observations placed on the frontier.}
 
-\item{noise}{A \code{logical} indicating whether to add random noise.}
+\item{noise}{If \code{TRUE}, add random noise to observed outputs.}
 }
 \value{
-A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yT1, yT2).
+A data frame with inputs \code{x1} and \code{x2}, observed outputs \code{y1}
+and \code{y2}, and frontier outputs \code{yT1} and \code{yT2}.
 }
 \description{
-This function simulates a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
+Simulates two inputs, two observed outputs, and their translog frontier values
+as in \insertCite{santin2009;textual}{aces}.
 }
 \references{
 \insertRef{santin2009}{aces}

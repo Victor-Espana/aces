@@ -2,26 +2,31 @@
 % Please edit documentation in R/estimate_coefficients_smooth.R
 \name{estimate_coefficients_smoothed}
 \alias{estimate_coefficients_smoothed}
-\title{Estimate Coefficients for Smooth Adaptive Constrained Enveloping Splines (ACES) Fitting}
+\title{Estimate Smoothed ACES Coefficients}
 \usage{
 estimate_coefficients_smoothed(B, y_obs, dea_scores, n_pair, n_lsub, shape)
 }
 \arguments{
-\item{B}{A \code{matrix} of cubic or quintic basis functions.}
+\item{B}{Matrix of evaluated cubic or quintic basis functions.}
 
-\item{y_obs}{A \code{matrix} of the observed output data.}
+\item{y_obs}{Matrix of observed outputs.}
 
-\item{dea_scores}{A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.}
+\item{dea_scores}{A matrix of output-oriented DEA-VRS scores, with one column per output.}
 
-\item{n_pair}{An \code{integer} specifying the number of coefficients associated with the paired basis functions.}
+\item{n_pair}{Number of coefficients for paired basis functions.}
 
-\item{n_lsub}{An \code{integer} specifying the number of coefficients associated with the unpaired left-side basis functions.}
+\item{n_lsub}{Number of coefficients for unpaired left-side basis functions.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
+\item{shape}{A list with logical elements \code{mono} and \code{conc}.}
 }
 \value{
-A \code{vector} with the estimated coefficients.
+A numeric vector of estimated coefficients.
 }
 \description{
-This function solves a Linear Programming problem to obtain a set of coefficients that impose concavity and non-decreasing monotonicity in the Smooth Adaptive Constrained Enveloping Splines estimator.
+Solves the reduced linear program for a cubic- or quintic-smoothed ACES model.
+
+Error variables are removed analytically so that the optimization contains
+only the paired and unpaired smooth-basis coefficients. Envelopment and the
+requested monotonicity or concavity restrictions are imposed in the reduced
+problem.
 }

@@ -2,37 +2,34 @@
 % Please edit documentation in R/simulations.R
 \name{cobb_douglas_XnHnY1}
 \alias{cobb_douglas_XnHnY1}
-\title{1 output ~ nX relevant inputs and nH irrelevant inputs Cobb-Douglas Data Generation Process}
+\title{Simulate Cobb-Douglas Data with Irrelevant Inputs}
 \usage{
 cobb_douglas_XnHnY1(N, nX, nH, exp_x, rho_x, rho_h)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{nX}{An integer representing the number of relevant inputs.}
+\item{nX}{Positive integer giving the number of relevant inputs.}
 
-\item{nH}{An integer representing the number of irrelevant inputs.}
+\item{nH}{Non-negative integer giving the number of irrelevant inputs.}
 
-\item{exp_x}{A numeric vector of exponents (elasticities) for relevant inputs in the Cobb-Douglas function. Should be of length \code{nX}.}
+\item{exp_x}{Numeric vector of Cobb-Douglas exponents, with length \code{nX}.}
 
-\item{rho_x}{A numeric indicating correlations between relevant inputs. Must have variable names as row and column names (e.g., 'x1', 'x2', etc.). Each column represents a variable that is correlated with at most one variable in the rows.}
+\item{rho_x}{Optional correlation matrix for relevant inputs. Row and column names must be
+input names such as \code{"x1"}. Each column may contain at most one non-zero
+value.}
 
-\item{rho_h}{A numeric value between 0 and 0.2. Weight for relevant inputs in constructing irrelevant inputs.}
+\item{rho_h}{Optional matrix that links relevant inputs to irrelevant inputs. Rows must be
+named \code{"x1"}, ..., and columns \code{"h1"}, .... Each column may contain
+at most one non-zero value.}
 }
 \value{
-A \code{data.frame} containing the simulated data: relevant inputs (\code{x1}, \code{x2}, ...), irrelevant inputs (\code{h1}, \code{h2}, ...), the theoretical output (\code{yT1}), and the observed output (\code{y1}).
+A data frame with relevant inputs \code{x1}, ..., irrelevant inputs
+\code{h1}, ..., observed output \code{y1}, and frontier output \code{yT1}.
 }
 \description{
-This function simulates a dataset with one output, \code{nX} relevant inputs, and \code{nH} irrelevant inputs using a Cobb-Douglas production function. Relevant inputs can have specified correlations as in \insertCite{nataraja2011;textual}{aces}, and irrelevant inputs are constructed as linear combinations of relevant inputs and random noise as in \insertCite{peyrache2020;textual}{aces}.
-}
-\details{
-- **Relevant Inputs**: Generated with specified correlations. Each variable in \code{rho_x} columns is correlated with at most one variable in \code{rho_x} rows.
-
-- **Irrelevant Inputs**: Constructed as linear combinations of a random relevant input and random input generation, controlled by \code{rho_h}.
-
-- **Output Variables**:
-  - \code{yT1}: Theoretical output calculated using the Cobb-Douglas function.
-  - \code{y1}: Observed output including inefficiency, modelled as a random variable.
+Simulates one Cobb-Douglas output from relevant inputs and adds inputs that do
+not enter the frontier. Optional matrices control correlations between inputs.
 }
 \references{
 \insertRef{nataraja2011}{aces} \cr \cr

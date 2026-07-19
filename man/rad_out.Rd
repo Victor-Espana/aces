@@ -2,37 +2,43 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{rad_out}
 \alias{rad_out}
-\title{Output-Oriented Radial Model}
+\title{Compute Output-Oriented Radial Scores}
 \usage{
-rad_out(tech_xmat, tech_ymat, eval_xmat, eval_ymat, convexity, returns, type)
+rad_out(
+  tech_xmat,
+  tech_ymat,
+  eval_xmat,
+  eval_ymat,
+  convexity,
+  returns,
+  type = "objective"
+)
 }
 \arguments{
-\item{tech_xmat}{A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-containing the input variables that define the technology.}
+\item{tech_xmat}{Matrix of inputs for the reference technology, with one row per reference DMU.}
 
-\item{tech_ymat}{A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-output variables that define the technology.}
+\item{tech_ymat}{Matrix of outputs for the reference technology, with one row per reference DMU.}
 
-\item{eval_xmat}{A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-containing the input data.}
+\item{eval_xmat}{Matrix of inputs for the evaluated DMUs.}
 
-\item{eval_ymat}{A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-output data.}
+\item{eval_ymat}{Matrix of outputs for the evaluated DMUs.}
 
-\item{convexity}{A \code{logical} indicating whether a convex technology (DEA) is assumed.
-If \code{FALSE}, the intensity variables are set to binary (FDH).}
+\item{convexity}{If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+intensity variables for an FDH technology.}
 
-\item{returns}{Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+\item{returns}{Returns-to-scale assumption used to construct the reference technology.
+Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+convex technology with a convexity constraint.}
 
-\item{type}{A \code{character} string specifying the return value:
-\code{"objective"} for the optimal objective value, or
-\code{"variables"} for the optimal value of the efficiency variable \eqn{\phi}.}
+\item{type}{Value to return: \code{"objective"} for the objective value or
+\code{"variables"} for the efficiency variable \eqn{\phi}.}
 }
 \value{
-A \code{matrix} with \code{N} rows and 1 column containing the efficiency
-scores.
+A one-column matrix with the requested objective value or radial expansion
+factor for each evaluated DMU.
 }
 \description{
-Computes efficiency scores through the output-oriented radial model
-(also known as the BCC output model) in the envelopment format.
+Solves the output-oriented radial envelopment model for each evaluated DMU.
+All outputs are expanded by a common factor while inputs remain fixed; a DMU
+on the frontier has an expansion factor of one.
 }

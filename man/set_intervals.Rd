@@ -2,16 +2,17 @@
 % Please edit documentation in R/intervals.R
 \name{set_intervals}
 \alias{set_intervals}
-\title{Generate the Set of Unidimensional Intervals}
+\title{Build Input Intervals}
 \usage{
 set_intervals(Bp_list)
 }
 \arguments{
-\item{Bp_list}{A \code{list} containing the set of basis functions for each input.}
+\item{Bp_list}{Basis functions grouped by input.}
 }
 \value{
-A \code{list} with the boundaries of the intervals and the IDs of the active basis functions within each interval.
+A list of interval boundaries and active basis function IDs, grouped by input.
 }
 \description{
-This function determines the boundaries for the intervals and identifies what basis functions are active in each interval.
+Finds the one-dimensional intervals and the basis functions active in each
+interval.
 }

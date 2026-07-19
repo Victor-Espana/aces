@@ -2,24 +2,27 @@
 % Please edit documentation in R/simulations.R
 \name{cobb_douglas_X3Y3}
 \alias{cobb_douglas_X3Y3}
-\title{3 outputs ~ 3 inputs Cobb-Douglas Data Generation Process}
+\title{Simulate Three-Input, Three-Output Cobb-Douglas Data}
 \usage{
 cobb_douglas_X3Y3(N, border, noise, returns)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{border}{Proportion of DMUs in the frontier: \code{0.1}, \code{0.2} or \code{0.3}.}
+\item{border}{Proportion of observations placed on the frontier. Allowed values are
+\code{0.1}, \code{0.2}, and \code{0.3}.}
 
-\item{noise}{Random noise. 4 possible levels: \code{0}, \code{0.5}, \code{1} or \code{2}.}
+\item{noise}{Noise level. Allowed values are \code{0}, \code{0.5}, \code{1}, and \code{2}.}
 
-\item{returns}{Returns to scale. \code{"CRS"} for Constant Return to Scale, \code{"DRS"} for Decreasing Return to Scale and \code{"IRS"} for Increasing Return to Scale.}
+\item{returns}{Returns to scale: \code{"CRS"}, \code{"DRS"}, or \code{"IRS"}.}
 }
 \value{
-A \code{data.frame} with the simulated data: 3 inputs (x1, x2, x3), 3 outputs (y1, y2, y3) and the theoretical frontier (yT1, yT2, yT3)
+A data frame with inputs \code{x1}-\code{x3}, observed outputs
+\code{y1}-\code{y3}, and frontier outputs \code{yT1}-\code{yT3}.
 }
 \description{
-This function simulates a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Douglas Data Generation Process as in \insertCite{ahn2023;textual}{aces}.
+Simulates three inputs, three observed outputs, and their Cobb-Douglas frontier
+values as in \insertCite{ahn2023;textual}{aces}.
 }
 \references{
 \insertRef{ahn2023}{aces}

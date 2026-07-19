@@ -2,7 +2,7 @@
 % Please edit documentation in R/technology.R
 \name{change_technology}
 \alias{change_technology}
-\title{Update Technology Set}
+\title{Update an Estimated Technology}
 \usage{
 change_technology(
   object,
@@ -15,17 +15,24 @@ change_technology(
 \arguments{
 \item{object}{An \code{aces} object.}
 
-\item{tech_xmat}{A \code{matrix} representing the input data (optional). Required if \code{psi} is provided.}
+\item{tech_xmat}{Optional matrix of inputs used to rebuild the technologies.}
 
-\item{tech_ymat}{A \code{matrix} representing the output data (optional). Required if \code{psi} is provided.}
+\item{tech_ymat}{Optional matrix of observed outputs used to rebuild the technologies.}
 
-\item{psi}{A \code{numeric} threshold controlling the refinement of predicted outputs (optional). If the predicted value for a given output exceeds the observed value by more than \code{psi}, the observed value is used instead.}
+\item{psi}{Optional output-refinement threshold. When a joint and a single-output score
+differ by more than this value, the observed output is retained; otherwise,
+the estimated maximum output is used. Larger values therefore retain more
+predicted components.}
 
-\item{pto}{A \code{logical} indicating if (0,0) should be added to the technology set. Default is \code{FALSE}.}
+\item{pto}{If \code{TRUE}, add the origin to each technology.}
 }
 \value{
-An \code{aces} object with updated technologies.
+The supplied \code{aces} object with rebuilt technology components. Fitted
+models and other controls are unchanged.
 }
 \description{
-This function constructs a new production technology by modifying the output matrix based on a refinement procedure that replaces overestimated outputs. Additionally, it allows incorporating the origin into the technology set.
+Rebuilds the reference samples stored in an ACES object from supplied data and
+a new output-refinement threshold. This changes the points used to construct
+the production technologies without refitting the spline models. The origin
+can also be added as an explicit reference point.
 }

@@ -2,30 +2,31 @@
 % Please edit documentation in R/display_errors.R
 \name{display_errors_scores}
 \alias{display_errors_scores}
-\title{Argument Validation for Efficiency Score Computation}
+\title{Validate Efficiency Arguments}
 \usage{
 display_errors_scores(data, x, y, object, method, measure, returns, direction)
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the DMUs to be evaluated.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the DMUs to evaluate.}
 
-\item{x}{\code{numeric} vector of column indexes for input variables in \code{data}.}
+\item{x}{Column indexes of input variables in \code{data}.}
 
-\item{y}{\code{numeric} vector of column indexes for output variables in \code{data}.}
+\item{y}{Column indexes of output variables in \code{data}.}
 
 \item{object}{An \code{aces} or \code{rf_aces} object.}
 
-\item{method}{Prediction method (\code{"aces"}, \code{"aces_cubic"}, \code{"rf_aces"}, etc.) used to obtain virtual outputs.}
+\item{method}{Prediction method used to define the technology.}
 
-\item{measure}{Mathematical programming model (\code{"rad_out"}, \code{"ddf"}, \code{"rsl_out"}, etc.).}
+\item{measure}{Efficiency measure to compute.}
 
-\item{returns}{Returns to scale assumption: \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+\item{returns}{Returns to scale: \code{"constant"} or \code{"variable"}.}
 
-\item{direction}{Projection vector for DDF.}
+\item{direction}{Direction vectors used by the directional distance function.}
 }
 \value{
-None. The function is used for its side effect of generating \code{stop()} messages upon validation failure.
+\code{NULL} invisibly. The function is used for its validation side effects.
 }
 \description{
-Validates input data and hyperparameters for efficiency estimation functions in the ACES framework. It halts execution with a descriptive error message if any parameter is misspecified.
+Checks arguments used to compute efficiency scores or targets and stops with
+an informative message when an argument is invalid.
 }

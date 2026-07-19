@@ -2,7 +2,7 @@
 % Please edit documentation in R/display_errors.R
 \name{display_errors_rf_aces}
 \alias{display_errors_rf_aces}
-\title{Error Messaging in Random-Forest Adaptive Constrained Enveloping Splines (RF-ACES) functions}
+\title{Validate RF-ACES Arguments}
 \usage{
 display_errors_rf_aces(
   data,
@@ -24,41 +24,51 @@ display_errors_rf_aces(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
+\item{scale_data}{If \code{TRUE}, divide each input and output by its mean before fitting.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{quick_aces}{If \code{TRUE}, use Quick ACES to reduce the number of candidate basis
+functions in each learner.}
 
-\item{max_degree}{A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.}
+\item{max_degree}{Maximum interaction degree, or a list of input-index vectors defining the
+interactions to use.}
 
-\item{inter_cost}{A \code{numeric} value specifying the minimum percentage of improvement over the best 1-max_degree basis function to incorporate a higher max_degree basis function.}
+\item{inter_cost}{Minimum relative improvement over the best first-degree basis function
+required to add a higher-degree basis function.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.}
+\item{metric}{Character string specifying the lack-of-fit measure. Options are
+\code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"msle"}, \code{"rmse"},
+\code{"nrmse1"}, and \code{"nrmse2"}.}
 
-\item{learners}{An \code{integer} indicating the number of models for bagging.}
+\item{learners}{Number of ACES learners in the forest.}
 
-\item{bag_size}{An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.}
+\item{bag_size}{Number of observations sampled with replacement for each learner.}
 
-\item{max_feats}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
+\item{max_feats}{Number of inputs randomly considered by each learner.}
 
-\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created before pruning.}
+\item{max_terms}{Maximum number of terms created during the forward step.}
 
-\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-max_degree basis functions.}
+\item{err_red}{Minimum relative error reduction required to add a new pair of first-degree
+basis functions.}
 
-\item{minspan}{A \code{numeric} value specifying the minimum number of observations between two adjacent knots. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
+\item{minspan}{Minimum number of observations between adjacent knots. Use \code{-2},
+\code{-1}, or a positive integer.}
 
-\item{endspan}{A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.
+Use \code{-2}, \code{-1}, or a positive integer.}
 
-\item{kn_grid}{Grid of knots to perform RF-ACES. It can be: \code{-1} or a \code{list}.}
+\item{kn_grid}{Knot candidates. Use \code{-1} for automatic selection or supply a list with
+one numeric vector for each input.}
 }
 \value{
-This function return error messages if hyperparameters are incorrectly specified.
+\code{NULL} invisibly. The function is used for its validation side effects.
 }
 \description{
-This function displays error messages if hyperparameters are incorrectly specified in RF-ACES functions aimed at estimating production functions.
+Checks the arguments used by \code{\link{rf_aces}} and stops with an
+informative message when an argument is invalid.
 }

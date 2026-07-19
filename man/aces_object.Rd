@@ -2,7 +2,7 @@
 % Please edit documentation in R/ACES.R
 \name{aces_object}
 \alias{aces_object}
-\title{Create an aces object}
+\title{Create an ACES Object}
 \usage{
 aces_object(
   data,
@@ -31,55 +31,62 @@ aces_object(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{quick_aces}{If \code{TRUE}, Quick ACES was used.}
 
-\item{max_degree}{Maximum degree of interaction between variables.}
+\item{max_degree}{Maximum interaction degree or explicit interaction list.}
 
-\item{inter_cost}{Minimum percentage of improvement over the best 1 degree basis function to incorporate a higher degree basis function.}
+\item{inter_cost}{Minimum relative improvement required to add a higher-degree basis function.}
 
-\item{xi_degree}{A \code{matrix} specifying the degree of each variable.}
+\item{xi_degree}{A matrix that records the degree of each input in every expanded variable.}
 
-\item{metric}{A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.}
+\item{metric}{Character string specifying the lack-of-fit measure.}
 
-\item{shape}{A \code{list} indicating whether to impose monotonicity and/or concavity.}
+\item{shape}{Logical settings used during spline estimation. When both \code{mono} and
+\code{conc} are \code{TRUE}, the stored output-specific models are production
+functions; otherwise, they are intermediate predictors of maximum attainable
+output.}
 
-\item{max_terms}{Maximum number of terms created before pruning.}
+\item{max_terms}{Maximum number of terms created during the forward step.}
 
-\item{err_red}{Minimum reduced error rate for the addition of a new pair of 1-degree basis functions.}
+\item{err_red}{Minimum relative error reduction required to add a new pair of first-degree
+basis functions.}
 
 \item{minspan}{Minimum number of observations between two adjacent knots.}
 
-\item{endspan}{Minimum number of observations before the first and after the final knot.}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.}
 
-\item{kn_grid}{Design of the grid of knots to perform ACES}
+\item{kn_grid}{Knot grid used to fit the model.}
 
-\item{kn_penalty}{Generalized Cross Validation (GCV) penalty per knot.}
+\item{kn_penalty}{Penalty per knot used to compute GCV.}
 
-\item{psi}{Trimming factor for output predictions.}
+\item{psi}{Threshold used to refine multi-output predictions. Predicted components are
+retained when the joint and output-specific radial scores differ by no more
+than this value; otherwise, observed components are used.}
 
-\item{wc}{Hyperparameter for the side knot distances in the cubic smoothing procedure.}
+\item{wc}{Side-knot distance parameter for cubic smoothing.}
 
-\item{wq}{Hyperparameter for the side knot distances in the quintic smoothing procedure.}
+\item{wq}{Side-knot distance parameter for quintic smoothing.}
 
-\item{aces_forward}{A \code{list} containing the forward step of the Adaptive Constrained Enveloping Splines model.}
+\item{aces_forward}{Results from the ACES forward step.}
 
-\item{aces}{A \code{list} containing the Adaptive Constrained Enveloping Splines model.}
+\item{aces}{Results from the pruned ACES model.}
 
-\item{aces_cubic}{A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through cubic basis functions.}
+\item{aces_cubic}{Results from the cubic-smoothed ACES model.}
 
-\item{aces_quintic}{A \code{list} containing the Smooth Adaptive Constrained Enveloping Splines through quintic basis functions.}
+\item{aces_quintic}{Results from the quintic-smoothed ACES model.}
 
-\item{technology}{A \code{list} with the points that make up the technology set for each model.}
+\item{technology}{Reference points that define the production technology for each fitted model.}
 }
 \value{
 An \code{aces} object.
 }
 \description{
-This function saves information about the Adaptive Constrained Enveloping Splines (ACES) model.
+Collects the fitted models, tuning controls, training data, and estimated
+technologies in the common structure returned by \code{aces}.
 }

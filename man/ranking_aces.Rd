@@ -2,87 +2,93 @@
 % Please edit documentation in R/rankings.R
 \name{ranking_aces}
 \alias{ranking_aces}
-\title{Super-Efficiency Ranking for ACES models}
+\title{Rank DMUs with ACES or RF-ACES}
 \usage{
 ranking_aces(
-  eval_data,
-  x,
-  y,
-  relevant = FALSE,
   object,
-  method = "aces",
+  eval_data = "oob",
+  relevant = FALSE,
+  method = NULL,
   measure = "rad_out",
   returns = "variable",
   direction = NULL,
-  weights = NULL,
   digits = 3
 )
 }
 \arguments{
-\item{eval_data}{A \code{data.frame} or a \code{matrix} containing the DMUs to be evaluated.}
+\item{object}{A fitted \code{aces} or \code{rf_aces} object.}
 
-\item{x}{Column indexes of input variables in \code{eval_data}.}
+\item{eval_data}{Evaluation specification. Use \code{"oob"} to rank the
+RF-ACES training DMUs only with learners for which each DMU was out of bag. To
+rank external DMUs, supply a named list with elements \code{data}, \code{x}, and
+\code{y}, where \code{data} is a data frame or matrix and \code{x} and \code{y}
+are its input and output column indexes.}
 
-\item{y}{Column indexes of output variables in \code{eval_data}.}
+\item{relevant}{If \code{TRUE}, compute each efficiency score using only
+original inputs represented in the fitted basis functions, following
+\code{get_scores()}.}
 
-\item{relevant}{A \code{logical} indicating if only relevant variables should be included in the technology definition.}
+\item{method}{Fitted representation used to define each technology. When
+\code{NULL}, use \code{"aces"} for an \code{aces} object and \code{"rf_aces"}
+for an \code{rf_aces} object. Smoothed representations supported by
+\code{get_scores()} are also available.}
 
-\item{object}{An \code{aces} object.}
+\item{measure}{Efficiency measure passed to \code{get_scores()}:
+\code{"rad_out"}, \code{"rad_inp"}, \code{"ddf"}, \code{"rsl_out"},
+\code{"rsl_inp"}, \code{"wam_mip"}, \code{"wam_nor"}, \code{"wam_ram"},
+\code{"wam_bam"}, or \code{"rf_aces_rad_out"} for RF-ACES.}
 
-\item{method}{Model prediction method used to compute predictions of inputs and obtain a new vector of outputs for \code{eval_data}:
-\itemize{
-\item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
-\item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
-\item{\code{"aces_cubic"}}: Cubic Smooth Adaptive Constrained Enveloping Splines.
-\item{\code{"aces_quintic"}}: Quintic Smooth Adaptive Constrained Enveloping Splines.
-}}
+\item{returns}{Returns-to-scale assumption passed to \code{get_scores()}:
+\code{"constant"} or \code{"variable"}.}
 
-\item{measure}{Mathematical programming model to calculate scores:
-\itemize{
-\item{\code{rad_out}} The output-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-\item{\code{rad_inp}} The input-oriented radial measure proposed by \insertCite{banker1984;textual}{aces}.
-\item{\code{ddf}}     The directional distance function proposed by \insertCite{chambers1998;textual}{aces}.
-\item{\code{rsl_out}} The output-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-\item{\code{rsl_inp}} The input-oriented Russell measure proposed by \insertCite{fare1978;textual}{aces}.
-\item{\code{wam}}     A weighted additive model.
-}}
+\item{direction}{Direction matrix used when \code{measure = "ddf"}, with one
+row per evaluated DMU and the input directions followed by the output
+directions.}
 
-\item{returns}{Type of returns to scale:
-\itemize{
-\item{\code{"constant"}} Constant returns to scale.
-\item{\code{"variable"}} Variable returns to scale (default).
-}}
-
-\item{direction}{Direction of the vector to project on the frontier. Only applied if \code{measure = "ddf"}. It can be a \code{matrix} of custom orientation coefficients or one of the following predefined strings:
-\itemize{
-  \item{\code{"mean"}}: Projection vector given by the average value of inputs and outputs of all DMUs. Applied if \code{direction = NULL}.
-  \item{\code{"briec"}}: Projection vector given by the observed values of the evaluated DMU.
-}}
-
-\item{weights}{Weights for the additive model. Only applied if \code{measure = "wam"}.
-\itemize{
-\item{\code{"ONE"}} Weighted Additive Model proposed by \insertCite{charnes1985;textual}{aces}. Applied if \code{weights = NULL}.
-\item{\code{"MIP"}} Measure of Inefficiency Proportions proposed by \insertCite{cooper1999;textual}{aces}.
-\item{\code{"NOR"}} Normalized Weighted Additive Model proposed by \insertCite{lovell1995;textual}{aces}.
-\item{\code{"RAM"}} Range Adjusted Measure proposed by \insertCite{cooper1999;textual}{aces}.
-\item{\code{"BAM"}} Bounded Adjusted Measure proposed by \insertCite{cooper2011;textual}{aces}.
-}}
-
-\item{digits}{Number of decimal places to which efficiency scores are rounded.}
+\item{digits}{Non-negative integer giving the number of decimal places displayed
+for the mean and standard deviation. Ranks are computed before rounding.}
 }
 \value{
-A data frame with DMU names and their corresponding super-efficiency scores.
+A data frame sorted by rank with columns \code{unit}, \code{rank},
+\code{score_mean}, \code{score_sd}, and \code{learners_used}. The result has
+attributes identifying the evaluation mode, method, measure, and ranking
+direction. For ACES, \code{learners_used} is one and \code{score_sd} is
+unavailable.
 }
 \description{
-This function calculates super-efficiency scores by performing a Leave-One-Out (LOO) approach. For each DMU, the technology is re-defined by re-estimating the frontier coefficients excluding that specific unit. The excluded unit is then evaluated  against this peer-frontier using standard DEA measures. This approach allows for breaking ties among efficient units and provides a rigorous ranking.
+Ranks decision-making units (DMUs) from their efficiency scores. For an
+RF-ACES object, the score is computed separately against every eligible
+learner-specific technology and then averaged. For a standard ACES object,
+the ranking uses its single fitted technology.
+}
+\details{
+For external data, every RF-ACES learner is eligible. If \eqn{s_{ib}} is the
+score of DMU \eqn{i} against learner \eqn{b}, the reported score is
+\eqn{B^{-1}\sum_b s_{ib}}. With \code{eval_data = "oob"}, learner \eqn{b}
+contributes to DMU \eqn{i} only when \eqn{i} was absent from that learner's
+bootstrap sample. Consequently, different training DMUs may use different
+numbers of learners.
+
+The learner mean is generally not equal to the score obtained from the
+aggregated RF-ACES technology: averaging technologies before solving the
+efficiency problem and averaging scores after solving it are distinct
+operations. The standard deviation describes dispersion across learner
+scores; it is not a calibrated standard error or confidence interval.
+
+Ranks follow the economic interpretation of the selected measure. Larger
+values are better for input-oriented radial and Russell scores. Smaller
+values are better for output-oriented, directional-distance, weighted
+additive, and direct RF-ACES output scores. Ties receive the same minimum
+rank.
 }
 \references{
 \insertRef{espana2024}{aces} \cr \cr
+
+\insertRef{espana2024rf}{aces} \cr \cr
+
 \insertRef{banker1984}{aces} \cr \cr
+
 \insertRef{chambers1998}{aces} \cr \cr
-\insertRef{fare1978}{aces} \cr \cr
-\insertRef{charnes1985}{aces} \cr \cr
-\insertRef{cooper1999}{aces} \cr \cr
-\insertRef{lovell1995}{aces} \cr \cr
-\insertRef{cooper2011}{aces}
+
+\insertRef{fare1978}{aces}
 }

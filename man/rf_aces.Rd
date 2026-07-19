@@ -2,14 +2,14 @@
 % Please edit documentation in R/RF_ACES.R
 \name{rf_aces}
 \alias{rf_aces}
-\title{Fit a Random Forest Adaptive Constrained Enveloping Splines (RF-ACES) model.}
+\title{Fit an RF-ACES Model}
 \usage{
 rf_aces(
   data,
   x,
   y,
   scale_data = TRUE,
-  quick_aces = TRUE,
+  quick_aces = FALSE,
   mul_BF = list(max_degree = 1, inter_cost = 0.05),
   metric = "mse",
   shape = list(mono = TRUE, conc = TRUE),
@@ -25,80 +25,112 @@ rf_aces(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{data}{A \code{data.frame} or \code{matrix} containing the model variables.}
 
 \item{x}{Column indexes of input variables in \code{data}.}
 
 \item{y}{Column indexes of output variables in \code{data}.}
 
-\item{scale_data}{A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.}
+\item{scale_data}{If \code{TRUE}, divide each input and output by its mean before fitting. This
+can improve solver convergence.}
 
-\item{quick_aces}{A \code{logical} indicating if the fast version of ACES should be employed.}
+\item{quick_aces}{If \code{TRUE}, use Quick ACES. It removes an input only when its Spearman and
+Kendall correlations fall below their thresholds for every output, reduces
+the knot grid around efficient DMUs, and allocates later candidates according
+to recent error reductions. Examining fewer basis functions can substantially
+shorten fitting time for larger problems. The internal reduction history is
+retained in each learner and can be summarized with \code{aces_varimp()}.}
 
-\item{mul_BF}{A \code{list} specifying the maximum degree of basis functions (BFs) and the cost of introducing a higher-degree BF. Items include:
+\item{mul_BF}{A \code{list} with two elements:
 \itemize{
-\item{\code{max_degree}}: A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum degree of interaction. BFs products are constrained to contain factors involving distinct variables to ensure interpretability and avoid multicollinearity.
-\item{\code{inter_cost}}: A \code{numeric} specifying the minimum percentage improvement over the best 1-degree BF to incorporate a higher degree BF. Default is \code{0.05}.
+  \item{\code{max_degree}: A positive integer giving the maximum interaction
+  degree, or a list of input-index vectors defining the interactions to use.}
+  \item{\code{inter_cost}: The minimum relative improvement over the best
+  first-degree basis function required to add a higher-degree basis function.
+  The default, \code{0.05}, means 5 percent.}
 }}
 
-\item{metric}{A \code{list} specifying the lack-of-fit criterion to evaluate the model performance. Options are:
+\item{metric}{A character string specifying the lack-of-fit measure:
 \itemize{
-\item{\code{"mae"}}: Mean Absolute Error.
-\item{\code{"mape"}}: Mean Absolute Percentage Error.
-\item{\code{"mse"}}: Mean Squared Error.
-\item{\code{"msle"}}: Mean Squared Logarithmic Error.
-\item{\code{"rmse"}}: Root Mean Squared Error.
-\item{\code{"nrmse1"}}: Normalized Root Mean Squared Error (using mean).
-\item{\code{"nrmse2"}}: Normalized Root Mean Squared Error (using range).
+  \item{\code{"mae"}: Mean absolute error.}
+  \item{\code{"mape"}: Mean absolute percentage error.}
+  \item{\code{"mse"}: Mean squared error.}
+  \item{\code{"msle"}: Mean squared logarithmic error.}
+  \item{\code{"rmse"}: Root mean squared error.}
+  \item{\code{"nrmse1"}: Root mean squared error divided by the mean.}
+  \item{\code{"nrmse2"}: Root mean squared error divided by the range.}
 }}
 
-\item{shape}{A \code{list} specifying shape constraints for the estimator. Items include:
+\item{shape}{A \code{list} controlling the restrictions imposed during spline estimation:
 \itemize{
-  \item{\code{mono}}: A \code{logical} indicating if non-decreasing monotonicity should be enforced.
-  \item{\code{conc}}: A \code{logical} indicating if concavity should be enforced.
+  \item{\code{mono}: Enforce non-decreasing monotonicity.}
+  \item{\code{conc}: Enforce concavity.}
+}
+When both are \code{TRUE}, each learner estimates a production function for
+every output. Otherwise, the spline models estimate maximum attainable outputs
+before the learner-specific technology is constructed.}
+
+\item{learners}{Positive integer giving the maximum number of ACES learners in the forest.
+Fitting may stop earlier when the OOB stopping rule is satisfied.}
+
+\item{bag_size}{Positive integer giving the number of observations sampled with replacement
+for each learner. Values smaller than the sample size increase diversity
+between learners.}
+
+\item{max_feats}{Number of inputs randomly considered by each learner. Smaller values increase
+randomization; larger values make learners more similar to standard ACES
+fits.}
+
+\item{early_stopping}{A \code{list} that controls early stopping based on out-of-bag (OOB) error:
+\itemize{
+  \item{\code{ma_window}: Size of the moving-average window used to smooth
+  OOB error. Larger windows are more stable but react more slowly.}
+  \item{\code{tolerance}: Number of consecutive iterations without
+  improvement before fitting stops. Larger values allow more learners to be
+  fitted before stopping.}
 }}
 
-\item{learners}{An \code{integer} indicating the number of models for bagging.}
+\item{max_terms}{Positive integer giving the maximum number of terms created during the
+forward step. The algorithm may stop earlier when the improvement falls
+below \code{err_red}.}
 
-\item{bag_size}{An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.}
+\item{err_red}{Minimum relative error reduction required to add a new pair of first-degree
+basis functions. Larger values produce simpler models and stop the forward
+step sooner.}
 
-\item{max_feats}{An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.}
+\item{kn_grid}{Knot candidates. Use \code{-1} to select eligible knots from the observed
+input values following the standard ACES procedure. Alternatively, supply a
+list with one numeric vector of candidates for each original input.}
 
-\item{early_stopping}{A \code{list} specifying the early stopping criteria based on the out-of-bag (OOB) error to unnecessary training by stopping when the OOB error no longer improves. The list should contain the following elements:
-\itemize{
-  \item{\code{ma_window}}: An \code{integer} specifying the size of the moving average window used to smooth the OOB error. A larger value makes the stopping condition more stable but less reactive to short-term fluctuations. Default is 10.
-  \item{\code{tolerance}}: An \code{integer} indicating the number of consecutive iterations without significant improvement in the OOB error before stopping the training. Higher values make the model more tolerant to small fluctuations. Default is 5.
-}}
+\item{minspan}{Minimum number of observations between adjacent knots. Use \code{-2} for
+the rule in \insertCite{zhang1994;textual}{aces}, \code{-1} for the rule in
+\insertCite{friedman1991;textual}{aces}, or a positive integer.}
 
-\item{max_terms}{A positive \code{integer} specifying the maximum number of terms created during the forward step. Default is \code{50}.}
-
-\item{err_red}{A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-degree basis functions. Default is \code{0.01}.}
-
-\item{kn_grid}{Specifies the grid of knots to be used in the ACES algorithm. Accepts two options:
-\itemize{
-   \item{\code{-1}} (default): Uses the original approach by \insertCite{friedman1991;textual}{aces}, where the knots are automatically selected based on the observed data.
-   \item{\code{list}}: A user-defined grid of knots for each variable. This must be a \code{list} where each element corresponds to a vector of knots for a specific variable (e.g., the first element of the \code{list} contains the knot values for the first variable, the second element contains the knots for the second variable, and so on). This option allows for greater control over the knot placement when customizing the estimation process.
-}}
-
-\item{minspan}{A \code{numeric} specifying the minimum number of observations between two adjacent knots. Options are:
-\itemize{
-\item{\code{minspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
-\item{\code{minspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
-\item{\code{minspan = +m}}: A user-specified positive integer.
-}}
-
-\item{endspan}{A \code{numeric} specifying the minimum number of observations before the first and after the final knot. Options are:
-\itemize{
-\item{\code{endspan = -2}}: Computed as in \insertCite{zhang1994;textual}{aces}.
-\item{\code{endspan = -1}}: Computed as in \insertCite{friedman1991;textual}{aces}.
-\item{\code{endspan = +m}}: A user-specified positive integer.
-}}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.
+Use \code{-2} for the rule in \insertCite{zhang1994;textual}{aces}, \code{-1}
+for the rule in \insertCite{friedman1991;textual}{aces}, or a positive integer.}
 }
 \value{
-A \code{rf_aces} object.
+An object of class \code{rf_aces}. It contains the training data and controls,
+all fitted learners, OOB information, and the aggregated technology reference
+points used for prediction and efficiency measurement.
 }
 \description{
-This function estimates a deterministic production frontier that adheres to classical production theory axioms, such as monotonicity and concavity. The estimation is based on adaptations of the Multivariate Adaptive Regression Splines (MARS) technique, developed by \insertCite{friedman1991;textual}{aces} and Random Forest, introduced by \insertCite{breiman2001;textual}{aces}. For comprehensive details on the methodology and implementation, please refer to \insertCite{espana2024;textual}{aces}, \insertCite{espana2024rf;textual}{aces} and \insertCite{espana2025;textual}{aces}.
+Estimates maximum attainable outputs with an ensemble of randomized ACES
+learners and uses their results to build an aggregate production technology.
+Each learner is trained on a bootstrap sample and considers a random subset
+of inputs, following the main ideas of Random Forests.
+}
+\details{
+When \code{shape$mono} and \code{shape$conc} are both \code{TRUE}, each
+learner estimates a non-decreasing and concave production function for every
+output. If either restriction is relaxed, its spline models are intermediate
+predictors of maximum attainable output. In both cases, RF-ACES constructs
+learner-specific technologies and combines their reference points. Their
+envelopment supplies the production-set structure used for efficiency
+measurement. Aggregating the learners can reduce the variability of a single
+ACES fit. See
+\insertCite{espana2024rf;textual}{aces} for methodological details.
 }
 \references{
 \insertRef{espana2024rf}{aces} \cr \cr

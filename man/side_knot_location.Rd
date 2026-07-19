@@ -2,20 +2,21 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{side_knot_location}
 \alias{side_knot_location}
-\title{Generate Side Knot Locations}
+\title{Find Side-Knot Locations}
 \usage{
 side_knot_location(data, nX, knots)
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
 \item{nX}{Number of inputs in \code{data}.}
 
-\item{knots}{A \code{data.frame} containing the knots from the backward step.}
+\item{knots}{Data frame of knots retained after pruning.}
 }
 \value{
-A \code{list} with the locations of the central and the side knots in each dimension.
+A list of central and neighboring knot locations for each input.
 }
 \description{
-This function creates the input space for locating side knots in the smoothing procedure.
+Finds the neighboring data values available for side knots around each central
+knot.
 }

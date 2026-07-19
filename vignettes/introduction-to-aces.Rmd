@@ -1,196 +1,1712 @@
 ---
-title: "Adaptive Constrained Enveloping Splines"
+title: "ACES: Production Frontiers, Technologies, and Efficiency"
 author: "Víctor J. España"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+bibliography: ../inst/REFERENCES.bib
+link-citations: true
 vignette: >
-  %\VignetteIndexEntry{Introduction to ACES}
+  %\VignetteIndexEntry{ACES: Production Frontiers, Technologies, and Efficiency}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-<style>
-p, li { text-align: justify; }
-</style>
-
 ```{r setup, include=FALSE}
-
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.width = 7,
-  fig.height = 5,
   warning = FALSE,
-  message = FALSE
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 4.5
 )
-
+options(digits = 4)
 ```
 
 ```{r library}
-
-# load library
-# install.packages("aces")
-library("aces")
-
+library(aces)
 ```
 
-# Overview
+# Why use ACES?
 
-`aces` presents a unified family of techniques for estimating production frontiers. The goal is to address key limitations of traditional DEA, such as overfitting, limited robustness, and difficulties in high dimensional settings. The family includes three complementary methods: **Adaptive Constrained Enveloping Splines** (ACES), a flexible estimator of technical efficiency; **Random Forest ACES** (RF-ACES), which improves robustness through ensemble learning; and **Quick ACES** (Q-ACES), which prioritizes computational efficiency for large scale applications. Each method targets different empirical needs and allows researchers to choose the approach that best matches data characteristics.
+Suppose that several organizations use comparable resources to produce
+comparable outcomes. A conventional regression describes the output of an
+average organization. For benchmarking, that is usually not the quantity of
+interest: we want to know how much output appears attainable with a given input
+bundle, and how far each organization is from that benchmark.
 
-## Workflow
+ACES estimates this upper production frontier with adaptive regression splines.
+It then uses the fitted outputs to build a production technology and solves an
+envelopment model to obtain efficiency scores and targets. These three objects
+play different roles:
 
-1. **Define the training sample.**  
-   Select inputs and outputs and form the dataset \(\{(\boldsymbol{x}_i,\boldsymbol{y}_i)\}_{i=1}^n\), with \(\boldsymbol{x}_i \in \mathbb{R}^m_{+}\) and \(\boldsymbol{y}_i \in \mathbb{R}^s_{+}\).  
+1. the **frontier model** estimates maximum attainable outputs;
+2. the **technology** defines the feasible input-output set;
+3. the **efficiency model** projects each unit onto that set.
 
-2. **Choose the estimator family.**  
-   Select one of the available families — ACES, RF-ACES, or Q-ACES — according to data size and robustness/computation needs.  
+Keeping these roles separate makes both the statistical model and the
+management interpretation clearer.
 
-3. **Tune hyperparameters with resampling.**  
-   Specify the relevant hyperparameters for the chosen family (e.g., limits on basis size and interaction order) and select them via \(k\)-fold cross-validation (or an analogous resampling scheme), balancing predictive accuracy and parsimony.  
+```{r workflow, eval=FALSE}
+fit        <- aces(data, x = input_columns, y = output_columns)
+technology <- get_technology(fit)
+scores     <- get_scores(data, input_columns, output_columns, object = fit)
+targets    <- get_targets(data, input_columns, output_columns, object = fit)
+```
 
-4. **Fit the frontier and obtain predictions.**  
-   Train the shape-constrained model on \(\{(\boldsymbol{x}_i,\boldsymbol{y}_i)\}_{i=1}^n\) and compute the predicted attainable output(s) for each DMU:
-   \[
-   \hat{y}_i \quad (s=1), \qquad
-   \hat{\boldsymbol{y}}_i = \bigl(\hat{y}_{i1},\dots,\hat{y}_{is}\bigr) \in \mathbb{R}^s_{+} \quad (s>1).
-   \]
-   These predictions represent the estimated maximal feasible production at \(\boldsymbol{x}_i\) under the learned frontier.
+The package provides three estimators. Standard ACES is the natural starting
+point when the fitted spline structure matters. Quick ACES searches a smaller
+set of variables and knots. RF-ACES averages randomized ACES learners and is
+useful when stability, prediction, or interval diagnostics are priorities.
 
-5. **Multi-output selection (when \(s>1\)).**  
-   For each DMU \(i\) and each output component \(r\), decide whether the analysis will use the observed value \(y_{ir}\) or the model-based estimate \(\hat{y}_{ir}\), according to a pre-specified criterion. In the single-output case, this step is not required.
+| Estimator | Best suited to | Main trade-off |
+|:--|:--|:--|
+| ACES | A detailed, interpretable frontier specification | The full candidate search can be expensive |
+| Quick ACES | Fast exploration or a high-dimensional search | Screening may select a different model |
+| RF-ACES | Stable ensemble estimates and uncertainty diagnostics | More fitting and storage |
 
-6. **Construct the refined sample.**  
-   Build the refined dataset:
-   \[
-   \{(\boldsymbol{x}_i,\hat{y}_i)\}_{i=1}^n \quad (s=1), \qquad
-   \{(\boldsymbol{x}_i,\hat{\boldsymbol{y}}_i)\}_{i=1}^n \quad (s>1),
-   \]
-   where each \(\hat{y}_{ir}\) follows the choice made in the previous step.  
+```{r estimator-choice, eval=FALSE}
+fit_aces  <- aces(data, x, y)
+fit_quick <- aces(data, x, y, quick_aces = TRUE)
+fit_rf    <- rf_aces(data, x, y, learners = 100)
+```
 
-7. **Construct the DEA technology on the refined sample.**  
-   Using the refined sample, define the empirical technology under VRS (or CRS) as
-   \begin{equation*}
-      \begin{split}
-      \hat{\varphi}_{\text{DEA-VRS}}= & 
-      \left\{(\boldsymbol{x},\boldsymbol{y}) \in \mathbb{R}^{m+s}_{+} : x_j \ge \sum_{i=1}^{n}\lambda_{i}x_{ij},\ j=1,\dots,m, \right. \\
-      & \left. y_r \le \sum_{i=1}^{n}\lambda_{i}\hat{y}_{ir},\ r=1,\dots,s,\ \sum_{i=1}^{n}\lambda_{i} = 1,\ \lambda_{i} \ge 0,\ i = 1,\dots,n \right\}
-     \end{split}
-   \end{equation*}
-   and, analogously, under CRS by removing the convexity constraint \(\sum_{i=1}^{n}\lambda_i = 1\).  
+# Preparing the data
 
-8. **Evaluate technical efficiency.**  
-   Compute the desired efficiency measures (e.g., output-oriented radial distances) in the standard DEA sense with respect to the estimated technology \(\hat{\varphi}\) on the observed dataset.
+## Define comparable decision-making units
 
-## Data simulation
+Each row is a decision-making unit (DMU): a hospital, school, branch, plant, or
+other producer. Inputs are resources or commitments and outputs are desirable
+results. The units should operate under a sufficiently similar mandate and
+environment for a common frontier to be meaningful. Otherwise, structural
+heterogeneity can easily be mistaken for inefficiency.
 
-```{r database_1}
+The package expects numeric input and output columns. Variable names are part of
+the fitted model, so evaluation data must use the same names as the training
+data.
 
-# set seed
-set.seed(314)
-
-# input generation
-data_x3y1 <- cobb_douglas_XnY1 (
-  N = 50,
-  nX = 3
+```{r data-contract, eval=FALSE}
+production_data <- data.frame(
+  labour  = c(12, 15, 11, 19),
+  capital = c(20, 18, 15, 24),
+  output  = c(31, 35, 26, 43),
+  row.names = paste0("DMU", 1:4)
 )
-  
+
+fit <- aces(production_data, x = 1:2, y = 3)
 ```
 
-```{r database_2}
+Inputs and desirable outputs should normally be non-negative and have a
+consistent direction across DMUs. Missing values should be resolved before
+fitting. Percentage and logarithmic error metrics also require particular care
+when an output can be zero.
 
-# set seed
+```{r check-data, eval=FALSE}
+x <- match(c("x1", "x2", "x3"), names(production_data))
+y <- match("y", names(production_data))
+
+stopifnot(
+  all(complete.cases(production_data[, c(x, y)])),
+  all(as.matrix(production_data[, c(x, y)]) >= 0)
+)
+```
+
+## A reproducible example
+
+The following generator creates three inputs, an observed output `y`, and its
+latent frontier value `yT`. The latter is available because this is a simulation;
+it must not be passed to the estimator as if it were observed in an empirical
+application.
+
+```{r simulated-data}
 set.seed(314)
+production_data <- cobb_douglas_XnY1(N = 50, nX = 3)
+head(production_data)
+```
 
-# input generation
-data_x2y2 <- translog_X2Y2 (
-  N = 50,
+A useful way to think about the single-output model is
+
+\[
+y_i=f(x_i)+v_i-u_i,
+\]
+
+where $f(x_i)$ is maximum attainable output, $u_i\geq0$ is technical
+shortfall, and $v_i$ is statistical noise when a stochastic interpretation is
+appropriate. In the deterministic version, $v_i=0$ and $y_i\leq f(x_i)$.
+The usual production assumptions make $f$ non-decreasing and concave: more
+input cannot reduce maximum output, and marginal products do not increase.
+
+## Scaling
+
+By default, `scale_data = TRUE` divides every model variable by its training
+mean before estimation. This improves numerical conditioning without changing
+the units in the results: technologies, predictions, scores, and targets are
+returned on the original scale. This is mean scaling, not z-standardization.
+
+```{r scaling, eval=FALSE}
+fit_scaled <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  scale_data = TRUE
+)
+
+fit_unscaled <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  scale_data = FALSE
+)
+```
+
+# Fitting an ACES frontier
+
+## Start with the default model
+
+For a first fit, only the data and column positions are required. Printing the
+object gives a compact model summary, while `names(fit$methods)` shows the
+fitted representations stored for later use.
+
+```{r basic-fit, eval=FALSE}
+fit <- aces(
+  data = production_data,
+  x = 1:3,
+  y = 4
+)
+
+fit
+names(fit$methods)
+```
+
+Internally, ACES first builds a deliberately rich spline model, then prunes it,
+and finally creates smooth cubic and quintic versions. The corresponding method
+names are `"aces_forward"`, `"aces"`, `"aces_cubic"`, and
+`"aces_quintic"`.
+
+```{r fitted-methods, eval=FALSE}
+tech_forward <- get_technology(fit, method = "aces_forward")
+tech_linear  <- get_technology(fit, method = "aces")
+tech_cubic   <- get_technology(fit, method = "aces_cubic")
+tech_quintic <- get_technology(fit, method = "aces_quintic")
+```
+
+Use the same method name when comparing a technology, its efficiency scores,
+and its targets. Otherwise, the analysis quietly changes the benchmark.
+
+## How the spline adapts to the data
+
+For input $x_j$ and knot $t$, ACES works with the reflected hinge pair
+
+\[
+(x_j-t)_+=\max(x_j-t,0), \qquad (t-x_j)_+=\max(t-x_j,0).
+\]
+
+Each hinge is active on one side of the knot. By combining several hinges, the
+model can change marginal products where the data support a change instead of
+imposing one global functional form [@friedman1991; @espana2024]. Products of
+hinges introduce interactions between inputs.
+
+During the forward stage, every eligible input-knot candidate is assessed and
+the best reflected pair is added. `max_terms` is an upper bound on the search;
+`err_red` is the minimum relative improvement required to continue. Thus, a
+smaller `err_red` and a larger `max_terms` allow a longer and more expensive fit.
+
+```{r forward-controls, eval=FALSE}
+fit_flexible <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  metric = "mse",
+  max_terms = 80,
+  err_red = 0.005
+)
+```
+
+The fitting metric can be `"mae"`, `"mape"`, `"mse"`, `"msle"`, `"rmse"`,
+`"nrmse1"`, or `"nrmse2"`. Squared-error metrics give large misses more
+influence; absolute-error metrics are less sensitive to them. Percentage and log
+metrics should only be used when their denominator and logarithm are meaningful.
+
+## Pruning an intentionally rich model
+
+The forward model is not intended to be the final answer. ACES removes eligible
+basis functions one at a time and compares the resulting sequence with
+generalized cross-validation,
+
+\[
+\operatorname{GCV}(M)=
+\frac{\operatorname{LOF}(M)}
+{\left[1-\{n_{BF}+d\,n_K\}/(Nq)\right]^2}.
+\]
+
+Here $q$ is the number of outputs, $n_{BF}$ is the basis count, $n_K$ is
+the degree-weighted knot count, and $d=\texttt{kn_penalty}$. A larger knot
+penalty favors a simpler final model.
+
+```{r pruning, eval=FALSE}
+fit_simple <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  kn_penalty = 3
+)
+```
+
+The piecewise-linear model may have visible kinks. Its cubic and quintic
+versions replace each local kink with a differentiable transition. Smoothing is
+useful when marginal products are part of the interpretation; it does not change
+the need to state which method supplied the final benchmark.
+
+## Monotonicity and concavity
+
+With the default `shape`, interval slopes are constrained to be non-negative and
+non-increasing. The fitted spline can then be interpreted as a non-decreasing,
+concave production function. These restrictions are substantive assumptions,
+not cosmetic regularization.
+
+```{r shapes, eval=FALSE}
+fit_shape <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  shape = list(mono = TRUE, conc = TRUE)
+)
+
+fit_relaxed <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  shape = list(mono = FALSE, conc = FALSE)
+)
+```
+
+When either restriction is relaxed, the spline is better viewed as an
+intermediate predictor of maximum output. The final DEA-type envelopment still
+restores free disposability and, under variable returns to scale, convexity. A
+relaxed spline and a valid final technology are therefore compatible, but they
+are not the same mathematical object.
+
+## Interactions and candidate knots
+
+`mul_BF$max_degree = 1` gives an additive frontier. Setting it to two allows
+pairwise interactions, while `inter_cost` requires an interaction to improve on
+the best first-degree candidate by an additional amount. A larger cost makes
+interactions harder to enter. Their presence shows that the fitted frontier uses
+joint input information; it is not evidence of a causal complementarity.
+ACES labels interaction variables with `:`, following standard statistical
+notation: for example, `capital:labour` is the product of those two inputs.
+
+```{r interactions, eval=FALSE}
+fit_interactions <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  mul_BF = list(
+    max_degree = 2,
+    inter_cost = 0.05
+  )
+)
+```
+
+Automatic knot selection uses `minspan` and `endspan` to keep candidates apart
+and away from the boundaries. A custom `kn_grid` can be useful when the input
+scale has meaningful breakpoints or when a coarser search is needed for speed.
+It must contain one numeric vector for each original input.
+
+```{r knot-controls, eval=FALSE}
+custom_grid <- lapply(production_data[1:3], function(z) {
+  as.numeric(quantile(z, probs = seq(0.1, 0.9, by = 0.1)))
+})
+
+fit_grid <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  kn_grid = custom_grid,
+  minspan = 3,
+  endspan = 2
+)
+```
+
+# What optimization problem is being solved?
+
+Every candidate basis needs coefficients before its fit can be compared with
+the current model. These coefficients are not obtained by ordinary least
+squares. ACES solves a linear program that keeps the fitted frontier above the
+relevant frontier observations and imposes the selected shape restrictions.
+
+For output $r$, let $B_E$ be the candidate basis matrix for observations on
+the output-specific FDH envelope, $y_E$ their observed output, and
+$w_i=1/\phi_i^{DEA}$ an inverse output-oriented DEA weight. If $S$ contains
+the active monotonicity and concavity rows, the coefficient problem is
+
+\[
+\begin{aligned}
+\min_{\beta_r,e_r}\quad & \sum_{i\in E_r}w_i e_{ir}\\
+\text{s.t.}\quad & B_E\beta_r-y_E=e_r,\\
+& e_r\geq0,\\
+& S\beta_r\geq0,\\
+& \beta_r\ \text{free}.
+\end{aligned}
+\]
+
+The residual $e_{ir}$ is excess fitted output above observation $i$. Its
+non-negativity gives the envelopment property. DEA weights give more influence
+to observations nearer the frontier. In a multi-output fit, all outputs share
+the selected basis structure, but this program is solved separately for each
+output, so the coefficient vectors can differ.
+
+```{r optimization-controls, eval=FALSE}
+# These arguments determine the basis and the shape rows of the LP.
+fit_lp <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  shape = list(mono = TRUE, conc = TRUE),
+  max_terms = 50,
+  err_red = 0.01,
+  kn_penalty = 2
+)
+```
+
+Because $e_r=B_E\beta_r-y_E$, the error variables can be eliminated. After
+dropping a constant from the objective, the exact reduced primal used by the
+linear implementation is
+
+\[
+\begin{aligned}
+\min_{\beta_r}\quad & c^\top\beta_r\\
+\text{s.t.}\quad & A\beta_r\geq b,\qquad \beta_r\ \text{free},
+\end{aligned}
+\]
+
+where $c=B_E^\top w$, $A=[B_E;S]$, and $b=[y_E;0]$. Its dual is
+
+\[
+\max_{\lambda\geq0} b^\top\lambda
+\quad\text{s.t.}\quad A^\top\lambda=c.
+\]
+
+```{r reduced-primal, eval=FALSE}
+# Schematic construction; ACES builds these matrices internally.
+cvec <- crossprod(B_E, w)
+Amat <- rbind(B_E, S)
+bvec <- c(y_E, rep(0, nrow(S)))
+
+# min cvec' beta, subject to Amat %*% beta >= bvec; beta is free
+```
+
+The package first solves the smaller non-negative dual and recovers the primal
+coefficients from solver dual values. It then checks primal feasibility and
+strong duality, including the solver sign convention. If that recovery fails,
+the reduced primal is solved directly with GLPK. Multiple coefficient vectors
+can be optimal, so fitted outputs, feasibility, and the objective value are more
+useful reproducibility checks than exact coefficient equality.
+
+```{r compare-fits, eval=FALSE}
+tech_a <- get_technology(fit_a, method = "aces")
+tech_b <- get_technology(fit_b, method = "aces")
+
+max(abs(tech_a - tech_b))
+all.equal(
+  get_scores(production_data, 1:3, 4, object = fit_a),
+  get_scores(production_data, 1:3, 4, object = fit_b),
+  tolerance = 1e-6
+)
+```
+
+This LP is solved repeatedly during the forward search. Runtime consequently
+grows with the number of iterations, inputs, knots, interactions, outputs, and
+RF learners. For an exploratory run, the most effective controls are a smaller
+`max_terms`, a larger `err_red`, an additive basis, a coarser knot grid, or Quick
+ACES.
+
+```{r computational-budget, eval=FALSE}
+fit_fast <- aces(
+  production_data,
+  x = 1:3,
+  y = 4,
+  quick_aces = TRUE,
+  mul_BF = list(max_degree = 1, inter_cost = 0.05),
+  max_terms = 30,
+  err_red = 0.03
+)
+```
+
+# Building the production technology
+
+## Multiple outputs and joint feasibility
+
+ACES uses a common basis structure for all outputs but estimates separate
+coefficients. The following two-input, two-output example is small enough to
+show the complete workflow.
+
+```{r multiple-output-fit, eval=FALSE}
+set.seed(314)
+multi_data <- translog_X2Y2(N = 60, border = 0.1, noise = FALSE)
+
+multi_fit <- aces(
+  data = multi_data,
+  x = 1:2,
+  y = 3:4,
+  mul_BF = list(max_degree = 2, inter_cost = 0.05)
+)
+```
+
+Estimating each output component separately can produce a vector that looks
+plausible component by component but is not jointly attainable. ACES therefore
+compares the joint radial score $\phi_i$ with each single-output score
+$\phi_i^{(r)}$. A predicted component is retained when
+
+\[
+|\phi_i^{(r)}-\phi_i|\leq\psi;
+\]
+
+otherwise the observed component is used. A larger (psi) accepts more
+predicted components. In a single-output model, the two scores coincide and the
+prediction is retained.
+
+`change_technology()` lets the analyst change this refinement rule without
+refitting the splines. The supplied matrices must correspond to the rows used by
+the fitted model.
+
+```{r refinement, eval=FALSE}
+multi_fit_psi <- change_technology(
+  object = multi_fit,
+  tech_xmat = as.matrix(multi_data[, 1:2]),
+  tech_ymat = as.matrix(multi_data[, 3:4]),
+  psi = 0.05
+)
+```
+
+## Reference points and feasible activities
+
+`get_technology()` returns the input and refined-output points that define the
+selected technology. It does not enumerate every feasible activity in the
+production set.
+
+```{r extract-technology, eval=FALSE}
+technology <- get_technology(multi_fit, method = "aces")
+head(technology)
+```
+
+Under variable returns to scale, the envelopment of reference points
+$(x_i,\widetilde y_i)$ is
+
+\[
+\widehat T_{VRS}=\left\{(x,y):
+x\geq\sum_i\lambda_i x_i,\ 
+y\leq\sum_i\lambda_i\widetilde y_i,\ 
+\mathbf 1^\top\lambda=1,\lambda\geq0\right\}.
+\]
+
+The inequalities give free disposability and the intensity variables give a
+convex technology. Under constant returns to scale, the convexity equation is
+removed and the set becomes conical. The returns-to-scale assumption is chosen
+when scores and targets are computed.
+
+The origin can be added as an explicit reference point with `pto = TRUE`. This
+asserts that zero inputs can jointly produce zero outputs and changes the convex
+hull; it is a production assumption, not a plotting convenience.
+
+```{r origin, eval=FALSE}
+multi_fit_pto <- change_technology(multi_fit, pto = TRUE)
+get_technology(multi_fit_pto, method = "aces")
+```
+
+# Measuring efficiency
+
+There is no universally best efficiency measure. The measure should reflect the
+adjustment that managers can actually contemplate. Output orientation asks how
+much outcomes could improve with resources fixed. Input orientation asks how
+much resources could fall with outcomes fixed. Non-radial measures allow the
+components to move at different rates.
+
+| `measure` | Question answered | Efficient value |
+|:--|:--|:--|
+| `rad_out` | By what common factor can all outputs expand? | 1 |
+| `rad_inp` | By what common factor can all inputs contract? | 1 |
+| `ddf` | How far can the DMU move in a chosen direction? | 0 |
+| `rsl_out`, `rsl_inp` | What if outputs or inputs adjust separately? | 1 |
+| `wam_mip`, `wam_nor`, `wam_ram`, `wam_bam` | How large are normalized input and output slacks? | 0 |
+| `rf_aces_rad_out` | What radial score follows directly from RF predictions? | 1 |
+
+## Radial output and input measures
+
+The default output-oriented model maximizes a common expansion factor
+$\phi_o$:
+
+\[
+\max_{\phi_o,\lambda}\ \phi_o
+\quad\text{s.t.}\quad
+X\lambda\leq x_o,\quad
+Y\lambda\geq\phi_o y_o,
+\]
+
+with the selected returns-to-scale constraint. A score of 1 is efficient. A
+score of 1.20 means that every output could increase by 20% along this radial
+path while inputs remain fixed.
+
+```{r rad-out, eval=FALSE}
+radial_output <- get_scores(
+  eval_data = production_data,
+  x = 1:3,
+  y = 4,
+  object = fit,
+  method = "aces",
+  measure = "rad_out",
+  returns = "variable"
+)
+head(radial_output)
+```
+
+The input-oriented model instead minimizes $\theta_o$, subject to
+$X\lambda\leq\theta_o x_o$ and $Y\lambda\geq y_o$. A value of 0.80 means
+that a 20% proportional input contraction is feasible along the chosen path.
+
+```{r rad-inp, eval=FALSE}
+radial_input <- get_scores(
+  production_data, 1:3, 4,
+  object = fit,
+  measure = "rad_inp"
+)
+```
+
+## Directional and non-radial measures
+
+The directional distance function moves from $(x_o,y_o)$ to
+$(x_o-\beta_o g_x,y_o+\beta_o g_y)$ and maximizes $\beta_o$. Each row of
+`direction` contains input directions first and output directions second. Since
+the direction determines the units and the relative management trade-off, it
+must be reported with the score.
+
+```{r ddf, eval=FALSE}
+direction <- cbind(
+  as.matrix(production_data[, 1:3]),
+  as.matrix(production_data[, 4])
+)
+
+directional <- get_scores(
+  production_data, 1:3, 4,
+  object = fit,
+  measure = "ddf",
+  direction = direction
+)
+```
+
+Russell measures estimate a different expansion factor for each output or a
+different contraction factor for each input. They reveal non-radial
+inefficiency that one common factor can hide.
+
+```{r russell, eval=FALSE}
+russell_output <- get_scores(
+  multi_data, 1:2, 3:4,
+  object = multi_fit,
+  measure = "rsl_out"
+)
+
+russell_input <- get_scores(
+  multi_data, 1:2, 3:4,
+  object = multi_fit,
+  measure = "rsl_inp"
+)
+```
+
+Weighted additive measures work directly with input excesses and output
+shortfalls. `wam_mip` scales by the evaluated DMU's values, `wam_nor` by sample
+standard deviations, `wam_ram` by sample ranges, and `wam_bam` by distances to
+observed bounds. These normalizations answer different comparability questions,
+so they need not produce the same ranking.
+
+```{r weighted-additive, eval=FALSE}
+wam_scores <- lapply(
+  c("wam_mip", "wam_nor", "wam_ram", "wam_bam"),
+  function(m) {
+    get_scores(
+      multi_data, 1:2, 3:4,
+      object = multi_fit,
+      measure = m
+    )
+  }
+)
+```
+
+## Returns to scale and relevant inputs
+
+VRS compares a DMU with convex combinations of reference activities at a
+comparable scale. CRS additionally permits proportional scaling of those
+activities. The difference between CRS and VRS scores combines technical and
+scale effects; it should not be read as a causal effect of becoming larger.
+
+```{r returns-to-scale, eval=FALSE}
+score_vrs <- get_scores(
+  production_data, 1:3, 4,
+  object = fit,
+  returns = "variable"
+)
+
+score_crs <- get_scores(
+  production_data, 1:3, 4,
+  object = fit,
+  returns = "constant"
+)
+```
+
+With `relevant = TRUE`, the envelopment problem retains only inputs represented
+in the selected basis. Interactions are traced back to their original inputs;
+for RF-ACES the union across learners is used. This is a structural post-fit
+rule. It does not use a permutation-importance threshold and it does not refit
+the frontier.
+
+```{r relevant-inputs, eval=FALSE}
+scores_all_inputs <- get_scores(
+  production_data, 1:3, 4,
+  relevant = FALSE,
+  object = fit
+)
+
+scores_selected_inputs <- get_scores(
+  production_data, 1:3, 4,
+  relevant = TRUE,
+  object = fit
+)
+```
+
+## From a score to a target
+
+`get_targets()` solves the same envelopment model and returns the associated
+input and output coordinates with suffix `_hat`. A target is conditional on the
+chosen method, orientation, returns to scale, direction, and reference sample.
+It is a benchmark, not a forecast or an automatic operational commitment.
+
+```{r targets, eval=FALSE}
+targets_out <- get_targets(
+  eval_data = production_data,
+  x = 1:3,
+  y = 4,
+  object = fit,
+  method = "aces",
+  measure = "rad_out",
+  returns = "variable"
+)
+
+head(targets_out)
+```
+
+The arguments used for a target should be identical to those used for the
+reported score. The simplest way to guarantee that is to keep them in one list.
+
+```{r target-consistency, eval=FALSE}
+efficiency_spec <- list(
+  eval_data = multi_data,
+  x = 1:2,
+  y = 3:4,
+  object = multi_fit,
+  method = "aces_cubic",
+  measure = "ddf",
+  returns = "variable",
+  direction = cbind(multi_data[, 1:2], multi_data[, 3:4])
+)
+
+scores_ddf  <- do.call(get_scores, efficiency_spec)
+targets_ddf <- do.call(get_targets, efficiency_spec)
+```
+
+# Quick ACES
+
+Quick ACES is not a different production model. It is a faster way to search for
+an ACES model. It reduces work in three places and then returns the same object
+structure used by the standard downstream functions.
+
+First, it screens prepared inputs with Spearman and Kendall rank correlations.
+An input is retained when at least one association is sufficiently positive for
+at least one output. Rank correlations capture monotone nonlinear relationships
+better than Pearson correlation, but screening can still miss an input whose
+contribution is mainly local or interactive.
+
+Second, an initial DEA assessment concentrates knot candidates near efficient
+observations and their neighboring input values. Those observations are the
+most informative about the boundary, so this is more targeted than simply using
+a uniformly coarse grid.
+
+Third, the forward search keeps an exponentially weighted history of recent
+error reductions. Later candidate evaluations are concentrated on inputs that
+have continued to improve the fit. More precisely, at each accepted iteration
+ACES records, for every evaluated input, the largest relative loss reduction
+among all of its candidate basis-function pairs. The input does not need to
+supply the pair that enters the model. This is precisely the information used
+by Quick ACES to allocate the next candidate search.
+
+```{r quick-fit, eval=FALSE}
+quick_fit <- aces(
+  data = production_data,
+  x = 1:3,
+  y = 4,
+  quick_aces = TRUE,
+  max_terms = 35,
+  err_red = 0.02
+)
+
+quick_scores <- get_scores(
+  production_data, 1:3, 4,
+  object = quick_fit
+)
+```
+
+## Three views of ACES variable importance
+
+The forward history is available as a training-search importance diagnostic.
+`aces_varimp()` adds the best reductions across forward iterations and, by
+default, rescales the largest total to 100. This avoids assigning all the credit
+to the variable that happened to win each iteration. It should not be read as
+test-set importance, statistical significance, or a causal effect.
+
+With `importance = "forward"`, the default, `aces_varimp()` does not refit ACES
+or solve any additional optimization problem. The candidate models have already
+been evaluated during the forward step of `aces()`, which stores the best
+reduction found for each prepared input in every accepted iteration. The
+function only retrieves that matrix and either returns it directly or adds its
+columns to form the ranking. It is therefore essentially immediate and does not
+modify the fitted object. An object created with an older package version must
+be fitted again once because it does not contain this history.
+
+```{r aces-importance, eval=FALSE}
+# No new model is fitted: this only summarizes information stored in quick_fit
+importance <- aces_varimp(quick_fit)
+
+# Exact relative reduction retained for every iteration and prepared input
+reduction_history <- aces_varimp(
+  quick_fit,
+  control = list(type = "iterations")
+)
+```
+
+Permutation importance asks a different question: how much does the fitted
+model deteriorate when the values of one original input are disconnected from
+the outputs? The model is held fixed, so no ACES optimization is repeated.
+Interactions are rebuilt after each permutation; permuting `capital`, for
+example, also changes `capital:labour`. Repeating the permutation reduces the
+Monte Carlo variability of the result.
+
+```{r aces-permutation-importance, eval=FALSE}
+permutation_importance <- aces_varimp(
+  quick_fit,
+  importance = "permutation",
+  control = list(
+    repeats = 20,
+    seed = 314
+  )
+)
+```
+
+The approach-specific arguments live inside `control`. This keeps, for example,
+`repeats` and `seed` out of forward and LOCO calls. The list is validated against
+the selected approach, so a misplaced option raises an error instead of being
+ignored. The fitted representation can be changed in the same list.
+
+```{r aces-permutation-raw, eval=FALSE}
+permutation_cubic_raw <- aces_varimp(
+  quick_fit,
+  importance = "permutation",
+  normalize = FALSE,
+  control = list(
+    method = "aces_cubic",
+    repeats = 50,
+    seed = 2026
+  )
+)
+```
+
+LOCO asks how much fit is lost when one original input is unavailable to the
+whole modelling procedure. ACES is refitted without that input and without
+every interaction containing it. This is more computationally demanding than
+permutation: a model with three original inputs requires three additional ACES
+fits. It can also redistribute signal among correlated inputs because the
+remaining model is allowed to adapt.
+
+```{r aces-loco-importance, eval=FALSE}
+loco_importance <- aces_varimp(
+  quick_fit,
+  importance = "loco"
+)
+```
+
+LOCO normally suppresses the progress printed by its repeated fits. Set
+`verbose` inside its own control list when those iterations should be visible.
+
+```{r aces-loco-verbose, eval=FALSE}
+loco_cubic <- aces_varimp(
+  quick_fit,
+  importance = "loco",
+  control = list(
+    method = "aces_cubic",
+    verbose = TRUE
+  )
+)
+```
+
+By default, permutation and LOCO compare the configured loss on the training
+observations. This is appropriate for describing how the fitted frontier used
+the available sample, and training comparisons use the same DEA-based weights
+and loss metric as ACES. They can nevertheless be optimistic if the intended
+interpretation is predictive relevance. Supply untouched validation data for
+that purpose. Permutation still keeps the original fit fixed; LOCO refits on the
+original training sample and evaluates both the complete and reduced models on
+the supplied validation observations.
+
+```{r aces-validation-importance, eval=FALSE}
+permutation_validation <- aces_varimp(
+  quick_fit,
+  importance = "permutation",
+  control = list(
+    eval_data = validation_data,
+    repeats = 20,
+    seed = 314
+  )
+)
+
+loco_validation <- aces_varimp(
+  quick_fit,
+  importance = "loco",
+  control = list(eval_data = validation_data)
+)
+```
+
+For permutation and LOCO, `loss_increase` is the signed difference from the
+complete-model loss. With `normalize = TRUE`, negative increases are set to zero
+and the largest remaining value is scaled to 100. Use `normalize = FALSE` to
+inspect the loss change on its original metric scale. Forward importance ranks
+prepared inputs, including explicit interaction terms; permutation and LOCO
+rank original inputs and include all their associated interactions.
+
+In Quick ACES, a missing history value means that an input was not evaluated in
+that iteration because of screening or adaptive search. It contributes zero to
+the cumulative ranking, and `iterations_evaluated` reports how often the input
+was actually compared. Standard ACES evaluates a broader candidate set and is
+therefore preferable when the ranking itself is the main inferential object.
+
+Because Quick ACES evaluates fewer candidates, it can select a different basis
+from standard ACES. That is expected. Compare both specifications on validation
+data when the difference matters to the substantive conclusion.
+
+```{r compare-quick, eval=FALSE}
+fit_full  <- aces(production_data, 1:3, 4, quick_aces = FALSE)
+fit_quick <- aces(production_data, 1:3, 4, quick_aces = TRUE)
+
+score_full  <- get_scores(production_data, 1:3, 4, object = fit_full)
+score_quick <- get_scores(production_data, 1:3, 4, object = fit_quick)
+```
+
+# RF-ACES
+
+## Fit and predict with a randomized ensemble
+
+RF-ACES repeatedly fits ACES to bootstrap samples and random subsets of
+candidate inputs. Averaging is useful when individual learners contain signal
+but are not perfectly correlated [@breiman2001; @espana2024rf].
+
+`learners` sets the maximum forest size, `bag_size` the bootstrap sample size,
+and `max_feats` the number of inputs considered by each learner. `max_feats`
+should be an integer between one and the number of inputs; smaller values create
+more diverse learners.
+
+```{r rf-fit, eval=FALSE}
+set.seed(314)
+rf_fit <- rf_aces(
+  data = production_data,
+  x = 1:3,
+  y = 4,
+  learners = 100,
+  bag_size = 50,
+  max_feats = 1,
+  early_stopping = list(
+    ma_window = 10,
+    tolerance = 5
+  )
+)
+
+rf_fit
+```
+
+An observation omitted from a learner's bootstrap sample is out-of-bag (OOB)
+for that learner. RF-ACES uses OOB error to monitor the ensemble. `ma_window`
+smooths the error history and `tolerance` counts how many non-improving
+iterations are allowed before stopping. Setting a tolerance larger than the
+requested forest size effectively prevents early stopping within that run.
+
+```{r rf-stopping, eval=FALSE}
+rf_fixed_budget <- rf_aces(
+  production_data, 1:3, 4,
+  learners = 80,
+  early_stopping = list(ma_window = 5, tolerance = 100)
+)
+
+rf_adaptive <- rf_aces(
+  production_data, 1:3, 4,
+  learners = 200,
+  early_stopping = list(ma_window = 10, tolerance = 5)
+)
+```
+
+`predict.rf_aces()` averages learner frontier predictions. It estimates maximum
+attainable output at new input values, not expected observed output. The new data
+need the original input names but do not need observed outputs.
+
+```{r rf-predict, eval=FALSE}
+rf_frontier <- predict(
+  object = rf_fit,
+  newdata = production_data,
+  x = 1:3,
+  method = "rf_aces"
+)
+
+head(rf_frontier)
+```
+
+The available RF representations are `"rf_aces"`, `"rf_aces_cubic"`, and
+`"rf_aces_quintic"`. Standard ACES currently exposes its fitted technologies
+and efficiency tools but does not export an analogous `predict.aces()` method.
+
+## Two ways to obtain an RF efficiency score
+
+The ensemble stores a production technology, so all standard envelopment scores
+and targets work with an RF object.
+
+```{r rf-technology, eval=FALSE}
+rf_technology <- get_technology(rf_fit, method = "rf_aces")
+
+rf_scores <- get_scores(
+  production_data, 1:3, 4,
+  object = rf_fit,
+  method = "rf_aces",
+  measure = "rad_out"
+)
+
+rf_targets <- get_targets(
+  production_data, 1:3, 4,
+  object = rf_fit,
+  method = "rf_aces",
+  measure = "rad_out"
+)
+```
+
+There is also a direct RF radial score,
+
+\[
+\widehat\phi_o=\min_r
+\frac{\widehat f_r(x_o)}{y_{or}},
+\]
+
+available as `measure = "rf_aces_rad_out"`. It compares RF frontier predictions
+with observed outputs and avoids a new envelopment optimization. It is not
+identical to `"rad_out"`, which evaluates the DMU against the aggregated
+technology. Choose one definition and use it consistently in a ranking.
+
+```{r rf-direct-score, eval=FALSE}
+rf_ratio_score <- get_scores(
+  production_data, 1:3, 4,
+  object = rf_fit,
+  method = "rf_aces",
+  measure = "rf_aces_rad_out"
+)
+```
+
+## Which inputs matter to the forest?
+
+The same three questions used for ACES can be asked of an RF-ACES fit. The
+forward measure describes the internal search, permutation measures the
+sensitivity of the fitted forest, and LOCO measures what is lost when the whole
+forest is rebuilt without an input. They share the `aces_varimp()` interface,
+but their computational costs and interpretations remain different.
+
+Every RF-ACES learner stores the best reduction found for each candidate input
+at every accepted forward iteration. Within a learner these reductions are
+added; the forest score is the average of those totals across all learners.
+Inputs not evaluated by a learner contribute zero to that learner, because they
+did not have an opportunity to improve its model. No learner is refitted.
+
+```{r rf-forward-importance, eval=FALSE}
+rf_forward <- aces_varimp(rf_fit)
+
+rf_forward_history <- aces_varimp(
+  rf_fit,
+  control = list(type = "iterations")
+)
+```
+
+The history includes `learner` and `iteration` before the prepared input
+columns. In the overall ranking, `learners_evaluated` and
+`iterations_evaluated` show how widely each input was actually considered. This
+is especially useful when `max_feats` or Quick ACES makes the candidate search
+sparse.
+
+For permutation, OOB evaluation is the RF-ACES default. Each observation is
+predicted only by learners whose bootstrap sample excluded it, and those
+learner predictions are averaged before the loss is calculated. The fitted
+forest stays fixed. Permuting an original input also rebuilds every interaction
+that contains it.
+
+```{r rf-permutation-oob, eval=FALSE}
+rf_permutation_oob <- aces_varimp(
+  rf_fit,
+  importance = "permutation",
+  control = list(
+    method = "rf_aces",
+    eval_data = "oob",
+    repeats = 20,
+    seed = 314
+  )
+)
+```
+
+The representation is selected with the same `method` option used elsewhere in
+the package. RF-ACES offers `"rf_aces"`, `"rf_aces_cubic"`, and
+`"rf_aces_quintic"`. Setting `normalize = FALSE` retains the signed change in
+the fitted loss on its original scale.
+
+```{r rf-permutation-method, eval=FALSE}
+rf_permutation_cubic_raw <- aces_varimp(
+  rf_fit,
+  importance = "permutation",
+  normalize = FALSE,
+  control = list(
+    method = "rf_aces_cubic",
+    eval_data = "oob",
+    repeats = 50,
+    seed = 2026
+  )
+)
+```
+
+Untouched data can replace OOB evaluation. The data frame or matrix must keep
+the model variables in their original columns. All learners then predict every
+validation observation, and the validation observations receive equal weight.
+
+```{r rf-permutation-validation, eval=FALSE}
+rf_permutation_validation <- aces_varimp(
+  rf_fit,
+  importance = "permutation",
+  control = list(
+    method = "rf_aces",
+    eval_data = validation_data,
+    repeats = 20,
+    seed = 314
+  )
+)
+```
+
+LOCO refits a complete forest after removing each original input and all its
+interactions. With OOB evaluation, the full and reduced losses for each input
+use only observations that have an OOB prediction in both forests. It is the
+most complete of the three measures, but also the most expensive: three inputs
+require three additional RF-ACES fits. Since those fits are randomized, use
+enough learners to limit Monte Carlo noise and call `set.seed()` immediately
+before LOCO when the ranking must be reproducible.
+
+```{r rf-loco-oob, eval=FALSE}
+set.seed(314)
+rf_loco_oob <- aces_varimp(
+  rf_fit,
+  importance = "loco",
+  control = list(
+    method = "rf_aces",
+    eval_data = "oob"
+  )
+)
+```
+
+The reduced forests are always fitted on the original training sample. An
+external data set changes only where the complete and reduced forests are
+compared.
+
+```{r rf-loco-validation, eval=FALSE}
+rf_loco_validation <- aces_varimp(
+  rf_fit,
+  importance = "loco",
+  control = list(
+    method = "rf_aces",
+    eval_data = validation_data,
+    verbose = TRUE
+  )
+)
+```
+
+Permutation and LOCO measure predictive dependence, not causality or
+statistical significance. Correlated inputs can divide, mask, or replace one
+another's contribution. These rankings are also separate from
+`relevant = TRUE`, which looks at the inputs represented structurally in fitted
+basis functions.
+
+# Intervals from RF-ACES
+
+## What the learner spread tells us
+
+`rf_aces_intervals()` evaluates the requested quantity separately for every
+learner and takes empirical quantiles. For output intervals, the learner values
+are frontier predictions. For technology-based score intervals, the efficiency
+problem is resolved against every learner-specific technology. The latter is
+important: uncertainty is propagated through both frontier estimation and the
+efficiency optimization.
+
+```{r rf-ensemble-intervals, eval=FALSE}
+ensemble_intervals <- rf_aces_intervals(
+  object = rf_fit,
+  newdata = production_data,
+  x = 1:3,
+  y = 4,
+  level = 0.95,
+  type = "both",
+  method = "rf_aces",
+  measure = "rad_out",
+  returns = "variable",
+  calibration = "none"
+)
+
+head(ensemble_intervals$output)
+head(ensemble_intervals$score)
+```
+
+Here, `level = 0.95` means that the limits are the 2.5th and 97.5th percentiles
+of learner values. It does **not** by itself mean that the interval has 95%
+coverage for a future observation or for the true frontier. Learners are
+correlated, their spread is not the entire sampling distribution, and systematic
+frontier bias or observational noise may not appear in that spread. This is the
+precise sense in which the interval is *uncalibrated*.
+
+Even so, an ensemble interval is useful. A narrow interval says that the fitted
+answer is stable across the bootstrap samples and random feature choices used by
+the forest. A wide interval warns that the benchmark is sensitive to those
+modelling perturbations.
+
+## Calibrating intervals for observed outputs
+
+With `calibration = "oob"`, RF-ACES uses absolute OOB residuals and a
+finite-sample conformal quantile to enlarge the output interval. Under
+exchangeability, this targets approximate marginal coverage for a future
+**observed output**. `min_oob` is the minimum number of OOB predictions required
+before a training observation contributes a calibration residual.
+
+```{r rf-calibrated-output, eval=FALSE}
+prediction_interval <- rf_aces_intervals(
+  object = rf_fit,
+  newdata = production_data,
+  x = 1:3,
+  y = 4,
+  level = 0.95,
+  type = "output",
+  method = "rf_aces",
+  calibration = "oob",
+  min_oob = 5
+)
+
+prediction_interval$interval_type
+prediction_interval$calibration
+head(prediction_interval$output)
+```
+
+This calibration target should not be overstated. It is an approximate marginal
+prediction interval, not a conditional interval for every input vector. With
+several outputs, coverage is marginal for each component rather than simultaneous
+for the whole vector. Most importantly, it concerns future observed output, not
+the latent production frontier.
+
+True unit-level efficiencies are not observed, so ordinary OOB residuals cannot
+calibrate an efficiency-score interval in the same way. Score intervals remain
+ensemble stability intervals even when output calibration is requested.
+
+```{r rf-score-interval, eval=FALSE}
+score_interval <- rf_aces_intervals(
+  object = rf_fit,
+  newdata = production_data,
+  x = 1:3,
+  y = 4,
+  level = 0.90,
+  type = "score",
+  method = "rf_aces",
+  measure = "rad_out",
+  relevant = FALSE,
+  returns = "variable"
+)
+
+head(score_interval$score)
+```
+
+# Ranking units across RF-ACES learners
+
+`ranking_aces()` calculates one efficiency score per learner and then averages
+those scores for each unit. It does not average rank positions. Preserving the
+score scale uses the magnitude of the efficiency differences and makes the
+final order easier to interpret.
+
+For training units, the default OOB ranking uses only learners whose bootstrap
+sample did not contain the unit. The unit therefore influenced neither the
+learner fit nor its reference technology. This is preferable to evaluating the
+training observations against every learner, which would mix honest OOB scores
+with optimistic in-bag scores.
+
+```{r rf-ranking-oob, eval=FALSE}
+training_ranking <- ranking_aces(
+  object = rf_fit,
+  eval_data = "oob",
+  method = "rf_aces",
+  measure = "rad_out",
+  returns = "variable"
+)
+
+head(training_ranking)
+```
+
+The result reports the average score, its standard deviation across eligible
+learners, and `learners_used`. OOB counts can differ between units because every
+bootstrap sample omits a different set of observations. `score_sd` is a
+descriptive stability measure, not a standard error or confidence interval.
+
+External units were not used by any learner, so all learners can contribute.
+The data and its input-output indexes are kept together in one named list.
+
+```{r rf-ranking-external, eval=FALSE}
+external_ranking <- ranking_aces(
+  object = rf_fit,
+  eval_data = list(
+    data = validation_data,
+    x = 1:3,
+    y = 4
+  ),
+  method = "rf_aces",
+  measure = "rad_out"
+)
+
+head(external_ranking)
+```
+
+This learner-average ranking is generally different from calling `get_scores()`
+once on the aggregated RF technology. The former solves one efficiency problem
+per learner and then averages the solutions; the latter aggregates the reference
+technology first and solves only once. Both are meaningful, but they answer
+different questions.
+
+The order automatically follows the selected measure. For `rad_out`,
+`rsl_out`, `ddf`, the weighted additive measures, and `rf_aces_rad_out`, smaller
+scores are better. For `rad_inp` and `rsl_inp`, larger scores are better. Ranks
+are formed before rounding, so the `digits` argument cannot introduce artificial
+ties.
+
+```{r rf-ranking-input-oriented, eval=FALSE}
+input_ranking <- ranking_aces(
+  object = rf_fit,
+  eval_data = "oob",
+  method = "rf_aces_cubic",
+  measure = "rad_inp",
+  relevant = FALSE,
+  digits = 4
+)
+```
+
+The same function can rank external units with a standard ACES fit. In that
+case there is one technology rather than a learner distribution, so
+`learners_used` equals one and `score_sd` is unavailable.
+
+```{r aces-ranking-external, eval=FALSE}
+aces_ranking <- ranking_aces(
+  object = fit,
+  eval_data = list(
+    data = validation_data,
+    x = 1:3,
+    y = 4
+  ),
+  method = "aces",
+  measure = "rad_out"
+)
+```
+
+# Validation and tuning
+
+## Reuse the same assessment splits
+
+`data_partition()` stores the analysis and assessment indexes so that every
+parameter configuration is compared on the same observations. It supports
+`"kfold"`, `"repeated_kfold"`, `"holdout"`, `"bootstrap"`, `"loo"`, and
+`"group_kfold"`.
+
+```{r partition, eval=FALSE}
+partition <- data_partition(
+  data = production_data,
+  x = 1:3,
+  y = 4,
+  validation = "kfold",
+  resampling_args = list(folds = 5),
+  delta = 1.05,
+  seed = 42
+)
+```
+
+For each split, the assessment error is weighted by inverse output-oriented DEA
+scores computed from the analysis sample. `delta` removes assessment observations
+whose score lies too far beyond the analysis technology. This keeps validation
+focused on frontier prediction instead of allowing many interior observations
+to dominate an average regression error.
+
+Random folds are inappropriate when they leak information across time, sites, or
+related units. In those settings, use groups or construct assessment periods that
+match the intended deployment.
+
+```{r partition-alternatives, eval=FALSE}
+repeated <- data_partition(
+  production_data, 1:3, 4,
+  validation = "repeated_kfold",
+  resampling_args = list(folds = 5, repeats = 3),
+  delta = 1.10,
+  seed = 42
+)
+
+holdout <- data_partition(
+  production_data, 1:3, 4,
+  validation = "holdout",
+  resampling_args = list(train_prop = 0.8),
+  seed = 42
+)
+```
+
+## Tune ACES without losing the full validation history
+
+`tune_model_aces()` evaluates the Cartesian product of the supplied values.
+Nested lists such as `shape` and `mul_BF` are grids as well. The first validation
+metric chooses the default best configuration, but every requested metric is
+stored. Available metrics are `mae`, `mape`, `mse`, `msle`, `rmse`, `rmsle`,
+`nrmse_mean`, and `nrmse_range`.
+
+```{r tune-aces, eval=FALSE}
+tuned_aces <- tune_model_aces(
+  partition = partition,
+  mul_BF = list(
+    max_degree = c(1, 2),
+    inter_cost = c(0.01, 0.05)
+  ),
+  shape = list(
+    mono = TRUE,
+    conc = c(TRUE, FALSE)
+  ),
+  max_terms = c(30, 50),
+  err_red = c(0.01, 0.03),
+  validation_metric = c("rmse", "mae"),
+  returns = "variable",
+  method = "aces",
+  verbose = TRUE
+)
+
+tuned_aces
+tuned_aces$best_params
+tuned_aces$results
+```
+
+The tuning function refits the selected configuration to the complete data and
+stores it in `final_model`. `select_best()` can select another configuration by
+any metric that was already computed. This is helpful when, for example, RMSE
+and MAE imply different operational priorities.
+
+```{r select-best, eval=FALSE}
+final_fit <- tuned_aces$final_model
+
+best_by_mae <- select_best(tuned_aces, metric = "mae")
+best_by_mae$best_params
+best_by_mae$best_scores
+best_by_mae$config_id
+```
+
+`tune_model_rf_aces()` uses the same partition and adds the ensemble controls.
+The grid can grow very quickly, so start with a small range of substantively
+plausible values and expand around competitive regions.
+
+```{r tune-rf, eval=FALSE}
+tuned_rf <- tune_model_rf_aces(
+  partition = partition,
+  learners = c(50, 100),
+  bag_size = c(40, 50),
+  max_feats = c(1, 2),
+  early_stopping = list(
+    ma_window = c(5, 10),
+    tolerance = c(3, 5)
+  ),
+  max_terms = 30,
+  err_red = c(0.01, 0.03),
+  validation_metric = "rmse",
+  method = "rf_aces",
+  verbose = TRUE
+)
+
+tuned_rf$best_params
+```
+
+# Simulation tools
+
+The package includes several data-generating processes for checking frontier
+recovery, variable selection, noise sensitivity, and multi-output behavior. When
+a generator returns both `y` and `yT`, only `y` is observed by the estimator;
+`yT` is retained for simulation evaluation.
+
+## Cobb-Douglas designs
+
+`cobb_douglas_XnY1()` provides one output with 1, 3, 6, 9, 12, or 15 inputs.
+`cobb_douglas_XnY1_noise()` adds statistical noise and can generate a
+heteroskedastic three-input design. `cobb_douglas_X3Y3()` supplies three inputs
+and three outputs under increasing, constant, or decreasing returns.
+
+```{r simulations-cd, eval=FALSE}
+sim_cd <- cobb_douglas_XnY1(N = 200, nX = 6)
+
+sim_noise <- cobb_douglas_XnY1_noise(
+  N = 200,
+  nX = 3,
+  p = 0.5,
+  heteroskedasticity = TRUE
+)
+
+sim_3x3 <- cobb_douglas_X3Y3(
+  N = 200,
+  border = 0.2,
+  noise = 0.5,
+  returns = "DRS"
+)
+```
+
+`cobb_douglas_XnHnY1()` adds `nH` irrelevant inputs to `nX` productive inputs.
+The correlation structures are supplied as named matrices. This design is
+particularly useful for comparing Quick ACES screening, structural relevance,
+and RF permutation importance.
+
+```{r simulation-irrelevant, eval=FALSE}
+rho_x <- matrix(
+  0, nrow = 3, ncol = 3,
+  dimnames = list(paste0("x", 1:3), paste0("x", 1:3))
+)
+rho_x["x1", "x2"] <- 0.3
+
+rho_h <- matrix(
+  0, nrow = 3, ncol = 3,
+  dimnames = list(paste0("x", 1:3), paste0("h", 1:3))
+)
+rho_h["x1", "h1"] <- 0.3
+
+sim_irrelevant <- cobb_douglas_XnHnY1(
+  N = 300,
+  nX = 3,
+  nH = 3,
+  exp_x = rep(1 / 3, 3),
+  rho_x = rho_x,
+  rho_h = rho_h
+)
+```
+
+## Additive and multi-output designs
+
+`add_scenario_XnY1()` implements six additive scenarios, labelled A-F.
+Comparing them reveals how the method responds to changes in dimension and
+functional shape.
+
+```{r simulation-additive, eval=FALSE}
+sim_add_A <- add_scenario_XnY1(N = 200, scenario = "A")
+sim_add_F <- add_scenario_XnY1(N = 200, scenario = "F")
+```
+
+`translog_X2Y2()` is a compact two-input, two-output design for studying joint
+refinement and non-radial efficiency. `cet_cd_X2Y2()` combines a Cobb-Douglas
+input function with a constant-elasticity-of-transformation output function and
+contains producer groups operating in different scale regions.
+
+```{r simulations-multi, eval=FALSE}
+sim_translog <- translog_X2Y2(
+  N = 250,
   border = 0.1,
   noise = FALSE
 )
-  
+
+sim_cet <- cet_cd_X2Y2(
+  N = 400,
+  border = 0.1,
+  noise = FALSE
+)
 ```
 
-## How to tune ACES
+`mult_scenario_XnY1()` is intended to provide the multiplicative counterpart of
+the A-F scenarios. In package version 0.2.0, it references an undefined internal
+object while constructing `y` and does not return a data set. Its interface can
+be inspected, but it should not be used in a reproducible analysis until the
+implementation is corrected.
 
-# Basic configuration for ACES
+```{r simulation-multiplicative-status, eval=FALSE}
+args(mult_scenario_XnY1)
 
-The ACES model includes several hyperparameters that control flexibility and the trade–off between accuracy and complexity. Below we describe the most influential ones used in the baseline configuration.
+# Currently not operational:
+# sim_mult_F <- mult_scenario_XnY1(N = 200, scenario = "F")
+```
 
-- **`max_degree`**: sets the highest degree of interaction allowed among input variables. For instance, `max_degree = 2` admits pairwise interactions, while higher values allow more complex multiplicative effects. In most production applications, second–order interactions are sufficient to capture curvature without excessive computational cost.
+# Interpreting and reporting the results
 
-- **`inter_cost`**: specifies the minimum relative improvement (in terms of the lack–of–fit criterion) required to include a higher–degree BF. A value of `0.05` means that a new interaction must improve the current best degree–1 term by at least 5%. This prevents unnecessary complexity when additional interactions bring marginal benefit.
+An efficiency result is relative to the observed reference group and to every
+modelling choice that defines the benchmark. A score of one means that the DMU
+lies on the estimated frontier under that specification. It does not prove
+absolute best practice, nor does it establish that the unit has no room to
+improve outside the observed production system.
 
-- **`max_terms`**: defines the upper limit of BFs created during the forward stage. Here we deliberately set it to a very large number so that the algorithm stops only when the minimum relative error reduction threshold (`err_red`) is reached.
+A practical sensitivity analysis changes one substantive assumption at a time:
+returns to scale, method, input set, orientation, refinement threshold, or ACES
+variant. Conclusions that reverse under small defensible changes should be
+reported as fragile.
 
-- **`err_red`**: controls the minimum proportional reduction in training error required to add a new pair of BFs. Typical values range between `0.005` and `0.02`, which offer a balanced compromise between flexibility and interpretability.
+```{r sensitivity, eval=FALSE}
+sensitivity_results <- list(
+  aces_vrs = get_scores(
+    production_data, 1:3, 4,
+    object = fit, measure = "rad_out", returns = "variable"
+  ),
+  aces_crs = get_scores(
+    production_data, 1:3, 4,
+    object = fit, measure = "rad_out", returns = "constant"
+  ),
+  aces_vrs_relevant = get_scores(
+    production_data, 1:3, 4,
+    object = fit, relevant = TRUE, measure = "rad_out"
+  )
+)
+```
 
----
+Targets also need an operational review. The mathematical projection may ignore
+budgets, service obligations, quality thresholds, indivisibilities, or local
+environmental constraints. It is best used to quantify a performance gap and
+identify relevant peers before it is translated into a management commitment.
 
-# RF-ACES example
-
-```{r eval=FALSE}
-# Warning: training can be computationally intensive
-fit_rf <- rf_aces (
-  data      = data,
-  x         = 1:2,  
-  y         = 5,
-  learners  = 50,
-  bag_size  = 50,
-  max_feats = 1
+```{r management-table, eval=FALSE}
+management_table <- cbind(
+  production_data,
+  score = get_scores(production_data, 1:3, 4, object = fit)[[1]],
+  get_targets(production_data, 1:3, 4, object = fit)
 )
 
-head(aces_scores(fit_rf))
+head(management_table)
 ```
 
----
+New input combinations outside the training support are extrapolations. Shape
+restrictions make that extrapolation coherent, but not empirically supported.
+At minimum, flag observations outside each training range; for an important
+decision, inspect multivariate support as well.
 
-# Quick-ACES example
+```{r support-check, eval=FALSE}
+train_x <- production_data[, 1:3]
+new_x   <- new_producers[, 1:3]
 
-```{r, eval = FALSE}
-# Faster alternative with heuristic pruning
-fit_q <- aces(
-  y ~ x1 + x2, data = dat,
-  quick_aces = TRUE,
-  monotone = TRUE, concave = TRUE
+outside_support <- vapply(seq_along(train_x), function(j) {
+  new_x[[j]] < min(train_x[[j]]) | new_x[[j]] > max(train_x[[j]])
+}, logical(nrow(new_x)))
+
+new_producers$outside_marginal_support <- rowSums(outside_support) > 0
+```
+
+A reproducible study should report the DMU definition and sampling period;
+input and output definitions and units; transformations; ACES variant and shape
+restrictions; interaction and knot controls; refinement threshold; fitted
+method; returns to scale; efficiency measure, orientation, direction, or
+weights; validation design; and the sensitivity or interval analysis used.
+
+```{r reporting-record, eval=FALSE}
+analysis_specification <- list(
+  estimator = "ACES",
+  inputs = names(production_data)[1:3],
+  outputs = names(production_data)[4],
+  method = "aces",
+  shape = list(mono = TRUE, conc = TRUE),
+  max_degree = 1,
+  psi = 0.05,
+  returns = "variable",
+  measure = "rad_out",
+  relevant = FALSE,
+  validation = "5-fold frontier-weighted CV"
+)
+```
+
+# A complete workflow
+
+The following template keeps model selection, final fitting, efficiency, and
+targets as distinct steps. A small exploratory fit should precede a larger grid
+so that data and solver problems are found early.
+
+```{r complete-workflow, eval=FALSE}
+library(aces)
+
+# Comparable DMUs and variables
+x <- match(c("labour", "capital", "materials"), names(data))
+y <- match(c("service", "quality"), names(data))
+
+# Reusable frontier-aware assessment splits
+partition <- data_partition(
+  data, x, y,
+  validation = "repeated_kfold",
+  resampling_args = list(folds = 5, repeats = 3),
+  delta = 1.05,
+  seed = 2026
 )
 
-head(aces_scores(fit_q))
-```
-
----
-
-# Multi-output example (DEA-type construction)
-
-```{r eval=FALSE}
-# Synthetic 2-input 2-output technology
-sim <- cet_cd_X2Y2(N = 50, border = 0.1, noise = FALSE)
-
-fit_multi <- aces(
-  data = sim,
-  x = 1:2,   # inputs
-  y = 3:4,   # outputs
-  monotone = TRUE,
-  concave  = TRUE
+# A deliberately small initial grid
+tuning <- tune_model_aces(
+  partition,
+  mul_BF = list(
+    max_degree = c(1, 2),
+    inter_cost = c(0.03, 0.05)
+  ),
+  max_terms = c(30, 50),
+  err_red = c(0.01, 0.03),
+  validation_metric = c("rmse", "mae"),
+  method = "aces"
 )
 
-# Efficiency on the constructed VRS technology
-head(aces_scores(fit_multi))
+# The selected specification is already refitted to all observations
+final_fit <- tuning$final_model
+
+# Freeze the benchmark definition before producing results
+final_scores <- get_scores(
+  data, x, y,
+  object = final_fit,
+  method = "aces",
+  measure = "rad_out",
+  returns = "variable"
+)
+
+final_targets <- get_targets(
+  data, x, y,
+  object = final_fit,
+  method = "aces",
+  measure = "rad_out",
+  returns = "variable"
+)
+
+results <- cbind(data, final_scores, final_targets)
 ```
 
----
+# Advanced and developmental functions
+
+`aces()` and `rf_aces()` are the user-facing wrappers. They validate the input,
+prepare and scale the data, run the algorithm, construct technologies, and
+return objects that work with the rest of the package. The exported
+`aces_algorithm()` and `rf_aces_algorithm()` functions are lower-level engines
+for package development. Calling them directly requires the already prepared
+internal structures, so ordinary analyses should use the wrappers.
+
+```{r low-level-functions, eval=FALSE}
+# Recommended user interface
+fit    <- aces(production_data, 1:3, 4)
+rf_fit <- rf_aces(production_data, 1:3, 4)
+
+# Useful when extending the package
+args(aces_algorithm)
+args(rf_aces_algorithm)
+```
 
 # References
 
-- Friedman, J. H. (1991). *Multivariate adaptive regression splines*. The annals of statistics, 19(1):1–67.
-- España, V. J., Aparicio, J., Barber, X., & Esteve, M. (2024). *Estimating production functions through additive models based on regression splines*. European Journal of Operational Research, 312(2), 684–699.
-- España, V. J., Aparicio, J., & Barber, X. (2025a). *An adaptation of Random Forest to estimate convex non-parametric production technologies: an empirical illustration of efficiency measurement in education*. International Transactions in Operational Research, 32(5), 2523–2546.  
-- España, V. J., Aparicio, J., & Barber, X. (2025b). *Estimating production technologies using multi-output adaptive constrained enveloping splines*. Computers & Operations Research, 107242.  
-
----
-
-# Session info
-
-```{r eval=FALSE}
-sessionInfo()
-```
+The production-function foundation of ACES is developed in @espana2024. The
+multi-output technology and refinement procedure are presented in @espana2025,
+and the randomized estimator in @espana2024rf. General production-frontier and
+DEA foundations include @fare1994 and @banker1984.

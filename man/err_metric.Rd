@@ -2,30 +2,33 @@
 % Please edit documentation in R/ACES.R
 \name{err_metric}
 \alias{err_metric}
-\title{Error Metric for Model Evaluation.}
+\title{Compute a Model Error}
 \usage{
 err_metric(y_obs, y_hat, metric, weight)
 }
 \arguments{
-\item{y_obs}{Vector of observed data.}
+\item{y_obs}{A numeric matrix of observed outputs.}
 
-\item{y_hat}{Vector of predicted values.}
+\item{y_hat}{A numeric matrix of predicted outputs.}
 
-\item{metric}{Lack-of-fit criterion to evaluate the model performance:
+\item{metric}{Character string specifying the error measure:
 \itemize{
-\item{\code{mae}}: Mean Absolute Error
-\item{\code{mape}}: Mean Absolute Percentage Error
-\item{\code{mse}}: Mean Squared Error
-\item{\code{rmse}}: Root Mean Squared Error
-\item{\code{nrmse1}}: Normalized Root Mean Squared Error (using mean)
-\item{\code{nrmse2}}: Normalized Root Mean Squared Error (using range)
+\item{\code{"mae"}: Mean absolute error.}
+\item{\code{"mape"}: Mean absolute percentage error.}
+\item{\code{"mse"}: Mean squared error.}
+\item{\code{"msle"}: Mean squared logarithmic error.}
+\item{\code{"rmse"}: Root mean squared error.}
+\item{\code{"nrmse1"}: Root mean squared error divided by the mean.}
+\item{\code{"nrmse2"}: Root mean squared error divided by the range.}
 }}
 
-\item{weight}{Weights to compute error metrics.}
+\item{weight}{A numeric matrix of observation weights.}
 }
 \value{
-The calculated error metric.
+A single numeric error value.
 }
 \description{
-Computes an error metric for model evaluation based on observed and predicted values.
+Computes a weighted lack-of-fit measure from observed and predicted outputs.
+Negative predictions receive infinite error when all observed outputs are
+positive.
 }

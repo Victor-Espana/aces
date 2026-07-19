@@ -2,16 +2,16 @@
 % Please edit documentation in R/backward_algorithm.R
 \name{update_knot_list}
 \alias{update_knot_list}
-\title{Update knot_list}
+\title{Rebuild the Knot List}
 \usage{
 update_knot_list(Bp_list)
 }
 \arguments{
-\item{Bp_list}{A \code{list} containing the set of basis functions by input.}
+\item{Bp_list}{Basis functions grouped by input.}
 }
 \value{
-A \code{list} with the knots updated.
+A list of retained knots.
 }
 \description{
-This function updates the knot_list during the backward algorithm.
+Rebuilds the knot list from the basis functions retained during pruning.
 }

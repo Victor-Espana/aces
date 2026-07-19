@@ -1,19 +1,21 @@
-#' @title 1 output ~ nX inputs Cobb-Douglas Data Generation Process
+#' @title Simulate Cobb-Douglas Data
 #'
 #' @description
-#' This function simulates a 1 output ~ nX inputs \code{data.frame} with a Cobb-Douglas Data Generation Process.
+#' Simulates inputs, one inefficient output, and its Cobb-Douglas frontier value.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param nX
-#' An integer representing the number of inputs. Possible values: \code{1}, \code{3}, \code{6}, \code{9}, \code{12} and \code{15}.
+#' Number of inputs. Allowed values are \code{1}, \code{3}, \code{6}, \code{9},
+#' \code{12}, and \code{15}.
 #'
 #' @importFrom dplyr %>%
 #' @importFrom stats runif rnorm
 #'
 #' @return
-#' A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yT).
+#' A data frame with inputs \code{x1}, ..., observed output \code{y}, and frontier
+#' output \code{yT}.
 #'
 #' @export
 
@@ -105,29 +107,32 @@ cobb_douglas_XnY1 <- function (
 
 }
 
-#' @title 1 output ~ nX input Cobb-Douglas Data Generation Process with Noise
+#' @title Simulate Noisy Cobb-Douglas Data
 #'
 #' @description
-#' This function simulates a 1 output ~ nX input \code{data.frame} with a Cobb-Douglas Data Generation Process including statistical noise as in \insertCite{simar2011;textual}{aces}.
+#' Simulates inputs, one inefficient output with statistical noise, and its
+#' Cobb-Douglas frontier value.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param nX
-#' An integer representing the number of inputs.
+#' Number of inputs. Allowed values are \code{1} and \code{3}.
 #'
 #' @param p
-#' Noise-to-signal ratio.
+#' Non-negative noise-to-signal ratio.
 #'
 #' @param heteroskedasticity
-#' A \code{"logical"} value indicating if heteroskedasticity should be introduced in the inefficiency term. Only available for 3 inputs (\code{nX = 3}).
+#' If \code{TRUE}, use heteroskedastic inefficiency and noise. This is available
+#' only when \code{nX = 3}.
 #'
 #' @importFrom dplyr %>%
 #' @importFrom stats runif rnorm
 #'
 #' @return
 #'
-#' A \code{data.frame} with the simulated data: 1 inputs (x1), 1 output (y) and the theoretical frontier (yT).
+#' A data frame with inputs \code{x1}, ..., observed output \code{y}, and frontier
+#' output \code{yT}.
 #'
 #' @references
 #'
@@ -208,29 +213,32 @@ cobb_douglas_XnY1_noise <- function (
 
 }
 
-#' @title 3 outputs ~ 3 inputs Cobb-Douglas Data Generation Process
+#' @title Simulate Three-Input, Three-Output Cobb-Douglas Data
 #'
 #' @description
-#' This function simulates a 3 outputs ~ 3 inputs \code{data.frame}  with a Cobb-Douglas Data Generation Process as in \insertCite{ahn2023;textual}{aces}.
+#' Simulates three inputs, three observed outputs, and their Cobb-Douglas frontier
+#' values as in \insertCite{ahn2023;textual}{aces}.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param border
-#' Proportion of DMUs in the frontier: \code{0.1}, \code{0.2} or \code{0.3}.
+#' Proportion of observations placed on the frontier. Allowed values are
+#' \code{0.1}, \code{0.2}, and \code{0.3}.
 #'
 #' @param noise
-#' Random noise. 4 possible levels: \code{0}, \code{0.5}, \code{1} or \code{2}.
+#' Noise level. Allowed values are \code{0}, \code{0.5}, \code{1}, and \code{2}.
 #'
 #' @param returns
-#' Returns to scale. \code{"CRS"} for Constant Return to Scale, \code{"DRS"} for Decreasing Return to Scale and \code{"IRS"} for Increasing Return to Scale.
+#' Returns to scale: \code{"CRS"}, \code{"DRS"}, or \code{"IRS"}.
 #'
 #' @importFrom stats runif rnorm
 #' @importFrom truncnorm rtruncnorm
 #' @importFrom dplyr %>%
 #'
 #' @return
-#' A \code{data.frame} with the simulated data: 3 inputs (x1, x2, x3), 3 outputs (y1, y2, y3) and the theoretical frontier (yT1, yT2, yT3)
+#' A data frame with inputs \code{x1}-\code{x3}, observed outputs
+#' \code{y1}-\code{y3}, and frontier outputs \code{yT1}-\code{yT3}.
 #'
 #' @references
 #' \insertRef{ahn2023}{aces}
@@ -321,44 +329,41 @@ cobb_douglas_X3Y3 <- function (
 
 }
 
-#' @title 1 output ~ nX relevant inputs and nH irrelevant inputs Cobb-Douglas Data Generation Process
+#' @title Simulate Cobb-Douglas Data with Irrelevant Inputs
 #'
 #' @description
-#' This function simulates a dataset with one output, \code{nX} relevant inputs, and \code{nH} irrelevant inputs using a Cobb-Douglas production function. Relevant inputs can have specified correlations as in \insertCite{nataraja2011;textual}{aces}, and irrelevant inputs are constructed as linear combinations of relevant inputs and random noise as in \insertCite{peyrache2020;textual}{aces}.
+#' Simulates one Cobb-Douglas output from relevant inputs and adds inputs that do
+#' not enter the frontier. Optional matrices control correlations between inputs.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param nX
-#' An integer representing the number of relevant inputs.
+#' Positive integer giving the number of relevant inputs.
 #'
 #' @param nH
-#' An integer representing the number of irrelevant inputs.
+#' Non-negative integer giving the number of irrelevant inputs.
 #'
 #' @param exp_x
-#' A numeric vector of exponents (elasticities) for relevant inputs in the Cobb-Douglas function. Should be of length \code{nX}.
+#' Numeric vector of Cobb-Douglas exponents, with length \code{nX}.
 #'
 #' @param rho_x
-#' A numeric indicating correlations between relevant inputs. Must have variable names as row and column names (e.g., 'x1', 'x2', etc.). Each column represents a variable that is correlated with at most one variable in the rows.
+#' Optional correlation matrix for relevant inputs. Row and column names must be
+#' input names such as \code{"x1"}. Each column may contain at most one non-zero
+#' value.
 #'
 #' @param rho_h
-#' A numeric value between 0 and 0.2. Weight for relevant inputs in constructing irrelevant inputs.
+#' Optional matrix that links relevant inputs to irrelevant inputs. Rows must be
+#' named \code{"x1"}, ..., and columns \code{"h1"}, .... Each column may contain
+#' at most one non-zero value.
 #'
 #' @importFrom stats runif rnorm
 #' @importFrom truncnorm rtruncnorm
 #' @importFrom dplyr %>%
 #'
 #' @return
-#' A \code{data.frame} containing the simulated data: relevant inputs (\code{x1}, \code{x2}, ...), irrelevant inputs (\code{h1}, \code{h2}, ...), the theoretical output (\code{yT1}), and the observed output (\code{y1}).
-#'
-#' @details
-#' - **Relevant Inputs**: Generated with specified correlations. Each variable in \code{rho_x} columns is correlated with at most one variable in \code{rho_x} rows.
-#'
-#' - **Irrelevant Inputs**: Constructed as linear combinations of a random relevant input and random input generation, controlled by \code{rho_h}.
-#'
-#' - **Output Variables**:
-#'   - \code{yT1}: Theoretical output calculated using the Cobb-Douglas function.
-#'   - \code{y1}: Observed output including inefficiency, modelled as a random variable.
+#' A data frame with relevant inputs \code{x1}, ..., irrelevant inputs
+#' \code{h1}, ..., observed output \code{y1}, and frontier output \code{yT1}.
 #'
 #' @references
 #' \insertRef{nataraja2011}{aces} \cr \cr
@@ -533,24 +538,27 @@ cobb_douglas_XnHnY1 <- function (
 
 }
 
-#' @title 1 output ~ nX inputs Additive Data Generation Process
+#' @title Simulate an Additive Production Scenario
 #'
 #' @description
-#' This function simulates a 1 output ~ nX inputs \code{data.frame} with an Additive Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
+#' Simulates one of six additive production scenarios from
+#' \insertCite{kuosmanen2010;textual}{aces}.
 #'
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param scenario
-#' A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.
+#' Scenario to simulate: \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"},
+#' \code{"E"}, or \code{"F"}.
 #'
 #' @importFrom dplyr %>% filter
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
 #' @return
-#' A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
+#' A data frame with one to three inputs, observed output \code{y}, and frontier
+#' output \code{yT}.
 #'
 #' @references
 #' \insertRef{kuosmanen2010}{aces}
@@ -675,23 +683,26 @@ add_scenario_XnY1 <- function (
 
 }
 
-#' @title 1 output ~ nX inputs Multiplicative Data Generation Process
+#' @title Simulate a Multiplicative Production Scenario
 #'
 #' @description
-#' This function simulates a 1 output ~ nX inputs \code{data.frame} with a Multiplicative Data Generation Process as in \insertCite{kuosmanen2010;textual}{aces}.
+#' Simulates one of six multiplicative production scenarios from
+#' \insertCite{kuosmanen2010;textual}{aces}.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param scenario
-#' A character string specifying the scenario. Must be one of \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"}, \code{"E"} or \code{"F"}. For details, see Table 2 in \insertCite{kuosmanen2010;textual}{aces}.
+#' Scenario to simulate: \code{"A"}, \code{"B"}, \code{"C"}, \code{"D"},
+#' \code{"E"}, or \code{"F"}.
 #'
 #' @importFrom dplyr %>% filter
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
 #' @return
-#' A \code{data.frame} with the simulated data: 1-3 inputs, 1 output (y) and the theoretical frontier (yT).
+#' A data frame with one to three inputs, observed output \code{y}, and frontier
+#' output \code{yT}.
 #'
 #' @references
 #' \insertRef{kuosmanen2010}{aces}
@@ -814,25 +825,27 @@ mult_scenario_XnY1 <- function (
 
 }
 
-#' @title 2 outputs ~ 2 inputs Translog Data Generation Process
+#' @title Simulate Two-Input, Two-Output Translog Data
 #'
 #' @description
-#' This function simulates a 2 outputs ~ 2 inputs \code{data.frame} with a Translog Data Generation Process as in \insertCite{santin2009;textual}{aces}.
+#' Simulates two inputs, two observed outputs, and their translog frontier values
+#' as in \insertCite{santin2009;textual}{aces}.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param border
-#' Proportion of DMUs in the frontier.
+#' Proportion of observations placed on the frontier.
 #'
 #' @param noise
-#' A \code{logical} indicating whether to add random noise.
+#' If \code{TRUE}, add random noise to observed outputs.
 #'
 #' @importFrom stats runif rnorm
 #' @importFrom Rdpack reprompt
 #'
 #' @return
-#' A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2) and the theoretical frontier (yT1, yT2).
+#' A data frame with inputs \code{x1} and \code{x2}, observed outputs \code{y1}
+#' and \code{y2}, and frontier outputs \code{yT1} and \code{yT2}.
 #'
 #' @references
 #' \insertRef{santin2009}{aces}
@@ -904,37 +917,42 @@ translog_X2Y2 <- function (
 
 }
 
-#' @title 2 outputs ~ 2 inputs Constant Elasticity of Transformation - Cobb-Douglas Data Generation Process
+#' @title Simulate CET--Cobb-Douglas Data
 #'
 #' @description
 #'
-#' This function simulates a 2 outputs ~ 2 inputs \code{data.frame} using a Data Generation Process (DGP) based on
-#' Constant Elasticity of Transformation (CET) on the output side and Cobb-Douglas (CD) on the input side as in \insertCite{fare1994;textual}{aces}.
+#' Simulates two-input, two-output data with a constant-elasticity-of-
+#' transformation output function and a Cobb-Douglas input function.
 #'
-#' The dataset consists of \code{N} observations divided into four groups with equal proportions:
+#' Observations are assigned in equal proportions to four producer groups:
 #' \itemize{
 #'   \item \strong{Small-size producers}: \eqn{h(u) = 25}, \eqn{f(x) = 25}, \eqn{\delta = 0.898}
-#'   \item \strong{Medium-size producers (Lower bound)}: \eqn{h(u) = 50}, \eqn{f(x) = 50}, \eqn{\delta = 1.000}
-#'   \item \strong{Medium-size producers (Upper bound)}: \eqn{h(u) = 75}, \eqn{f(x) = 75}, \eqn{\delta = 1.000}
+#'   \item \strong{Medium-size producers (lower bound)}: \eqn{h(u) = 50},
+#'   \eqn{f(x) = 50}, \eqn{\delta = 1.000}
+#'   \item \strong{Medium-size producers (upper bound)}: \eqn{h(u) = 75},
+#'   \eqn{f(x) = 75}, \eqn{\delta = 1.000}
 #'   \item \strong{Large-size producers}: \eqn{h(u) = 100}, \eqn{f(x) = 100}, \eqn{\delta = 0.927}
 #' }
 #'
-#' This structure ensures the artificial technology exhibits regions of increasing, constant, and decreasing returns to scale.
+#' The resulting technology contains regions of increasing, constant, and
+#' decreasing returns to scale.
 #'
 #' @param N
-#' An integer representing the sample size.
+#' Positive integer giving the number of observations.
 #'
 #' @param border
-#' Proportion of DMUs in the frontier.
+#' Proportion of observations placed on the frontier.
 #'
 #' @param noise
-#' A \code{logical} indicating whether to add random noise.
+#' If \code{TRUE}, add random noise to observed outputs.
 #'
 #' @references
 #' \insertRef{fare1994}{aces}
 #'
 #' @return
-#' A \code{data.frame} with the simulated data: 2 inputs (x1, x2), 2 outputs (y1, y2), the theoretical frontier (yT1, yT2).
+#' A data frame with inputs \code{x1} and \code{x2}, observed outputs \code{y1}
+#' and \code{y2}, frontier outputs \code{yT1} and \code{yT2}, and the group
+#' values \code{fx} and \code{hy}.
 #'
 #' @export
 

@@ -2,18 +2,18 @@
 % Please edit documentation in R/backward_algorithm.R
 \name{update_Bp_list}
 \alias{update_Bp_list}
-\title{Update Bp_list}
+\title{Rebuild the Basis Function List}
 \usage{
 update_Bp_list(basis, nX)
 }
 \arguments{
-\item{basis}{A \code{list} containing the set of basis functions.}
+\item{basis}{Retained basis functions.}
 
 \item{nX}{Number of inputs.}
 }
 \value{
-A \code{list} with the basis functions updated.
+A list of basis functions grouped by input and side.
 }
 \description{
-This function updates the Bp_list during the backward algorithm.
+Groups the retained basis functions by input and side.
 }

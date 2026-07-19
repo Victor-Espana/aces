@@ -2,7 +2,7 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{wam}
 \alias{wam}
-\title{The Weighted Additive Model}
+\title{Compute Weighted Additive Scores}
 \usage{
 wam(
   tech_xmat,
@@ -12,36 +12,44 @@ wam(
   weights,
   convexity,
   returns,
-  type
+  type = "objective"
 )
 }
 \arguments{
-\item{tech_xmat}{A \code{matrix} containing the observed input variables used to define the technology.}
+\item{tech_xmat}{Matrix of inputs for the reference technology, with one row per reference DMU.}
 
-\item{tech_ymat}{A \code{matrix} containing the observed output variables used to define the technology.}
+\item{tech_ymat}{Matrix of outputs for the reference technology, with one row per reference DMU.}
 
-\item{eval_xmat}{A \code{matrix} containing the input data of the Decision-Making Units (DMUs) to be evaluated.}
+\item{eval_xmat}{Matrix of inputs for the evaluated DMUs.}
 
-\item{eval_ymat}{A \code{matrix} containing the output data of the Decision-Making Units (DMUs) to be evaluated.}
+\item{eval_ymat}{Matrix of outputs for the evaluated DMUs.}
 
-\item{weights}{Weights for the additive model:
+\item{weights}{Weighting rule for the additive model:
 \itemize{
-\item{\code{"wam.one"}} Weighted Additive Model.
-\item{\code{"wam.mip"}} Measure of Inefficiency Proportions.
-\item{\code{"wam.nor"}} Normalized Weighted Additive Model.
-\item{\code{"wam.ram"}} Range Adjusted Measure.
-\item{\code{"wam.bam"}} Bounded Adjusted Measure.
+\item{\code{"wam_mip"}} Measure of Inefficiency Proportions.
+\item{\code{"wam_nor"}} Normalized Weighted Additive Model.
+\item{\code{"wam_ram"}} Range Adjusted Measure.
+\item{\code{"wam_bam"}} Bounded Adjusted Measure.
 }}
 
-\item{convexity}{A \code{logical} value indicating if a convex technology is assumed.}
+\item{convexity}{If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+intensity variables for an FDH technology.}
 
-\item{returns}{Type of returns to scale. Either \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+\item{returns}{Returns-to-scale assumption used to construct the reference technology.
+Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+convex technology with a convexity constraint.}
 
-\item{type}{A \code{character} string specifying the return value. Options are \code{"objective"} to return the optimal value of the objective function, and \code{"variables"} to return the optimal values of the decision variables related to efficiency measure.}
+\item{type}{A \code{character} string specifying the return value:
+\code{"objective"} for the optimal objective value, or
+\code{"variables"} for the optimal slack values.}
 }
 \value{
-A \code{vector} of \code{"numeric"} scores computed through the Weighted Additive Model.
+A matrix with one row per evaluated DMU. It contains one objective value when
+\code{type = "objective"}, or the input and output slacks when
+\code{type = "variables"}.
 }
 \description{
-This function computes efficiency scores through a Weighted Additive Model.
+Solves a weighted additive envelopment model for each evaluated DMU. The model
+measures input excesses and output shortfalls directly through slacks, with a
+weighting rule that makes variables with different scales comparable.
 }

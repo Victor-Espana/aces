@@ -1,26 +1,40 @@
-#' @title Generate a Technology Set
+#' @title Build an Estimated Technology
 #'
 #' @description
-#' This function generates a technology set based on input data and an ACES model output.
-#' The technology set represents the feasible combinations of inputs and outputs.
+#' Builds the reference sample used to define an ACES production technology.
+#' For each DMU and output, the estimated maximum output is retained when the
+#' joint and output-specific radial scores agree within the refinement threshold.
+#' Otherwise, the observed output is kept to avoid using a marginal prediction
+#' that may distort the jointly feasible output vector.
+#'
+#' With one output, the joint and output-specific scores are identical, so the
+#' reference sample uses the estimated maximum attainable outputs. With multiple outputs,
+#' it can contain both predicted and observed components. The original inputs and
+#' these refined output vectors define the DEA-type technology used for efficiency
+#' measurement.
 #'
 #' @param var_names
-#' A \code{string} with variables names for technology set.
+#' Character vector of input and output names.
 #'
 #' @param tech_xmat
-#' A \code{matrix} representing the input data.
+#' Matrix of inputs that define the technology.
 #'
 #' @param tech_ymat1
-#' A \code{matrix} representing the output data.
+#' Matrix of observed outputs, treated as feasible production levels.
 #'
 #' @param tech_ymat2
-#' A \code{matrix} representing the output data generated from an ACES model.
+#' Matrix of maximum attainable outputs estimated by ACES.
 #'
 #' @param table_scores
-#' A \code{matrix} containing radial output scores using all outputs and using just each individual output.
+#' Matrix of output-oriented radial scores computed jointly and separately for
+#' each output. A predicted component is retained when the absolute difference
+#' between its joint and output-specific scores is at most \code{0.05}; otherwise,
+#' the observed component is used.
 #'
 #' @return
-#' A \code{matrix} representing the technology set.
+#' A list with \code{xmat}, the original input vectors, and \code{ymat}, the
+#' refined output vectors. Together they form the reference sample for the
+#' estimated production technology.
 
 generate_technology <- function (
     var_names,
@@ -71,28 +85,35 @@ generate_technology <- function (
 
 }
 
-#' @title Update Technology Set
+#' @title Update an Estimated Technology
 #'
 #' @description
-#' This function constructs a new production technology by modifying the output matrix based on a refinement procedure that replaces overestimated outputs. Additionally, it allows incorporating the origin into the technology set.
+#' Rebuilds the reference samples stored in an ACES object from supplied data and
+#' a new output-refinement threshold. This changes the points used to construct
+#' the production technologies without refitting the spline models. The origin
+#' can also be added as an explicit reference point.
 #'
 #' @param object
 #' An \code{aces} object.
 #'
 #' @param tech_xmat
-#' A \code{matrix} representing the input data (optional). Required if \code{psi} is provided.
+#' Optional matrix of inputs used to rebuild the technologies.
 #'
 #' @param tech_ymat
-#' A \code{matrix} representing the output data (optional). Required if \code{psi} is provided.
+#' Optional matrix of observed outputs used to rebuild the technologies.
 #'
 #' @param psi
-#' A \code{numeric} threshold controlling the refinement of predicted outputs (optional). If the predicted value for a given output exceeds the observed value by more than \code{psi}, the observed value is used instead.
+#' Optional output-refinement threshold. When a joint and a single-output score
+#' differ by more than this value, the observed output is retained; otherwise,
+#' the estimated maximum output is used. Larger values therefore retain more
+#' predicted components.
 #'
 #' @param pto
-#' A \code{logical} indicating if (0,0) should be added to the technology set. Default is \code{FALSE}.
+#' If \code{TRUE}, add the origin to each technology.
 #'
 #' @return
-#' An \code{aces} object with updated technologies.
+#' The supplied \code{aces} object with rebuilt technology components. Fitted
+#' models and other controls are unchanged.
 #'
 #' @export
 
@@ -232,15 +253,18 @@ change_technology <- function (
 
 }
 
-#' @title Get Technology Set
+#' @title Extract an Estimated Technology
 #'
 #' @description
-#' Retrieves the matrix constituting the estimated technology for a specific method from an ACES object.
+#' Extracts the input and output points that define one estimated technology.
+#' These are the reference points used by \code{get_scores()} and
+#' \code{get_targets()}, rather than every feasible point in the production set
+#' or fitted values for a new data set.
 #'
 #' @param object
 #' An \code{aces} object.
 #' @param method
-#' Model for prediction:
+#' Fitted model whose technology is returned:
 #' \itemize{
 #' \item{\code{"aces_forward"}}: Forward Adaptive Constrained Enveloping Splines.
 #' \item{\code{"aces"}}: Adaptive Constrained Enveloping Splines.
@@ -248,7 +272,8 @@ change_technology <- function (
 #' \item{\code{"aces_quintic"}}: Quintic Smoothed Adaptive Constrained Enveloping Splines.
 #' }
 #'
-#' @return A matrix containing the inputs (xmat) and the estimated output (ymat).
+#' @return A matrix containing the technology inputs followed by its outputs, on
+#' the original data scale.
 #'
 #' @export
 #'

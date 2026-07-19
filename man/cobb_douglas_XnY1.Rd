@@ -2,18 +2,20 @@
 % Please edit documentation in R/simulations.R
 \name{cobb_douglas_XnY1}
 \alias{cobb_douglas_XnY1}
-\title{1 output ~ nX inputs Cobb-Douglas Data Generation Process}
+\title{Simulate Cobb-Douglas Data}
 \usage{
 cobb_douglas_XnY1(N, nX)
 }
 \arguments{
-\item{N}{An integer representing the sample size.}
+\item{N}{Positive integer giving the number of observations.}
 
-\item{nX}{An integer representing the number of inputs. Possible values: \code{1}, \code{3}, \code{6}, \code{9}, \code{12} and \code{15}.}
+\item{nX}{Number of inputs. Allowed values are \code{1}, \code{3}, \code{6}, \code{9},
+\code{12}, and \code{15}.}
 }
 \value{
-A \code{data.frame} with the simulated data: nX inputs, 1 output (y) and the theoretical frontier (yT).
+A data frame with inputs \code{x1}, ..., observed output \code{y}, and frontier
+output \code{yT}.
 }
 \description{
-This function simulates a 1 output ~ nX inputs \code{data.frame} with a Cobb-Douglas Data Generation Process.
+Simulates inputs, one inefficient output, and its Cobb-Douglas frontier value.
 }

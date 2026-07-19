@@ -1,77 +1,64 @@
-#' @title Error Messaging in Adaptive Constrained Enveloping Splines (ACES) functions
+#' @title Validate ACES Arguments
 #'
 #' @description
-#' Validates all input arguments for the \code{\link{aces}} function and halts
-#' execution with a descriptive error message if any argument is misspecified.
+#' Checks the arguments used by \code{\link{aces}} and stops with an informative
+#' message when an argument is invalid.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' A \code{data.frame} or \code{matrix} containing the model variables.
 #'
 #' @param x
-#' A non-empty \code{numeric} or \code{integer} vector of column indexes for the
-#' input variables in \code{data}. Indexes must be valid column positions and must
-#' not overlap with \code{y}.
+#' Column indexes of input variables in \code{data}.
 #'
 #' @param y
-#' A non-empty \code{numeric} or \code{integer} vector of column indexes for the
-#' output variables in \code{data}. Indexes must be valid column positions and must
-#' not overlap with \code{x}.
+#' Column indexes of output variables in \code{data}.
 #'
 #' @param scale_data
-#' A single \code{logical} value (\code{TRUE} or \code{FALSE}) indicating whether
-#' inputs and outputs should be scaled by their column means before estimation.
+#' If \code{TRUE}, divide each input and output by its mean before fitting.
 #'
 #' @param quick_aces
-#' A single \code{logical} value (\code{TRUE} or \code{FALSE}) indicating whether
-#' the fast version of ACES should be used.
+#' If \code{TRUE}, use Quick ACES to reduce the number of candidate basis
+#' functions.
 #'
 #' @param max_degree
-#' Either a positive \code{integer} specifying the maximum degree of interaction
-#' between input variables (must not exceed the number of inputs), or a \code{list}
-#' where each element is an \code{integer} vector of column indexes defining an
-#' explicit interaction term.
+#' Maximum interaction degree, or a list of input-index vectors defining the
+#' interactions to use.
 #'
 #' @param inter_cost
-#' A \code{numeric} value in \eqn{[0, 1]} specifying the minimum percentage
-#' improvement over the best 1-degree basis function required to incorporate a
-#' higher-degree basis function.
+#' Minimum relative improvement over the best first-degree basis function
+#' required to add a higher-degree basis function.
 #'
 #' @param metric
-#' A single \code{character} string specifying the lack-of-fit criterion used to
-#' evaluate model performance. Valid options are: \code{"mae"}, \code{"mape"},
+#' Character string specifying the lack-of-fit measure. Options are
+#' \code{"mae"}, \code{"mape"},
 #' \code{"mse"}, \code{"msle"}, \code{"rmse"}, \code{"nrmse1"}, \code{"nrmse2"}.
 #'
 #' @param max_terms
-#' A positive \code{integer} specifying the maximum number of terms created during
-#' the forward step.
+#' Maximum number of terms created during the forward step.
 #'
 #' @param err_red
-#' A \code{numeric} value in \eqn{[0, 1]} specifying the minimum relative error
-#' reduction required to add a new pair of 1-degree basis functions.
+#' Minimum relative error reduction required to add a new pair of first-degree
+#' basis functions.
 #'
 #' @param kn_grid
-#' Either \code{-1} (default Friedman knot selection) or a \code{list} of length
-#' equal to the number of inputs, where each element is a \code{numeric} vector of
-#' knot candidates for the corresponding input variable.
+#' Knot candidates. Use \code{-1} for automatic selection or supply a list with
+#' one numeric vector for each input.
 #'
 #' @param minspan
-#' An \code{integer} specifying the minimum number of observations between two
-#' adjacent knots. Must be \code{-2}, \code{-1}, or a positive integer.
+#' Minimum number of observations between adjacent knots. Use \code{-2},
+#' \code{-1}, or a positive integer.
 #'
 #' @param endspan
-#' An \code{integer} specifying the minimum number of observations before the first
-#' and after the last knot. Must be \code{-2}, \code{-1}, or a positive integer.
+#' Minimum number of observations before the first knot and after the last knot.
+#' Use \code{-2}, \code{-1}, or a positive integer.
 #'
 #' @param kn_penalty
-#' A non-negative \code{numeric} value specifying the Generalized Cross Validation
-#' (GCV) penalty per knot. Default is \code{2}.
+#' Non-negative penalty per knot used to compute GCV.
 #'
 #' @importFrom stats na.omit
 #'
 #' @return
-#' \code{NULL} invisibly. The function is called exclusively for its side effect of
-#' stopping execution with an informative error message when an argument is
-#' misspecified.
+#' \code{NULL} invisibly. The function is used for its validation side effects.
 
 display_errors_aces <- function(
   data,
@@ -296,37 +283,38 @@ display_errors_aces <- function(
   invisible(NULL)
 }
 
-#' @title Argument Validation for Efficiency Score Computation
+#' @title Validate Efficiency Arguments
 #'
 #' @description
-#' Validates input data and hyperparameters for efficiency estimation functions in the ACES framework. It halts execution with a descriptive error message if any parameter is misspecified.
+#' Checks arguments used to compute efficiency scores or targets and stops with
+#' an informative message when an argument is invalid.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the DMUs to be evaluated.
+#' A \code{data.frame} or \code{matrix} containing the DMUs to evaluate.
 #'
 #' @param x
-#' \code{numeric} vector of column indexes for input variables in \code{data}.
+#' Column indexes of input variables in \code{data}.
 #'
 #' @param y
-#' \code{numeric} vector of column indexes for output variables in \code{data}.
+#' Column indexes of output variables in \code{data}.
 #'
 #' @param object
 #' An \code{aces} or \code{rf_aces} object.
 #'
 #' @param method
-#' Prediction method (\code{"aces"}, \code{"aces_cubic"}, \code{"rf_aces"}, etc.) used to obtain virtual outputs.
+#' Prediction method used to define the technology.
 #'
 #' @param measure
-#' Mathematical programming model (\code{"rad_out"}, \code{"ddf"}, \code{"rsl_out"}, etc.).
+#' Efficiency measure to compute.
 #'
 #' @param returns
-#' Returns to scale assumption: \code{"constant"} (CRS) or \code{"variable"} (VRS).
+#' Returns to scale: \code{"constant"} or \code{"variable"}.
 #'
 #' @param direction
-#' Projection vector for DDF.
+#' Direction vectors used by the directional distance function.
 #'
 #' @return
-#' None. The function is used for its side effect of generating \code{stop()} messages upon validation failure.
+#' \code{NULL} invisibly. The function is used for its validation side effects.
 
 display_errors_scores <- function(
   data,
@@ -404,7 +392,7 @@ display_errors_scores <- function(
 
   # returns must be valid
   if (!is.null(returns) && !returns %in% c("constant", "variable")) {
-    stop(paste(returns, "is not available. Please, check help(\"aces_scores\")"))
+    stop(paste(returns, "is not available. See help(\"get_scores\")."))
   }
 
   # direction must be a matrix with size [n x (nX+nY)]
@@ -433,13 +421,14 @@ display_errors_scores <- function(
   }
 }
 
-#' @title Error Messaging in Random-Forest Adaptive Constrained Enveloping Splines (RF-ACES) functions
+#' @title Validate RF-ACES Arguments
 #'
 #' @description
-#' This function displays error messages if hyperparameters are incorrectly specified in RF-ACES functions aimed at estimating production functions.
+#' Checks the arguments used by \code{\link{rf_aces}} and stops with an
+#' informative message when an argument is invalid.
 #'
 #' @param data
-#' A \code{data.frame} or \code{matrix} containing the variables in the model.
+#' A \code{data.frame} or \code{matrix} containing the model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -448,48 +437,57 @@ display_errors_scores <- function(
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param scale_data
-#' A \code{logical} indicating if inputs and outputs should be scaled by their mean before estimation to improve solver convergence.
+#' If \code{TRUE}, divide each input and output by its mean before fitting.
 #'
 #' @param quick_aces
-#' A \code{logical} indicating if the fast version of ACES should be employed.
+#' If \code{TRUE}, use Quick ACES to reduce the number of candidate basis
+#' functions in each learner.
 #'
 #' @param max_degree
-#' A \code{list} with input indexes for interaction of variables, or a \code{numeric} specifying the maximum max_degree of interaction.
+#' Maximum interaction degree, or a list of input-index vectors defining the
+#' interactions to use.
 #'
 #' @param inter_cost
-#' A \code{numeric} value specifying the minimum percentage of improvement over the best 1-max_degree basis function to incorporate a higher max_degree basis function.
+#' Minimum relative improvement over the best first-degree basis function
+#' required to add a higher-degree basis function.
 #'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance. Options are: \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"rmse"}, \code{"nrmse1"} or \code{"nrmse2"}.
+#' Character string specifying the lack-of-fit measure. Options are
+#' \code{"mae"}, \code{"mape"}, \code{"mse"}, \code{"msle"}, \code{"rmse"},
+#' \code{"nrmse1"}, and \code{"nrmse2"}.
 #'
 #' @param learners
-#' An \code{integer} indicating the number of models for bagging.
+#' Number of ACES learners in the forest.
 #'
 #' @param bag_size
-#' An \code{integer} indicating the number of samples to draw from \code{data} to train each base estimator.
+#' Number of observations sampled with replacement for each learner.
 #'
 #' @param max_feats
-#' An \code{integer} indicating the number of variables randomly chosen at each split in RF-ACES.
+#' Number of inputs randomly considered by each learner.
 #'
 #' @param max_terms
-#' A positive \code{integer} specifying the maximum number of terms created before pruning.
+#' Maximum number of terms created during the forward step.
 #'
 #' @param err_red
-#' A \code{numeric} value specifying the minimum reduced error rate for the addition of a new pair of 1-max_degree basis functions.
+#' Minimum relative error reduction required to add a new pair of first-degree
+#' basis functions.
 #'
 #' @param minspan
-#' A \code{numeric} value specifying the minimum number of observations between two adjacent knots. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.
+#' Minimum number of observations between adjacent knots. Use \code{-2},
+#' \code{-1}, or a positive integer.
 #'
 #' @param endspan
-#' A \code{numeric} value specifying the minimum number of observations before the first and after the final knot. Options are: \code{"-2"}, \code{"-1"} or \code{"m"}.
+#' Minimum number of observations before the first knot and after the last knot.
+#' Use \code{-2}, \code{-1}, or a positive integer.
 #'
 #' @param kn_grid
-#' Grid of knots to perform RF-ACES. It can be: \code{-1} or a \code{list}.
+#' Knot candidates. Use \code{-1} for automatic selection or supply a list with
+#' one numeric vector for each input.
 #'
 #' @importFrom stats na.omit
 #'
 #' @return
-#' This function return error messages if hyperparameters are incorrectly specified.
+#' \code{NULL} invisibly. The function is used for its validation side effects.
 
 display_errors_rf_aces <- function(
   data,

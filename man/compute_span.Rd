@@ -2,38 +2,33 @@
 % Please edit documentation in R/ACES.R
 \name{compute_span}
 \alias{compute_span}
-\title{Compute Minimum and End Span}
+\title{Compute Knot Spacing}
 \usage{
 compute_span(kn_grid, minspan, endspan, n_input)
 }
 \arguments{
-\item{kn_grid}{A \code{list} with the available set of knots to perform ACES.}
+\item{kn_grid}{A list of knot candidates, one element per input.}
 
-\item{minspan}{A \code{numeric} value or vector specifying the minimum number of observations between two adjacent knots. The following options are available:
-\itemize{
-  \item{\code{minspan = -2}}: Computed according to the method proposed by \insertCite{zhang1994;textual}{aces}.
-  \item{\code{minspan = -1}}: Computed according to the method proposed by \insertCite{friedman1991;textual}{aces}.
-  \item{\code{minspan = +m}}: A positive integer specifying the exact number of observations.
-}}
+\item{minspan}{Minimum number of observations between adjacent knots. Use \code{-2} for
+the Zhang rule, \code{-1} for the Friedman rule, or a positive integer.}
 
-\item{endspan}{A \code{numeric} value or vector specifying the minimum number of observations before the first knot and after the final knot. The following options are available:
-\itemize{
-  \item{\code{endspan = -2}}: Computed according to the method proposed by \insertCite{zhang1994;textual}{aces}.
-  \item{\code{endspan = -1}}: Computed according to the method proposed by \insertCite{friedman1991;textual}{aces}.
-  \item{\code{endspan = +m}}: A positive integer specifying the exact number of observations.
-}}
+\item{endspan}{Minimum number of observations before the first knot and after the last knot.
+Use \code{-2} for the Zhang rule, \code{-1} for the Friedman rule, or a
+positive integer.}
 
-\item{n_input}{Number of input variables and contextual variables}
+\item{n_input}{Number of inputs, including contextual variables.}
 }
 \value{
 A \code{list} with two components:
 \itemize{
-  \item{\code{minspan}}: The computed minimum span.
-  \item{\code{endspan}}: The computed end span.
+  \item{\code{minspan}: Computed spacing between adjacent knots.}
+  \item{\code{endspan}: Computed spacing at the ends of each input range.}
 }
 }
 \description{
-This function computes the minimum span, which is the minimum number of observations between two adjacent knots, and the end span, which is the minimum number of observations before the first knot and after the final knot.
+Computes the minimum number of observations required between adjacent knots
+and at both ends of each input range. The spacing can be fixed by the user or
+obtained from the Friedman or Zhang rules.
 }
 \references{
 \insertRef{friedman1991}{aces} \cr \cr

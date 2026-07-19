@@ -2,31 +2,34 @@
 % Please edit documentation in R/RF_ACES.R
 \name{rf_aces_p_predict}
 \alias{rf_aces_p_predict}
-\title{Percentile-Based Prediction for Random Forest Adaptive Constrained Enveloping Splines (RF-ACES).}
+\title{Predict an RF-ACES Percentile}
 \usage{
 rf_aces_p_predict(object, newdata, x, y, p, method)
 }
 \arguments{
 \item{object}{A \code{rf_aces} object.}
 
-\item{newdata}{A \code{data.frame} or \code{matrix} containing the variables in the model.}
+\item{newdata}{A \code{data.frame} or \code{matrix} containing the new observations.}
 
-\item{x}{Column indexes of input variables in \code{data}.}
+\item{x}{Column indexes of input variables in \code{newdata}.}
 
-\item{y}{Column indexes of output variables in \code{data}.}
+\item{y}{Column indexes of output variables in \code{newdata}.}
 
-\item{p}{A numeric value between 0 and 1 specifying the conditional percentile to be used for prediction.}
+\item{p}{Percentile to predict, as a number between 0 and 1.}
 
-\item{method}{Model for prediction:
+\item{method}{RF-ACES model to use:
 \itemize{
 \item{\code{"rf_aces"}}: Random Forest Adaptive Constrained Enveloping Splines.
-\item{\code{"rf_aces_cubic"}}: Random Forest Cubic Smoothed Adaptive Constrained Enveloping Splines.
-\item{\code{"rf_aces_quintic"}}: Random Forest Quintic Smoothed Adaptive Constrained Enveloping Splines.
+\item{\code{"rf_aces_cubic"}}: Cubic-smoothed RF-ACES.
+\item{\code{"rf_aces_quintic"}}: Quintic-smoothed RF-ACES.
 }}
 }
 \value{
-A numeric vector of predicted output values for each observation, based on the specified percentile.
+A numeric vector or matrix of percentile predictions.
 }
 \description{
-Predicts the optimal output level under the RF-ACES model using a specified percentile of the conditional distribution, rather than the mean. As in DEA, inputs are held fixed, and the output is predicted via Random Forests by selecting a given percentile (e.g., the 5th percentile) of the conditional distribution. This approach enables modeling conservative or optimistic production frontiers by adjusting the percentile parameter.
+Predicts outputs from a chosen percentile of the learner-specific frontier
+predictions instead of their mean. Lower percentiles provide more
+conservative predictions, while higher percentiles move toward the upper
+part of the estimated conditional distribution.
 }

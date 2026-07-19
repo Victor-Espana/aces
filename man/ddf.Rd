@@ -2,7 +2,7 @@
 % Please edit documentation in R/efficiency_scores.R
 \name{ddf}
 \alias{ddf}
-\title{Directional Distance Function}
+\title{Compute Directional Distance Scores}
 \usage{
 ddf(
   tech_xmat,
@@ -12,41 +12,40 @@ ddf(
   direction,
   convexity,
   returns,
-  type
+  type = "objective"
 )
 }
 \arguments{
-\item{tech_xmat}{A \code{matrix} with \code{N} rows (reference DMUs) and \code{nX} columns
-containing the input variables that define the technology.}
+\item{tech_xmat}{Matrix of inputs for the reference technology, with one row per reference DMU.}
 
-\item{tech_ymat}{A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-output variables that define the technology.}
+\item{tech_ymat}{Matrix of outputs for the reference technology, with one row per reference DMU.}
 
-\item{eval_xmat}{A \code{matrix} with \code{N} rows (evaluated DMUs) and \code{nX} columns
-containing the input data.}
+\item{eval_xmat}{Matrix of inputs for the evaluated DMUs.}
 
-\item{eval_ymat}{A \code{matrix} with \code{N} rows and \code{nY} columns containing the
-output data.}
+\item{eval_ymat}{Matrix of outputs for the evaluated DMUs.}
 
 \item{direction}{A \code{matrix} or \code{data.frame} with \code{N} rows and
 \code{nX + nY} columns specifying the direction vector for each DMU.
 Columns \code{1:nX} correspond to input directions (\eqn{g_x}) and
 columns \code{(nX+1):(nX+nY)} to output directions (\eqn{g_y}).}
 
-\item{convexity}{A \code{logical} indicating whether a convex technology (DEA) is assumed.
-If \code{FALSE}, the intensity variables are set to binary (FDH).}
+\item{convexity}{If \code{TRUE}, use a convex DEA technology. If \code{FALSE}, use binary
+intensity variables for an FDH technology.}
 
-\item{returns}{Type of returns to scale: \code{"constant"} (CRS) or \code{"variable"} (VRS).}
+\item{returns}{Returns-to-scale assumption used to construct the reference technology.
+Choose \code{"constant"} for a conical technology or \code{"variable"} for a
+convex technology with a convexity constraint.}
 
 \item{type}{A \code{character} string specifying the return value:
 \code{"objective"} for the optimal objective value, or
 \code{"variables"} for the optimal value of \eqn{\beta}.}
 }
 \value{
-A \code{matrix} with \code{N} rows and 1 column containing the efficiency
-scores.
+A one-column matrix with the requested objective value or directional distance
+for each evaluated DMU.
 }
 \description{
-Computes efficiency scores through the Directional Distance Function (DDF)
-in the envelopment format.
+Solves the directional distance envelopment model for each evaluated DMU. The
+score is the greatest feasible movement that contracts inputs and expands
+outputs in the proportions specified by \code{direction}.
 }

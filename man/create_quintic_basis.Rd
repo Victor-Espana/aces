@@ -2,24 +2,24 @@
 % Please edit documentation in R/smoothing_algorithm.R
 \name{create_quintic_basis}
 \alias{create_quintic_basis}
-\title{Generate a New Pair of Quintic Basis Functions}
+\title{Add Quintic Basis Functions}
 \usage{
 create_quintic_basis(data, xi, knots, B, side)
 }
 \arguments{
-\item{data}{A \code{matrix} containing the variables in the model.}
+\item{data}{A matrix containing the prepared model variables.}
 
-\item{xi}{Index of the variable that creates the new basis function(s).}
+\item{xi}{Index of the input used to create the basis functions.}
 
-\item{knots}{Triplet of knots for creating the new basis function(s).}
+\item{knots}{Numeric vector containing the left, central, and right knots.}
 
-\item{B}{A \code{matrix} of basis functions.}
+\item{B}{Current basis matrix.}
 
-\item{side}{Side of the new basis function inherited from the linar basis function.}
+\item{side}{Side inherited from the corresponding linear basis function.}
 }
 \value{
-A \code{matrix} of basis functions updated with the new quintic basis functions.
+The basis matrix with the new quintic columns.
 }
 \description{
-This function generates two new quintic basis functions from a variable and a triplet of knots.
+Evaluates quintic basis functions for one input and adds them to a basis matrix.
 }

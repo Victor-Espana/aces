@@ -1,11 +1,14 @@
-#' @title Add a New Pair of Basis Functions in Adaptive Constrained Enveloping Splines
+#' @title Add a Pair of ACES Basis Functions
 #'
 #' @description
 #'
-#' This function adds a pair of basis functions to the Adaptive Constrained Enveloping Splines (ACES) model, selecting the pair that leads to the largest reduction in the lack-of-fit criterion. The function updates the model by incorporating these basis functions, adjusting the knots, and refining the error.
+#' Adds the eligible pair of basis functions that gives the largest reduction in
+#' lack of fit. Candidate knots and variables must satisfy the span, interaction,
+#' and shape restrictions. In Quick ACES mode, the candidate set is reduced
+#' before the best pair is selected.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param x
 #' Column indexes of input variables in \code{data}.
@@ -14,56 +17,63 @@
 #' Column indexes of output variables in \code{data}.
 #'
 #' @param xi_degree
-#' A \code{matrix} indicating the degree of each input variable.
+#' A matrix that records the degree of each input in every expanded variable.
 #'
 #' @param inter_cost
-#' A \code{numeric} value specifying the minimum percentage of improvement over the best 1 degree basis function to justify adding a higher-degree basis function.
+#' Minimum relative improvement over the best first-degree basis function
+#' required to add a higher-degree basis function.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented DEA-VRS scores, with one column per output.
 #'
 #' @param fdh_scores
-#' A \code{matrix} containing FDH scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented FDH scores, with one column per output.
 #'
 #' @param metric
-#' A \code{character} string specifying the lack-of-fit criterion to evaluate the model performance.
+#' Character string specifying the lack-of-fit measure.
 #'
 #' @param forward_model
-#' A \code{list} containing the current state of the forward model, including the matrix of basis functions (\code{B}) and the set of selected basis functions (\code{BF_set}).
+#' Current forward model, including \code{B} and \code{BF_set}.
 #'
 #' @param Bp_list
-#' A \code{list} containing the basis functions for each input variable, with detailed information about their structure and placement in the model.
+#' Current basis functions, grouped by input.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity and/or passing through the origin.
+#' A list with logical elements \code{mono} and \code{conc}.
 #'
 #' @param kn_list
-#' A \code{list} containing the current set of selected knots for each input variable.
+#' Selected knots, grouped by input.
 #'
 #' @param kn_grid
-#' A \code{list} containing the available grid of knots used to construct the basis functions for each input variable.
+#' Available knot candidates, grouped by input.
 #'
 #' @param span
-#' A \code{numeric} vector specifying the minimum number of observations between two adjacent knots (L) and the minimum number of observations before the first and after the final knot (Le).
+#' A numeric vector containing \code{minspan} and \code{endspan}.
 #'
 #' @param err_min
-#' A \code{numeric} value specifying the minimum error obtained by the forward algorithm in the current iteration.
+#' Best error found in the current iteration.
 #'
 #' @param var_imp
-#' A \code{matrix} tracking the best residual reduction for each variable (columns) in each iteration (rows).
+#' Matrix whose rows contain the best relative error reduction found for each
+#' prepared input in each forward iteration. Quick ACES uses its recent history
+#' to reduce the next candidate search.
+#'
+#' @param quick_keep
+#' Logical vector indicating which prepared inputs passed the Quick ACES
+#' correlation screen.
 #'
 #' @param quick_aces
-#' A \code{logical} indicating whether to use the fast version of ACES.
+#' If \code{TRUE}, use Quick ACES to reduce the candidate search.
 #'
 #' @return
 #'
 #' An updated \code{list} containing:
 #' \itemize{
-#'   \item \code{B}: The updated matrix of basis functions.
-#'   \item \code{BF_set}: The updated set of basis functions included in the model.
-#'   \item \code{kn_list}: The updated list of selected knots for each variable.
-#'   \item \code{err_min}: The updated minimum error achieved in the current iteration.
-#'   \item \code{var_imp}; The updated matrix of variable importance
+#'   \item{\code{B}: Updated basis matrix.}
+#'   \item{\code{BF_set}: Updated set of selected basis functions.}
+#'   \item{\code{kn_list}: Updated knots.}
+#'   \item{\code{err_min}: Updated best error.}
+#'   \item{\code{var_imp}: Updated error reductions by iteration and input.}
 #' }
 
 add_basis_function <- function(
@@ -83,6 +93,7 @@ add_basis_function <- function(
   span,
   err_min,
   var_imp,
+  quick_keep,
   quick_aces
 ) {
   # number of inputs
@@ -109,10 +120,20 @@ add_basis_function <- function(
 
     # weighted mean reduction for error in each variable: exponential decay
     weights <- 0.95^(iters:1)
-    weighted_reduction <- colSums(var_imp[1:iters, , drop = FALSE] * weights) / sum(weights)
+    reduction_history <- var_imp[seq_len(iters), , drop = FALSE]
+    reduction_history[is.na(reduction_history)] <- 0
+    weighted_reduction <- colSums(reduction_history * weights) / sum(weights)
 
-    # normalize importance
-    normalized_importance <- weighted_reduction / max(weighted_reduction)
+    # normalize importance; if no input improved, keep the full search active
+    max_reduction <- suppressWarnings(max(weighted_reduction, na.rm = TRUE))
+
+    if (is.finite(max_reduction) && max_reduction > 0) {
+      normalized_importance <- pmax(0, weighted_reduction / max_reduction)
+    } else {
+      normalized_importance <- rep(1, length(weighted_reduction))
+    }
+
+    normalized_importance[!quick_keep] <- 0
   }
 
   for (xi in x) {
@@ -122,7 +143,7 @@ add_basis_function <- function(
 
     if (quick_aces) {
       # remove variables based on Spearman and Kendall correlation
-      if (var_imp[1, xi] == -1) next
+      if (!quick_keep[xi]) next
 
       # get knots: do not apply minimum and end span
       knots <- kn_grid[[xi]]
@@ -144,7 +165,8 @@ add_basis_function <- function(
           kn_prop <- normalized_importance[xi]
 
           # sample of knots based on importance
-          kn_indx <- sample(length(knots), size = round(kn_prop * length(knots)))
+          sample_size <- max(1L, round(kn_prop * length(knots)))
+          kn_indx <- sample(length(knots), size = sample_size)
 
           # reduced set of knots
           knots <- knots[kn_indx]
@@ -292,11 +314,20 @@ add_basis_function <- function(
       # variable
       err[2] <- xi_degree[2, xi]
 
-      # update variable importance
-      reduction <- round(1 - err[1] / err_ini[1], 2)
+      # Keep the best counterfactual reduction for this variable in the current
+      # iteration, whether or not this variable supplies the selected split.
+      reduction <- if (
+        is.finite(err_ini[1]) && err_ini[1] > 0 && is.finite(err[1])
+      ) {
+        max(0, 1 - err[1] / err_ini[1])
+      } else {
+        NA_real_
+      }
+
       best_reduction <- var_imp[nrow(var_imp), xi]
 
-      if (reduction > best_reduction) {
+      if (!is.na(reduction) &&
+          (is.na(best_reduction) || reduction > best_reduction)) {
         var_imp[nrow(var_imp), xi] <- reduction
       }
 
@@ -384,37 +415,37 @@ add_basis_function <- function(
   }
 }
 
-#' @title Generate the Set of Eligible Knots
+#' @title Find Eligible Knots
 #'
 #' @description
-#' This function generates a vector of knots that can be used to create a new pair of basis functions during the forward algorithm. It uses vectorized operations to compute the index bookkeeping for the minimum span.
+#' Finds knot candidates that satisfy the spacing rules during the forward step.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param nX
 #' Number of inputs.
 #'
 #' @param var_idx
-#' Index of the input variable that creates the new pair of basis functions.
+#' Index of the input used to create the new basis functions.
 #'
 #' @param minspan
 #' Minimum number of observations between two adjacent knots.
 #'
 #' @param endspan
-#' Minimum number of observations before the first and after the final knot.
+#' Minimum number of observations before the first knot and after the last knot.
 #'
 #' @param kn_list
-#' A \code{list} containing the set of selected knots.
+#' Selected knots, grouped by input.
 #'
 #' @param bf
-#' A \code{list} with the basis function for the expansion of the model.
+#' Parent basis function to expand.
 #'
 #' @param kn_grid
-#' Grid of virtual knots to perform ACES.
+#' Available knot candidates, grouped by input.
 #'
 #' @return
-#' Numeric vector with the knots values for the variable.
+#' A numeric vector of eligible knots.
 
 set_knots <- function(
   data,
@@ -498,22 +529,22 @@ set_knots <- function(
   return(knots)
 }
 
-#' @title Generate a Pair of Linear Basis Functions
+#' @title Create Linear Basis Functions
 #'
 #' @description
-#' This function generates two new linear basis functions from a variable and a knot.
+#' Creates the two hinge functions on either side of a knot.
 #'
 #' @param data
-#' A \code{matrix} containing the variables in the model.
+#' A matrix containing the prepared model variables.
 #'
 #' @param var_idx
-#' Index of the input variable that creates the new pair of basis functions.
+#' Index of the input used to create the basis functions.
 #'
 #' @param knot
-#' Knot for creating the new pair of basis functions.
+#' Knot location.
 #'
 #' @return
-#' A \code{list} with the new pair of basis functions.
+#' A list containing the right and left hinge vectors.
 
 create_linear_basis <- function(
   data,
@@ -526,4 +557,3 @@ create_linear_basis <- function(
 
   return(list(hinge1, hinge2))
 }
-

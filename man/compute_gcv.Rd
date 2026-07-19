@@ -2,26 +2,26 @@
 % Please edit documentation in R/backward_algorithm.R
 \name{compute_gcv}
 \alias{compute_gcv}
-\title{Compute Generalized Cross-Validation (GCV)}
+\title{Compute Generalized Cross-Validation}
 \usage{
 compute_gcv(y_obs, LOF, n_bf, kn_penalty, kn_list, xi_degree)
 }
 \arguments{
-\item{y_obs}{Vector of observed data.}
+\item{y_obs}{A numeric matrix of observed outputs.}
 
-\item{LOF}{A \code{numeric} value representing the lack-of-fit of the model. This term quantifies how well the model fits the data.}
+\item{LOF}{Lack-of-fit value for the model.}
 
-\item{n_bf}{A \code{integer} specifying the number of basis functions used in the model.}
+\item{n_bf}{Number of basis functions in the model.}
 
-\item{kn_penalty}{A \code{numeric} value representing the penalty applied for each knot in the model.}
+\item{kn_penalty}{Penalty applied to each knot.}
 
-\item{kn_list}{A \code{list} containing the set of knots used in the model.}
+\item{kn_list}{Knots used by the model.}
 
-\item{xi_degree}{A \code{matrix} indicating the degree of each input variable.}
+\item{xi_degree}{A matrix that records the degree of each input in every expanded variable.}
 }
 \value{
-A \code{numeric} value representing the computed Generalized Cross-Validation (GCV) score.
+A single numeric GCV score.
 }
 \description{
-This function computes the generalized cross-validation for the backward algorithm in Adaptive Constrained Enveloping Splines (ACES).
+Computes the GCV score used to compare pruned ACES submodels.
 }

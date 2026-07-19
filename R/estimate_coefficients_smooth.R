@@ -1,37 +1,37 @@
-#' @title Estimate Coefficients for Smooth Adaptive Constrained Enveloping Splines (ACES) Fitting
+#' @title Estimate Smoothed ACES Coefficients
 #'
 #' @description
 #'
-#' This function solves a Linear Programming problem to obtain a set of coefficients that impose concavity and non-decreasing monotonicity in the Smooth Adaptive Constrained Enveloping Splines estimator.
+#' Solves the reduced linear program for a cubic- or quintic-smoothed ACES model.
 #'
-#' The N error variables are eliminated algebraically: since e = B coefs - y with
-#' e >= 0, minimizing sum(w * e) is equivalent to minimizing (w'B) coefs subject
-#' to B coefs >= y plus the shape constraints. The resulting LP has only p
-#' variables instead of p + N.
+#' Error variables are removed analytically so that the optimization contains
+#' only the paired and unpaired smooth-basis coefficients. Envelopment and the
+#' requested monotonicity or concavity restrictions are imposed in the reduced
+#' problem.
 #'
 #' @param B
-#' A \code{matrix} of cubic or quintic basis functions.
+#' Matrix of evaluated cubic or quintic basis functions.
 #'
 #' @param y_obs
-#' A \code{matrix} of the observed output data.
+#' Matrix of observed outputs.
 #'
 #' @param dea_scores
-#' A \code{matrix} containing DEA-VRS efficiency scores, calculated using an output-oriented radial model. For models with multiple outputs, each column corresponds to the scores for one specific output.
+#' A matrix of output-oriented DEA-VRS scores, with one column per output.
 #'
 #' @param n_pair
-#' An \code{integer} specifying the number of coefficients associated with the paired basis functions.
+#' Number of coefficients for paired basis functions.
 #'
 #' @param n_lsub
-#'  An \code{integer} specifying the number of coefficients associated with the unpaired left-side basis functions.
+#' Number of coefficients for unpaired left-side basis functions.
 #'
 #' @param shape
-#' A \code{list} indicating whether to impose monotonicity and/or concavity.
+#' A list with logical elements \code{mono} and \code{conc}.
 #'
 #' @importFrom Rglpk Rglpk_solve_LP
 #'
 #' @return
 #'
-#' A \code{vector} with the estimated coefficients.
+#' A numeric vector of estimated coefficients.
 
 estimate_coefficients_smoothed <- function(
   B,

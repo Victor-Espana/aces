@@ -1,13 +1,14 @@
-#' @title Generate the Set of Unidimensional Intervals
+#' @title Build Input Intervals
 #'
 #' @description
-#' This function determines the boundaries for the intervals and identifies what basis functions are active in each interval.
+#' Finds the one-dimensional intervals and the basis functions active in each
+#' interval.
 #'
 #' @param Bp_list
-#' A \code{list} containing the set of basis functions for each input.
+#' Basis functions grouped by input.
 #'
 #' @return
-#' A \code{list} with the boundaries of the intervals and the IDs of the active basis functions within each interval.
+#' A list of interval boundaries and active basis function IDs, grouped by input.
 
 set_intervals <- function (
     Bp_list
